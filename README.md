@@ -1,9 +1,32 @@
-<div style="margin: 18px auto; display: flex; align-items: center; max-width: 100%; justify-content: center;">
-    <img src="images/Adiman.png" width="82" style="margin-right: 18px;">
-    <span>Adiman</span>
+<div style="
+    background: linear-gradient(145deg, #ffffff0d 0%, #ffffff05 100%);
+    padding: 12px 24px;
+    border-radius: 12px;
+    margin: 20px auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: 1px solid #ffffff15;
+    backdrop-filter: blur(8px);
+    transition: transform 0.2s ease;
+">
+    <img src="images/Adiman.png" width="82" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
+    <h1 style="
+        margin: 0;
+        font-size: 2.5rem;
+        font-weight: 600;
+        background: linear-gradient(45deg, #fff 0%, #a0aec0 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    ">Adiman</h1>
 </div>
 
 <a href="https://github.com/flutter/flutter">![](https://img.shields.io/badge/Built%20in-Flutter-%23369FE7)</a>
+<a href="https://github.com/fzyzcjy/flutter_rust_bridge">![](https://img.shields.io/badge/Built%20with-Flutter%20Rust%20Bridge-%23369FE7)</a>
+<a href="https://ghloc.vercel.app/ChaosTheChaotic/Adiman?branch=main">![](https://img.shields.io/endpoint?url=https://ghloc.vercel.app/api/ChaosTheChaotic/Adiman/badge?style=flat&logo=dart&logoColor=aqua&label=Total%20Lines&color=darkturquoise)</a>
 
 A flutter music player app I made for linux using [flutter_rust_bridge](https://github.com/fzyzcjy/flutter_rust_bridge) for efficency (as I can't code well) inspired by [namida](https://github.com/namidaco/namida) as you will have seen by the obvious fact that the name is just namida backwards.
 
