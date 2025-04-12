@@ -9,7 +9,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 
 # Installing
 
-(There are only linux builds currently) Head over to releases, download, mark executable (if needed) and run the appimage
+(There are only linux builds currently) Head over to [releases](https://github.com/ChaosTheChaotic/Adiman/releases/latest), download the appimage for your architecture, mark executable (if needed) and run the appimage
 
 # Features
 
