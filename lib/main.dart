@@ -130,7 +130,6 @@ class _MiniPlayerState extends State<MiniPlayer>
       const Duration(milliseconds: 100),
       (_) => _updatePlayback(),
     );
-    //_checkPlayingState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkPlayingState());
   }
 
@@ -525,7 +524,6 @@ class _AnimatedPopupWrapperState extends State<_AnimatedPopupWrapper>
 }
 
 class _SongSelectionScreenState extends State<SongSelectionScreen>
-    //with SingleTickerProviderStateMixin {
     with TickerProviderStateMixin {
   List<Song> songs = [];
   List<Song> displayedSongs = [];
@@ -565,7 +563,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   // Music folder path (default to '~/Music')
   String _musicFolder = '~/Music';
 
-  // Focus node to catch key events.
   final FocusNode _focusNode = FocusNode();
 
   List<String> customSeparators = [];
@@ -989,7 +986,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                             height: 1,
                           ),
                           const SizedBox(height: 16),
-                          // Merge Playlists Button
                           _buildPlaylistOptionButton(
                             icon: Icons.merge_rounded,
                             label: 'Merge Playlists',
@@ -1336,7 +1332,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     return baseDir;
   }
 
-  /// Creates a new playlist with the given name.
   Future<Directory> createPlaylist(
     String musicFolder,
     String playlistName,
@@ -1376,7 +1371,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     }
   }
 
-  /// Lists all the available playlists.
   Future<List<String>> listPlaylists(String musicFolder) async {
     final baseDir = await getPlaylistBase(musicFolder);
     final playlists = <String>[];
@@ -1392,7 +1386,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     return playlists;
   }
 
-  /// Called when the user opts to create a new playlist.
   Future<void> _handleCreatePlaylist(Song song) async {
     final playlistName = await _showPlaylistNameDialog();
     if (playlistName != null && playlistName.isNotEmpty) {
@@ -1401,7 +1394,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     }
   }
 
-  /// Called when the user opts to add to an existing playlist.
   Future<void> _handleAddToExistingPlaylist(Song song) async {
     final playlists = await listPlaylists(_musicFolder);
     final selectedPlaylist = await _showSelectPlaylistDialog(playlists);
@@ -1835,7 +1827,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     if (await link.exists()) {
       await link.delete();
       print('Removed $filename from playlist $_currentPlaylistName');
-      // Reload songs to update the list
       _loadSongs();
     } else {
       print('Song link does not exist: $filename');
@@ -1979,7 +1970,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
       final file = File(song.path);
       if (await file.exists()) {
         await file.delete();
-        // Remove from current list
         setState(() {
           songs.removeWhere((s) => s.path == song.path);
           displayedSongs.removeWhere((s) => s.path == song.path);
@@ -2817,7 +2807,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  // Helper method to expand "~" to the user's home directory.
   String expandTilde(String path) {
     if (path.startsWith('~')) {
       final home = Platform.environment['HOME'] ?? '';
@@ -3031,7 +3020,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          // Set the background and shadow to transparent to reveal the gradient container.
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
                           padding: const EdgeInsets.symmetric(
@@ -3043,22 +3031,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         onPressed: () async {
-                          // Expand the "~" into the appropriate home directory
                           final expandedPath = await expandTilde(
                             _musicFolderController.text,
                           );
 
-                          // Save the updated folder to shared preferences
                           SharedPreferences prefs =
                               await SharedPreferences.getInstance();
                           await prefs.setString('musicFolder', expandedPath);
 
-                          // Notify any callbacks if provided
                           if (widget.onMusicFolderChanged != null) {
                             await widget.onMusicFolderChanged!(expandedPath);
                           }
 
-                          // Close the settings screen, returning the new folder path.
                           Navigator.pop(context, expandedPath);
                         },
                         icon: Icon(Icons.save, color: buttonTextColor),
@@ -3597,7 +3581,6 @@ class MusicPlayerScreen extends StatefulWidget {
 }
 
 class _MusicPlayerScreenState extends State<MusicPlayerScreen>
-    //with SingleTickerProviderStateMixin {
     with TickerProviderStateMixin {
   late AnimationController _playPauseController;
   bool isPlaying = false;
@@ -4339,7 +4322,6 @@ Future<void> _deleteSongFile(Song song) async {
     try {
       // 1. Check cache.
       final cachedLrc = await _getCachedLyrics(currentSong.path);
-      //final cachedLrc = await compute(_getCachedLyrics, currentSong.path);
       if (cachedLrc != null) {
         _lrcData = cachedLrc;
         _updateLyricsStatus();
@@ -4777,7 +4759,6 @@ Future<void> _deleteSongFile(Song song) async {
   }
 
   Future<void> _handleSearchAnother() async {
-    // Delete temp file
     if (widget.isTemp && widget.tempPath != null) {
       try {
         final file = File(widget.tempPath!);
@@ -4825,7 +4806,6 @@ Future<void> _deleteSongFile(Song song) async {
         ),
       );
 
-      // Update library
       widget.onReloadLibrary.call();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -5185,14 +5165,12 @@ class AdimanService extends MPRISService {
   }
 
   void updatePlaylist(List<Song> playlist, int currentIndex) async {
-    // Check if the playlist and index are unchanged
     if (_currentPlaylist == playlist &&
         _currentIndex == currentIndex &&
         _currentSong == playlist[currentIndex]){
 	return;
     }
 
-    // Proceed only if there's a meaningful change
     if (playlist.isEmpty ||
         currentIndex < 0 ||
         currentIndex >= playlist.length) {
@@ -5202,18 +5180,15 @@ class AdimanService extends MPRISService {
       return;
     }
 
-    // Update internal state
     _currentPlaylist = playlist;
     _currentIndex = currentIndex;
     _currentSong = _currentPlaylist[currentIndex];
 
-    // Notify listeners only if the song has changed
     if (_currentSong != null) {
       _trackChangeController.add(_currentSong!);
       _updateMetadata();
     }
 
-    // Update playback state
     final isPlaying = await rust_api.isPlaying();
     playbackStatus = isPlaying ? PlaybackStatus.playing : PlaybackStatus.paused;
     _playbackStateController.add(isPlaying);
@@ -5285,7 +5260,6 @@ Future<String?> _cacheAlbumArt(String? base64Data) async {
         } catch (_) {}
       }
 
-      // Write new file
       final hash = md5.convert(utf8.encode(base64Data)).toString();
       final file = File('${cacheDir.path}/$hash.png');
       if (!await file.exists()) {
