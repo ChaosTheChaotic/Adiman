@@ -2270,14 +2270,14 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 );
                               },
                             ),
-                            _buildMenuTile(
+                            /*_buildMenuTile(
                               icon: Icons.info_rounded,
                               title:
                                   'About & GitHub (None yet as these are test builds)',
                               onTap: () {
                                 Navigator.pop(context);
                               },
-                            ),
+                            ),*/
                           ],
                         ),
                       ),
