@@ -1,16 +1,28 @@
-# adiman
+# Adiman
 
-A new Flutter project.
+A flutter music player app I made for linux using [flutter_rust_bridge](https://github.com/fzyzcjy/flutter_rust_bridge) for efficency (as I can't code well) inspired by [namida](https://github.com/namidaco/namida) as you will have seen by the obvious fact that the name is just namida backwards.
 
-## Getting Started
+# Dependencies
 
-This project is a starting point for a Flutter application.
+- Ffmpeg
+- Spotdl (via python)
 
-A few resources to get you started if this is your first Flutter project:
+# Features
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- Can play music (duh)
+- Adaptive ui
+- Playlists
+- Downloading songs via spotdl command line (this takes a while due to all the rate limits so unfortunately you just have to wait it out)
+- Waveform seekbar
+- Lyrics from online source ([lrclib](https://lrclib.net/))
+- Shuffle option (mostly untested due to me not using it that often)
+- Mpris support
+- Shuffling
+- Sorting searching
+- Artist separators (Also untested due to me not using it that often)
+- Caching
+- Choosable music folder
+- Horribly inefficent code
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+# Building
+To build you must have [flutter_rust_bridge](https://github.com/fzyzcjy/flutter_rust_bridge) installed, (obviously) the flutter sdk and rust (obviously). To generate the dart to go with the rust you should run `flutter_rust_bridge_codegen generate` and to build the rust you must run `flutter build linux`.
