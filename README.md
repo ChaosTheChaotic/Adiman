@@ -2,10 +2,14 @@
 
 A flutter music player app I made for linux using [flutter_rust_bridge](https://github.com/fzyzcjy/flutter_rust_bridge) for efficency (as I can't code well) inspired by [namida](https://github.com/namidaco/namida) as you will have seen by the obvious fact that the name is just namida backwards.
 
-# Dependencies
+# Dependencies (These apply even when not building)
 
 - Ffmpeg
-- Spotdl (via python)
+- Spotdl (via python if you want downloading songs to work)
+
+# Installing
+
+(There are only linux builds currently) Head over to releases, download, mark executable (if needed) and run the appimage
 
 # Features
 
