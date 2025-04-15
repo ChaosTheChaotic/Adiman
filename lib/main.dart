@@ -171,6 +171,13 @@ class _MiniPlayerState extends State<MiniPlayer>
     _togglePlayPause();
   }
 
+  Future<void> pause() async {
+    await rust_api.pauseSong();
+    _playPauseController.reverse();
+    widget.service.onPause();
+    setState(() => isPlaying = false);
+  }
+
   void _togglePlayPause() async {
     if (isPlaying) {
       await rust_api.pauseSong();
@@ -1318,6 +1325,12 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     _miniPlayerKey.currentState?.togglePause();
   }
 
+
+  void _pauseSong() {
+    if (!showMiniPlayer) return;
+    _miniPlayerKey.currentState?.pause();
+  }
+
   bool isTextInputFocused() {
     final focusScope = FocusScope.of(context);
     return focusScope.hasFocus && focusScope.focusedChild is EditableText;
@@ -2256,7 +2269,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                               icon: Icons.download_rounded,
                               title: 'Download Songs (spotdl required)',
                               onTap: () {
-                                _togglePauseSong();
+                                _pauseSong();
                                 Navigator.pop(context);
                                 Navigator.push(
                                   context,
@@ -2884,6 +2897,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _togglePauseSong() {
     if (_currentSong == null) return;
     _miniPlayerKey.currentState?.togglePause();
+  }
+  void _pauseSong() {
+    if (_currentSong == null) return;
+    _miniPlayerKey.currentState?.pause();
   }
 
   @override
@@ -3714,6 +3731,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
 void _showPlaylistPopup(BuildContext context) {
   final currentSong = widget.song;
+  final textColor =
+        dominantColor.computeLuminance() > 0.007 ? dominantColor : Colors.white;
   showDialog(
     context: context,
     builder: (context) {
@@ -3750,7 +3769,7 @@ void _showPlaylistPopup(BuildContext context) {
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
-                        color: dominantColor,
+                        color: textColor,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -4648,9 +4667,7 @@ Future<void> _deleteSongFile(Song song) async {
   void _showPlayerMenu(BuildContext context) {
     final renderBox = context.findRenderObject() as RenderBox;
     final offset = renderBox.localToGlobal(Offset.zero);
-    final textColor =
-        dominantColor.computeLuminance() > 0.007 ? dominantColor : Colors.white;
-
+    
     showDialog(
       context: context,
       builder: (context) {
@@ -4700,7 +4717,6 @@ Future<void> _deleteSongFile(Song song) async {
                             icon: Icons.search,
                             label: 'Find new song',
                             onTap: () {
-                              Navigator.pop(context);
                               _handleSearchAnother();
                             },
                           ),
@@ -4769,8 +4785,11 @@ Future<void> _deleteSongFile(Song song) async {
         print('Error deleting temp file: $e');
       }
     }
-
-    Navigator.pushReplacement(
+    await rust_api.pauseSong();
+    widget.service._playbackStateController.add(false);
+    _playPauseController.reverse();
+    widget.service.onPause();
+    Navigator.pushAndRemoveUntil(
       context,
       NamidaPageTransitions.createRoute(
         DownloadScreen(
@@ -4779,6 +4798,7 @@ Future<void> _deleteSongFile(Song song) async {
           onReloadLibrary: widget.onReloadLibrary,
         ),
       ),
+      (route) => route.isFirst
     );
   }
 
@@ -4850,11 +4870,15 @@ Future<void> _deleteSongFile(Song song) async {
       onKey: (RawKeyEvent event) {
         if (event is RawKeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.escape) {
-            Navigator.pop(context, {
-              'song': currentSong,
-              'index': currentIndex,
-              'dominantColor': dominantColor,
-            });
+	    if (_isTempFile){
+	      _handleSearchAnother();
+	    } else {
+	      Navigator.pop(context, {
+	        'song': currentSong,
+		'index': currentIndex,
+		'dominantColor': dominantColor,
+	      });
+	     }
           } else if (event.logicalKey == LogicalKeyboardKey.space &&
               (FocusScope.of(context).focusedChild is! EditableText)) {
             _togglePlayPause();
@@ -4902,14 +4926,20 @@ Future<void> _deleteSongFile(Song song) async {
                         children: [
                           DynamicIconButton(
                             icon: Icons.arrow_downward_rounded,
+			    backgroundColor: dominantColor,
+			    size: 40,
                             onPressed:
-                                () => Navigator.pop(context, {
-                                  'song': currentSong,
-                                  'index': currentIndex,
-                                  'dominantColor': dominantColor,
-                                }),
-                            backgroundColor: dominantColor,
-                            size: 40,
+                                () {
+				if (_isTempFile){
+				_handleSearchAnother();
+				} else {
+				Navigator.pop(context, {
+				  'song': currentSong,
+				  'index': currentIndex,
+				  'dominantColor': dominantColor,
+				});
+			      }
+			    },
                           ),
                           DynamicIconButton(
                             icon: Icons.more_horiz_rounded,
