@@ -4872,7 +4872,7 @@ Future<void> _deleteSongFile(Song song) async {
           if (event.logicalKey == LogicalKeyboardKey.escape) {
 	    if (_isTempFile){
 	      _handleSearchAnother();
-	    } else {
+	    } else if (!_isTempFile) {
 	      Navigator.pop(context, {
 	        'song': currentSong,
 		'index': currentIndex,
@@ -5511,134 +5511,160 @@ class _DownloadScreenState extends State<DownloadScreen>
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return RawKeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKey: (RawKeyEvent event) {
-        if (event is RawKeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.escape) {
-          rust_api.stopSong();
+@override
+Widget build(BuildContext context) {
+  return RawKeyboardListener(
+    focusNode: _focusNode,
+    autofocus: true,
+    onKey: (RawKeyEvent event) {
+      if (event is RawKeyDownEvent &&
+          event.logicalKey == LogicalKeyboardKey.escape && !_isDownloading) {
+	  rust_api.stopSong();
           Navigator.pop(context);
-        }
-      },
-      child: Scaffold(
-        body: Stack(
-          children: [
-            // Blurred Background
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 100, sigmaY: 100),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment.topCenter,
-                      radius: 1.8,
-                      colors: [_dominantColor.withAlpha(30), Colors.black],
-                    ),
+      }
+    },
+    child: Scaffold(
+      body: Stack(
+        children: [
+          // Blurred Background
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 100, sigmaY: 100),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment.topCenter,
+                    radius: 1.8,
+                    colors: [_dominantColor.withAlpha(30), Colors.black],
                   ),
                 ),
               ),
             ),
-
-            SafeArea(
-              child: Column(
-                children: [
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        DynamicIconButton(
-                          icon: Icons.arrow_back_rounded,
-                          onPressed: () => Navigator.pop(context),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      DynamicIconButton(
+                        icon: Icons.arrow_back_rounded,
+                        onPressed: () => Navigator.pop(context),
+                        backgroundColor: _dominantColor,
+                        size: 40,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: NamidaTextField(
+                          controller: _searchController,
+                          focusNode: _searchFocus,
+                          hintText: 'Search song or paste URL...',
+                          prefixIcon: Icons.search_rounded,
+                          onSubmitted: (_) => _startDownload(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: _currentTrack == null ? _buildEmptyState() : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_isDownloading)
+            Positioned.fill(
+	    child: RawKeyboardListener(
+	    focusNode: FocusNode(),
+	    autofocus: true,
+	    onKey: (RawKeyEvent event) {
+	      if (event is RawKeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+	        setState(() => _isDownloading = false);
+	        rust_api.cancelDownload();
+	        rust_api.stopSong();
+	      }
+	    },
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  color: Colors.black54,
+                  child: Stack(
+                    children: [
+                      Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation(_dominantColor),
+                            ),
+                            const SizedBox(height: 16),
+                            GlowText(
+                              'Downloading...',
+                              glowColor: _dominantColor,
+                              style: TextStyle(color: Colors.white, fontSize: 18),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        top: 10,
+			left: 10,
+                        child: DynamicIconButton(
+                          icon: Icons.close_rounded,
+                          onPressed: () {
+                            setState(() => _isDownloading = false);
+			    rust_api.cancelDownload();
+                            rust_api.pauseSong();
+                          },
                           backgroundColor: _dominantColor,
                           size: 40,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: NamidaTextField(
-                            controller: _searchController,
-                            focusNode: _searchFocus,
-                            hintText: 'Search song or paste URL...',
-                            prefixIcon: Icons.search_rounded,
-                            onSubmitted: (_) => _startDownload(),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: _currentTrack == null ? _buildEmptyState() : null,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-            if (_isDownloading)
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    color: Colors.black54,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation(_dominantColor),
-                          ),
-                          const SizedBox(height: 16),
-                          GlowText(
-                            'Downloading...',
-                            glowColor: _dominantColor,
-                            style: TextStyle(color: Colors.white, fontSize: 18),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+	  ),
+          if (_tempSong != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: MiniPlayer(
+                onReloadLibrary: widget.onReloadLibrary,
+                musicFolder: widget.musicFolder,
+                song: _tempSong!,
+                songList: [_tempSong!],
+                service: widget.service,
+                dominantColor: _dominantColor,
+                currentIndex: 0,
+                isTemp: true,
+                onClose: () {
+                  setState(() {
+                    _tempSong = null;
+                    _dominantColor = Colors.purple;
+                  });
+                  rust_api.stopSong();
+                },
+                onUpdate: (newSong, newIndex, newColor) {
+                  setState(() {
+                    _tempSong = newSong;
+                    _dominantColor = newColor;
+                  });
+                },
+                isCurrent: true,
               ),
-            if (_tempSong != null)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: MiniPlayer(
-                  onReloadLibrary: widget.onReloadLibrary,
-                  musicFolder: widget.musicFolder,
-                  song: _tempSong!,
-                  songList: [_tempSong!],
-                  service: widget.service,
-                  dominantColor: _dominantColor,
-                  currentIndex: 0,
-                  isTemp: true,
-                  onClose: () {
-                    setState(() {
-                      _tempSong = null;
-                      _dominantColor = Colors.purple;
-                    });
-                    rust_api.stopSong();
-                  },
-                  onUpdate: (newSong, newIndex, newColor) {
-                    setState(() {
-                      _tempSong = newSong;
-                      _dominantColor = newColor;
-                    });
-                  },
-                  isCurrent: true,
-                ),
-              ),
-          ],
-        ),
+            ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildEmptyState() {
     return Center(
