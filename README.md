@@ -67,7 +67,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 </div>
 
 # Building
-To build you must have [flutter_rust_bridge](https://github.com/fzyzcjy/flutter_rust_bridge) installed, (obviously) the flutter sdk and rust (obviously). To generate the dart to go with the rust you should run `flutter_rust_bridge_codegen generate` and to build the rust you must run `flutter build linux`.
+To build you must have [flutter_rust_bridge](https://github.com/fzyzcjy/flutter_rust_bridge) installed, (obviously) the flutter sdk and rust (obviously). You should also have the repo cloned on your machine. To generate the dart to go with the rust you should run `flutter_rust_bridge_codegen generate` and to build the rust you must run `flutter build linux` inside the source directory.
 
 ## Helpful people
 - DuckTheCrowolf (thevietnamesecrow on discord) for making the logo
