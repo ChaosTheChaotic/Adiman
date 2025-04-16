@@ -4,23 +4,22 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use walkdir::WalkDir;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use std::sync::{Mutex, mpsc::{self, Sender, Receiver}};
+use std::sync::{Mutex, mpsc::{self, Sender, Receiver}, Arc, RwLock};
 use once_cell::sync::Lazy;
 use rodio::{Decoder, Sink, Source, OutputStream, OutputStreamHandle};
 use std::time::{Duration, Instant};
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::io::{Cursor, BufReader, Read, Seek, SeekFrom};
 use std::thread;
 use regex::Regex;
 use serde_json::{json, Value};
 use sha2::{Sha256, Digest};
-use std::process::Command;
+use std::process::{Command, Child};
 use std::cmp::max;
 use std::fs;
 use mp3_duration;
 use chrono;
-use std::sync::RwLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone)]
 struct StreamingBuffer {
@@ -823,30 +822,61 @@ pub struct Track {
     pub cover_url: String,
 }
 
+// A global flag to cancel the download. Using once_cell for lazy initialization.
+static CANCEL_DOWNLOAD: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
+
 pub fn download_to_temp(query: String) -> Result<String, String> {
-    let (tx, rx) = std::sync::mpsc::channel();
+    // Reset cancellation flag at the start of the download.
+    CANCEL_DOWNLOAD.store(false, Ordering::SeqCst);
+    let (tx, rx) = mpsc::channel();
     
     std::thread::spawn(move || {
         let result = (|| {
+            // Get the system temp directory
             let temp_dir = std::env::temp_dir();
             let temp_path = temp_dir.to_str()
                 .ok_or("Failed to get temp directory")?
                 .to_string();
 
-            let output = Command::new("spotdl")
+            let output_path = format!("{}/{{artist}} - {{title}}.mp3", temp_path);
+
+            // Spawn the download process, rather than blocking with .output()
+            let mut child: Child = Command::new("spotdl")
                 .args(&[
                     "--no-cache",
                     "--format", "mp3",
-                    "--output", &format!("{}/{{artist}} - {{title}}.mp3", temp_path),
+                    "--output", &output_path,
                     &query,
                 ])
-                .output()
+                .spawn()
                 .map_err(|e| format!("Failed to start download: {}", e))?;
 
-            if !output.status.success() {
-                return Err(format!("Download failed with exit code {}", output.status));
+            // Poll the download process for completion while periodically checking for cancellation.
+            loop {
+                // Check cancellation flag
+                if CANCEL_DOWNLOAD.load(Ordering::SeqCst) {
+                    // If cancellation is requested, kill the process and return early.
+                    let _ = child.kill();
+                    return Err("Download cancelled".into());
+                }
+
+                // Check if the process has finished
+                match child.try_wait() {
+                    Ok(Some(status)) => {
+                        if !status.success() {
+                            return Err(format!("Download failed with exit code: {}", status));
+                        }
+                        break;
+                    },
+                    Ok(None) => {
+                        // Process still running, sleep briefly before polling again.
+                        std::thread::sleep(Duration::from_millis(100));
+                    },
+                    Err(e) => return Err(format!("Error waiting for download process: {}", e)),
+                }
             }
 
+            // Search for the downloaded MP3 file in the temp directory
             let dir = std::fs::read_dir(&temp_path)
                 .map_err(|e| format!("Error reading temp dir: {}", e))?;
             
@@ -861,9 +891,13 @@ pub fn download_to_temp(query: String) -> Result<String, String> {
             
             Err("No MP3 file found after download".into())
         })();
-
         tx.send(result).unwrap();
     });
 
     rx.recv().unwrap()
+}
+
+/// Call this function to cancel an in-progress download.
+pub fn cancel_download() {
+    CANCEL_DOWNLOAD.store(true, Ordering::SeqCst);
 }
