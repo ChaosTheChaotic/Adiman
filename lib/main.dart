@@ -1254,8 +1254,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   }
 
   void _shufflePlay() async {
-    if (songs.isEmpty) return;
-    List<Song> shuffled = List.from(songs);
+    if (displayedSongs.isEmpty) return;
+    List<Song> shuffled = List.from(displayedSongs);
     shuffled.shuffle();
     Song first = shuffled.first;
     await rust_api.playSong(path: first.path);
@@ -2238,7 +2238,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                       currentIndex: currentIndex,
                                       dominantColor: dominantColor,
                                       service: service,
-                                      songs: songs,
+                                      songs: displayedSongs,
                                       musicFolder: _musicFolder,
                                       onUpdateMiniPlayer: (
                                         newSong,
@@ -2375,9 +2375,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                                   musicFolder: _musicFolder,
                                                   service: service,
                                                   song: song,
-                                                  songList: songs,
+                                                  songList: displayedSongs,
 						  currentPlaylistName: _currentPlaylistName,
-                                                  currentIndex: songs.indexOf(
+                                                  currentIndex: displayedSongs.indexOf(
                                                     song,
                                                   ),
                                                 ),
@@ -2715,7 +2715,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                           musicFolder: _musicFolder,
                           key: _miniPlayerKey,
                           song: currentSong!,
-                          songList: songs,
+                          songList: displayedSongs,
                           service: service,
 			  currentPlaylistName: _currentPlaylistName,
                           currentIndex: currentIndex,
