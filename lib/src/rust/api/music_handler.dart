@@ -88,6 +88,10 @@ Map<String, List<String>> batchGetArtists(
 Future<String> downloadToTemp({required String query}) =>
     RustLib.instance.api.crateApiMusicHandlerDownloadToTemp(query: query);
 
+/// Call this function to cancel an in-progress download.
+Future<void> cancelDownload() =>
+    RustLib.instance.api.crateApiMusicHandlerCancelDownload();
+
 class PlayerState {
   final bool initialized;
 

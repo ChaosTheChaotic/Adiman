@@ -26,7 +26,6 @@ color-thief = "0.2.2"
 symphonia = { version = "0.5", features = ["mp3", "aac", "wav", "flac"] }
 symphonia-bundle-mp3 = "0.5"
 hound = "3.5.1"
-mpris = "2.0.1"
 async-trait = "0.1"
 regex = "1.11.1"
 serde_json = "1.0.140"
