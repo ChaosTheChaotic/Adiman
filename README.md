@@ -54,6 +54,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 - Artist separators (Also untested due to me not using it that often)
 - Caching
 - Choosable music folder
+- Auto conversion of non-mp3 songs via ffmpeg
 - Horribly inefficent code
 
 # Screenshots
