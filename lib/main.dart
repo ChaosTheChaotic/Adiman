@@ -2882,7 +2882,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text(
-          'Music library reloaded successfully',
+          'Music library reloaded successfully (if you are waiting for your songs to be converted, you might have to do this again due to the waiting list of songs needing conversion)',
           style: TextStyle(color: Colors.white),
         ),
         backgroundColor: _currentColor,
@@ -2897,10 +2897,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _togglePauseSong() {
     if (_currentSong == null) return;
     _miniPlayerKey.currentState?.togglePause();
-  }
-  void _pauseSong() {
-    if (_currentSong == null) return;
-    _miniPlayerKey.currentState?.pause();
   }
 
   @override
