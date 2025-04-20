@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `background_worker`, `crossfade`, `extract_metadata`, `get_position`, `new`, `pause`, `play`, `resume`, `seek`, `stop`
+// These functions are ignored because they are not marked as `pub`: `background_worker`, `crossfade`, `extract_metadata`, `get_cached_mp3_path`, `get_mp3_cache_dir`, `get_position`, `new`, `pause`, `play`, `resume`, `seek`, `stop`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AudioChunk`, `AudioPlayer`, `PlayerMessage`, `StreamWrapper`, `StreamingBuffer`, `StreamingSource`, `Track`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `channels`, `clone`, `clone`, `clone`, `current_frame_len`, `fmt`, `fmt`, `fmt`, `fmt`, `next`, `sample_rate`, `total_duration`
 
@@ -88,9 +88,11 @@ Map<String, List<String>> batchGetArtists(
 Future<String> downloadToTemp({required String query}) =>
     RustLib.instance.api.crateApiMusicHandlerDownloadToTemp(query: query);
 
-/// Call this function to cancel an in-progress download.
 Future<void> cancelDownload() =>
     RustLib.instance.api.crateApiMusicHandlerCancelDownload();
+
+bool clearMp3Cache() =>
+    RustLib.instance.api.crateApiMusicHandlerClearMp3Cache();
 
 class PlayerState {
   final bool initialized;

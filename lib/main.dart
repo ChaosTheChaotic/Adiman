@@ -2844,6 +2844,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             print('Failed to delete ${entity.path}: $e');
           }
         }
+	await rust_api.clearMp3Cache();
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

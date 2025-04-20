@@ -1,7 +1,7 @@
 use flutter_rust_bridge::frb;
 use id3::{Tag, TagLike};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use std::sync::{Mutex, mpsc::{self, Sender, Receiver}, Arc, RwLock};
@@ -21,9 +21,31 @@ use mp3_duration;
 use chrono;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+// New: define a cache directory for converted mp3 files.
+// We use the OS temporary directory and create a subdirectory "adiman_mp3_cache".
+fn get_mp3_cache_dir() -> PathBuf {
+    let mut cache_dir = std::env::temp_dir();
+    cache_dir.push("adiman_mp3_cache");
+    if !cache_dir.exists() {
+        let _ = fs::create_dir_all(&cache_dir);
+    }
+    cache_dir
+}
+
+// Given an original file path, compute the cached mp3 file path.
+// We use a hash of the absolute path to produce a unique file name.
+fn get_cached_mp3_path(original: &Path) -> PathBuf {
+    let mut hasher = Sha256::new();
+    hasher.update(original.to_string_lossy().as_bytes());
+    let hash = format!("{:x}", hasher.finalize());
+    let mut cache_path = get_mp3_cache_dir();
+    cache_path.push(format!("{}.mp3", hash));
+    cache_path
+}
+
 #[derive(Clone)]
 struct StreamingBuffer {
-    chunks: Arc<Mutex<Vec<AudioChunk>>>, // Shared and thread-safe chunks
+    chunks: Arc<Mutex<Vec<AudioChunk>>>,
     sample_rate: u32,
     channels: u16,
     total_duration: Duration,
@@ -483,9 +505,38 @@ pub fn scan_music_directory(dir_path: String) -> Vec<SongMetadata> {
             continue;
         }
         if let Some(ext) = entry.path().extension() {
-            if ext == "mp3" {
+            let ext_lower = ext.to_str().unwrap_or("").to_lowercase();
+            if ext_lower == "mp3" {
                 if let Some(metadata) = extract_metadata(entry.path()) {
                     songs.push(metadata);
+                }
+            } else if ext_lower == "m4a" || ext_lower == "flac" || ext_lower == "ogg" || ext_lower == "wav" {
+                let original_path = entry.path().to_owned();
+                let cached_path = get_cached_mp3_path(&original_path);
+                if cached_path.exists() {
+                    if let Some(metadata) = extract_metadata(&cached_path) {
+                        songs.push(metadata);
+                    }
+                } else {
+                    // Spawn a background thread to convert to mp3 each with 4 threads
+                    // This conversion uses ffmpeg (with metadata copied) to produce a cached mp3.
+                    // I know, not pretty but im too tired to come up with anything else and its
+                    // not quick enough
+                    let orig_str = original_path.to_string_lossy().to_string();
+                    let cache_str = cached_path.to_string_lossy().to_string();
+                    thread::spawn(move || {
+                        let output = Command::new("ffmpeg")
+                            .args(&["-hide_banner", "-loglevel", "error", "-y", "-i", &orig_str, "-threads", "2"])
+                            .args(&["-codec:a", "libmp3lame", "-qscale:a", "2", "-map_metadata", "0", &cache_str])
+                            .output();
+                        if let Ok(output) = output {
+                            if !output.status.success() {
+                                eprintln!("Conversion failed for {}: {:?}", orig_str, output);
+                            }
+                        } else {
+                            eprintln!("Failed to convert {}.", orig_str);
+                        }
+                    });
                 }
             }
         }
@@ -690,7 +741,6 @@ pub fn extract_waveform_from_mp3(mp3_path: String, sample_count: Option<u32>, ch
     Ok(waveform)
 }
 
-
 static SEPARATORS: Lazy<RwLock<Vec<String>>> = Lazy::new(|| {
     RwLock::new(vec![
         ",".to_string(),
@@ -741,7 +791,6 @@ pub fn add_separator(separator: String) -> Result<(), String> {
     Ok(())
 }
 
-// Updated remove_separator (accepts &str for convenience)
 #[frb(sync)]
 pub fn remove_separator(separator: &str) -> Result<(), String> {
     let mut separators = SEPARATORS.write().unwrap();
@@ -752,7 +801,6 @@ pub fn remove_separator(separator: &str) -> Result<(), String> {
     Ok(())
 }
 
-// Update get_current_separators to return cloned Strings
 #[frb(sync)]
 pub fn get_current_separators() -> Vec<String> {
     SEPARATORS.read().unwrap().clone()
@@ -822,7 +870,7 @@ pub struct Track {
     pub cover_url: String,
 }
 
-// A global flag to cancel the download. Using once_cell for lazy initialization.
+// A global flag to cancel the download.
 static CANCEL_DOWNLOAD: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 
 pub fn download_to_temp(query: String) -> Result<String, String> {
@@ -832,7 +880,6 @@ pub fn download_to_temp(query: String) -> Result<String, String> {
     
     std::thread::spawn(move || {
         let result = (|| {
-            // Get the system temp directory
             let temp_dir = std::env::temp_dir();
             let temp_path = temp_dir.to_str()
                 .ok_or("Failed to get temp directory")?
@@ -840,7 +887,6 @@ pub fn download_to_temp(query: String) -> Result<String, String> {
 
             let output_path = format!("{}/{{artist}} - {{title}}.mp3", temp_path);
 
-            // Spawn the download process, rather than blocking with .output()
             let mut child: Child = Command::new("spotdl")
                 .args(&[
                     "--no-cache",
@@ -851,7 +897,6 @@ pub fn download_to_temp(query: String) -> Result<String, String> {
                 .spawn()
                 .map_err(|e| format!("Failed to start download: {}", e))?;
 
-            // Poll the download process for completion while periodically checking for cancellation.
             loop {
                 // Check cancellation flag
                 if CANCEL_DOWNLOAD.load(Ordering::SeqCst) {
@@ -860,7 +905,6 @@ pub fn download_to_temp(query: String) -> Result<String, String> {
                     return Err("Download cancelled".into());
                 }
 
-                // Check if the process has finished
                 match child.try_wait() {
                     Ok(Some(status)) => {
                         if !status.success() {
@@ -870,13 +914,13 @@ pub fn download_to_temp(query: String) -> Result<String, String> {
                     },
                     Ok(None) => {
                         // Process still running, sleep briefly before polling again.
+                        // Best I could think of on 4 hours of sleep
                         std::thread::sleep(Duration::from_millis(100));
                     },
                     Err(e) => return Err(format!("Error waiting for download process: {}", e)),
                 }
             }
 
-            // Search for the downloaded MP3 file in the temp directory
             let dir = std::fs::read_dir(&temp_path)
                 .map_err(|e| format!("Error reading temp dir: {}", e))?;
             
@@ -897,7 +941,16 @@ pub fn download_to_temp(query: String) -> Result<String, String> {
     rx.recv().unwrap()
 }
 
-/// Call this function to cancel an in-progress download.
 pub fn cancel_download() {
     CANCEL_DOWNLOAD.store(true, Ordering::SeqCst);
+}
+
+#[frb(sync)]
+pub fn clear_mp3_cache() -> bool {
+    let cache_dir = get_mp3_cache_dir();
+    if cache_dir.exists() {
+        fs::remove_dir_all(&cache_dir).is_ok()
+    } else {
+        true
+    }
 }
