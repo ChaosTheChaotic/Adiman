@@ -20,6 +20,7 @@ use std::fs;
 use mp3_duration;
 use chrono;
 use std::sync::atomic::{AtomicBool, Ordering};
+use rayon::{ThreadPool, ThreadPoolBuilder};
 
 // New: define a cache directory for converted mp3 files.
 // We use the OS temporary directory and create a subdirectory "adiman_mp3_cache".
@@ -496,10 +497,18 @@ pub fn initialize_player() -> bool {
     false
 }
 
+static MP3_CONVERSION_POOL: Lazy<ThreadPool> = Lazy::new(|| {
+    ThreadPoolBuilder::new().num_threads(2).build().unwrap()
+});
+
+#[frb(sync)]
 #[frb(sync)]
 pub fn scan_music_directory(dir_path: String) -> Vec<SongMetadata> {
     let mut songs = Vec::new();
+    let mut conversion_paths = Vec::new();
     let in_playlist_mode = dir_path.contains(".adilists");
+
+    // First pass: collect existing MP3s and non-MP3s needing conversion
     for entry in WalkDir::new(&dir_path).follow_links(true).into_iter().filter_map(|e| e.ok()) {
         if !in_playlist_mode && entry.path().components().any(|c| c.as_os_str() == ".adilists") {
             continue;
@@ -510,7 +519,7 @@ pub fn scan_music_directory(dir_path: String) -> Vec<SongMetadata> {
                 if let Some(metadata) = extract_metadata(entry.path()) {
                     songs.push(metadata);
                 }
-            } else if ext_lower == "m4a" || ext_lower == "flac" || ext_lower == "ogg" || ext_lower == "wav" {
+            } else if ["m4a", "flac", "ogg", "wav"].contains(&ext_lower.as_str()) {
                 let original_path = entry.path().to_owned();
                 let cached_path = get_cached_mp3_path(&original_path);
                 if cached_path.exists() {
@@ -518,29 +527,44 @@ pub fn scan_music_directory(dir_path: String) -> Vec<SongMetadata> {
                         songs.push(metadata);
                     }
                 } else {
-                    // Spawn a background thread to convert to mp3 each with 4 threads
-                    // This conversion uses ffmpeg (with metadata copied) to produce a cached mp3.
-                    // I know, not pretty but im too tired to come up with anything else and its
-                    // not quick enough
-                    let orig_str = original_path.to_string_lossy().to_string();
-                    let cache_str = cached_path.to_string_lossy().to_string();
-                    thread::spawn(move || {
-                        let output = Command::new("ffmpeg")
-                            .args(&["-hide_banner", "-loglevel", "error", "-y", "-i", &orig_str, "-threads", "2"])
-                            .args(&["-codec:a", "libmp3lame", "-qscale:a", "2", "-map_metadata", "0", &cache_str])
-                            .output();
-                        if let Ok(output) = output {
-                            if !output.status.success() {
-                                eprintln!("Conversion failed for {}: {:?}", orig_str, output);
-                            }
-                        } else {
-                            eprintln!("Failed to convert {}.", orig_str);
-                        }
-                    });
+                    conversion_paths.push((original_path, cached_path));
                 }
             }
         }
     }
+
+    // Convert all non-MP3 files in parallel and wait for completion
+    if !conversion_paths.is_empty() {
+        MP3_CONVERSION_POOL.scope(|s| {
+            for (original, cached) in &conversion_paths {
+                let orig_str = original.to_string_lossy().to_string();
+                let cache_str = cached.to_string_lossy().to_string();
+                s.spawn(move |_| {
+                    let output = Command::new("ffmpeg")
+                        .args(&["-hide_banner", "-loglevel", "error", "-y", "-i", &orig_str, "-threads", "3"])
+                        .args(&["-codec:a", "libmp3lame", "-qscale:a", "2", "-map_metadata", "0", &cache_str])
+                        .output();
+                    if let Ok(output) = output {
+                        if !output.status.success() {
+                            eprintln!("Conversion failed for {}: {:?}", orig_str, output);
+                        }
+                    } else {
+                        eprintln!("Failed to convert {}.", orig_str);
+                    }
+                });
+            }
+        });
+    }
+
+    // Second pass: add converted files to the result
+    for (_, cached_path) in conversion_paths {
+        if cached_path.exists() {
+            if let Some(metadata) = extract_metadata(&cached_path) {
+                songs.push(metadata);
+            }
+        }
+    }
+
     songs
 }
 
