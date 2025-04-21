@@ -13,9 +13,10 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 bool initializePlayer() =>
     RustLib.instance.api.crateApiMusicHandlerInitializePlayer();
 
-List<SongMetadata> scanMusicDirectory({required String dirPath}) =>
-    RustLib.instance.api
-        .crateApiMusicHandlerScanMusicDirectory(dirPath: dirPath);
+List<SongMetadata> scanMusicDirectory(
+        {required String dirPath, required bool autoConvert}) =>
+    RustLib.instance.api.crateApiMusicHandlerScanMusicDirectory(
+        dirPath: dirPath, autoConvert: autoConvert);
 
 bool playSong({required String path}) =>
     RustLib.instance.api.crateApiMusicHandlerPlaySong(path: path);

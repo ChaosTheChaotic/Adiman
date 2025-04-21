@@ -22,8 +22,6 @@ use chrono;
 use std::sync::atomic::{AtomicBool, Ordering};
 use rayon::{ThreadPool, ThreadPoolBuilder};
 
-// New: define a cache directory for converted mp3 files.
-// We use the OS temporary directory and create a subdirectory "adiman_mp3_cache".
 fn get_mp3_cache_dir() -> PathBuf {
     let mut cache_dir = std::env::temp_dir();
     cache_dir.push("adiman_mp3_cache");
@@ -502,8 +500,7 @@ static MP3_CONVERSION_POOL: Lazy<ThreadPool> = Lazy::new(|| {
 });
 
 #[frb(sync)]
-#[frb(sync)]
-pub fn scan_music_directory(dir_path: String) -> Vec<SongMetadata> {
+pub fn scan_music_directory(dir_path: String, auto_convert: bool) -> Vec<SongMetadata> {
     let mut songs = Vec::new();
     let mut conversion_paths = Vec::new();
     let in_playlist_mode = dir_path.contains(".adilists");
@@ -534,12 +531,12 @@ pub fn scan_music_directory(dir_path: String) -> Vec<SongMetadata> {
     }
 
     // Convert all non-MP3 files in parallel and wait for completion
-    if !conversion_paths.is_empty() {
-        MP3_CONVERSION_POOL.scope(|s| {
-            for (original, cached) in &conversion_paths {
+    if !conversion_paths.is_empty() && auto_convert {
+        let conv_path_clone = conversion_paths.clone();
+        MP3_CONVERSION_POOL.spawn(move || {
+            for (original, cached) in &conv_path_clone {
                 let orig_str = original.to_string_lossy().to_string();
                 let cache_str = cached.to_string_lossy().to_string();
-                s.spawn(move |_| {
                     let output = Command::new("ffmpeg")
                         .args(&["-hide_banner", "-loglevel", "error", "-y", "-i", &orig_str, "-threads", "3"])
                         .args(&["-codec:a", "libmp3lame", "-qscale:a", "2", "-map_metadata", "0", &cache_str])
@@ -551,7 +548,6 @@ pub fn scan_music_directory(dir_path: String) -> Vec<SongMetadata> {
                     } else {
                         eprintln!("Failed to convert {}.", orig_str);
                     }
-                });
             }
         });
     }
@@ -969,6 +965,7 @@ pub fn cancel_download() {
     CANCEL_DOWNLOAD.store(true, Ordering::SeqCst);
 }
 
+// Currently unused because it is an absolute pain to wait for all the songs to come back
 #[frb(sync)]
 pub fn clear_mp3_cache() -> bool {
     let cache_dir = get_mp3_cache_dir();

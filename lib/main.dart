@@ -1187,40 +1187,65 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     );
   }
 
-  Future<void> _loadSongs() async {
-    setState(() => isLoading = true);
-    try {
+Future<int> countAudioFiles(String dirPath) async {
+  final extensions = {'.mp3', '.flac', '.ogg', '.wav', '.m4a'};
+  int count = 0;
+  final dir = Directory(dirPath);
+  try {
+    await for (var entry in dir.list(recursive: true)) {
+      if (entry is File) {
+        final ext = path.extension(entry.path).toLowerCase();
+        if (extensions.contains(ext)) {
+          count++;
+        }
+      }
+    }
+  } catch (e) {
+    print('Error counting audio files: $e');
+  }
+  return count;
+}
+
+Future<void> _loadSongs() async {
+  setState(() => isLoading = true);
+  try {
+    final expectedCount = await countAudioFiles(currentMusicDirectory);
+    final prefs = await SharedPreferences.getInstance();
+    int currentCount = 0;
+    List<Song> loadedSongs = [];
+    do {
       final metadata = await rust_api.scanMusicDirectory(
         dirPath: currentMusicDirectory,
+	autoConvert: prefs.getBool('autoConvert') ?? true,
       );
       final paths = metadata.map((m) => m.path).toList();
-
-      // Batch process all artist info.
       final cacheDir = await getTemporaryDirectory();
       final artistCacheDir = '${cacheDir.path}/artist_cache';
       final artistMap = await rust_api.batchGetArtists(
         paths: paths,
         cacheDir: artistCacheDir,
       );
-
-      final loadedSongs =
-          metadata.map((m) {
-            final path = m.path;
-            return Song.fromMetadata(m, artists: artistMap[path] ?? [m.artist]);
-          }).toList();
-
+      loadedSongs = metadata.map((m) => Song.fromMetadata(m, artists: artistMap[m.path] ?? [m.artist])).toList();
+      currentCount = loadedSongs.length;
       setState(() {
         songs = loadedSongs;
-        displayedSongs = loadedSongs;
-        isLoading = false;
+        if (_searchController.text.isEmpty) {
+          displayedSongs = loadedSongs;
+        }
       });
-      loadedSongs.sort((a, b) => a.title.compareTo(b.title));
-    } catch (e) {
-      print('Error loading songs: $e');
-      setState(() => isLoading = false);
-    }
+      if (currentCount >= expectedCount) {
+        break;
+      }
+      else {
+        await Future.delayed(const Duration(seconds: 1));
+      }
+    } while (currentCount >= expectedCount);
+    loadedSongs.sort((a, b) => a.title.compareTo(b.title));
+  } catch (e) {
+    print('Error loading songs: $e');
   }
-
+  setState(() => isLoading = false);
+}
   void _updateSearchResults() {
     final query = _searchController.text.toLowerCase();
     if (query.isEmpty) {
@@ -1516,46 +1541,46 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 final playlist = playlists[index];
                                 final isSelected = selected.contains(playlist);
                                 return CheckboxListTile(
-  title: Text(
-    playlist,
-    style: TextStyle(
-      color: Theme.of(context).textTheme.bodyLarge?.color,
-      fontSize: 16,
-    ),
-  ),
-  value: isSelected,
-  activeColor: dominantColor,
-  checkColor: Colors.white,
-  controlAffinity: ListTileControlAffinity.leading,
-  tileColor: Colors.transparent,
-  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-  dense: true,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(12),
-  ),
-  checkboxShape: const CircleBorder(),
-  side: BorderSide(
-    color: dominantColor.withAlpha(100),
-    width: 1.5,
-  ),
-  secondary: isSelected
-      ? GlowIcon(
-          Icons.check_rounded,
-          color: dominantColor,
-          glowColor: dominantColor.withAlpha(80),
-          size: 24,
-        )
-      : null,
-  onChanged: (value) {
-    setStateDialog(() {
-      if (value == true) {
-        selected.add(playlist);
-      } else {
-        selected.remove(playlist);
-      }
-    });
-  },
-);
+				  title: Text(
+				    playlist,
+				    style: TextStyle(
+				      color: Theme.of(context).textTheme.bodyLarge?.color,
+				      fontSize: 16,
+				    ),
+				  ),
+				  value: isSelected,
+				  activeColor: dominantColor,
+				  checkColor: Colors.white,
+				  controlAffinity: ListTileControlAffinity.leading,
+				  tileColor: Colors.transparent,
+				  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+				  dense: true,
+				  shape: RoundedRectangleBorder(
+				    borderRadius: BorderRadius.circular(12),
+				  ),
+				  checkboxShape: const CircleBorder(),
+				  side: BorderSide(
+				    color: dominantColor.withAlpha(100),
+				    width: 1.5,
+				  ),
+				  secondary: isSelected
+				  ? GlowIcon(
+				    Icons.check_rounded,
+				    color: dominantColor,
+				    glowColor: dominantColor.withAlpha(80),
+				    size: 24,
+				  )
+				  : null,
+				  onChanged: (value) {
+				    setStateDialog(() {
+				      if (value == true) {
+				        selected.add(playlist);
+				      } else {
+				        selected.remove(playlist);
+				      }
+				    });
+				  },
+				);
                               },
                             ),
                           ),
@@ -2794,7 +2819,9 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isClearingCache = false;
   bool _isReloadingLibrary = false;
-  bool _isManagingSeparators = false;
+  final bool _isManagingSeparators = false;
+  bool _autoConvert = true;
+  bool _clearMp3Cache = false;
 
   Song? _currentSong;
   int _currentIndex = 0;
@@ -2812,13 +2839,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _currentIndex = widget.currentIndex;
     _currentColor = widget.dominantColor;
     _musicFolderController = TextEditingController(text: widget.musicFolder);
-  }
+    _loadChecks();
+}
 
   @override
   void dispose() {
     _musicFolderController.dispose();
     super.dispose();
   }
+
+Future<void> _loadChecks() async {
+  final prefs = await SharedPreferences.getInstance();
+  setState(() {
+    _autoConvert = prefs.getBool('autoConvert') ?? true;
+    _clearMp3Cache = prefs.getBool('clearMp3Cache') ?? true;
+  });
+}
 
   String expandTilde(String path) {
     if (path.startsWith('~')) {
@@ -2827,6 +2863,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     return path;
   }
+
+Future<void> _saveAutoConvert(bool value) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('autoConvert', value);
+  setState(() => _autoConvert = value);
+}
+
+Future<void> _saveClearMp3Cache(bool value) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('clearMp3Cache', value);
+  setState(() => _clearMp3Cache = value);
+}
 
   Future<void> _clearCache() async {
     setState(() => _isClearingCache = true);
@@ -2868,6 +2916,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
     }
+    if (_clearMp3Cache) {
+      await rust_api.clearMp3Cache();
+    }
     setState(() {
       _isClearingCache = false;
     });
@@ -2898,6 +2949,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_currentSong == null) return;
     _miniPlayerKey.currentState?.togglePause();
   }
+
+Widget _buildSettingsSwitch(
+  BuildContext context, {
+  required String title,
+  required bool value,
+  required Function(bool) onChanged,
+}) {
+  final textColor = Theme.of(context).textTheme.bodyLarge?.color;
+  return CheckboxListTile(
+    title: Text(
+      title,
+      style: TextStyle(
+        color: textColor,
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+    value: value,
+    activeColor: widget.dominantColor,
+    checkColor: Colors.white,
+    controlAffinity: ListTileControlAffinity.leading,
+    tileColor: Colors.transparent,
+    contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+    dense: true,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    checkboxShape: const CircleBorder(),
+    side: BorderSide(
+      color: widget.dominantColor.withAlpha(100),
+      width: 1.5,
+    ),
+    secondary: value
+        ? GlowIcon(
+            Icons.check_rounded,
+            color: widget.dominantColor,
+            glowColor: widget.dominantColor.withAlpha(80),
+            size: 24,
+          )
+        : null,
+    onChanged: (bool? value) => onChanged(value ?? false),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -3090,6 +3184,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       isLoading: _isClearingCache,
                       onPressed: _clearCache,
                     ),
+		    _buildSettingsSwitch(
+		      context,
+		      title: 'Auto-convert non-MP3 files',
+		      value: _autoConvert,
+		      onChanged: _saveAutoConvert,
+		    ),
+		    _buildSettingsSwitch(
+		      context,
+		      title: 'Clear MP3 cache with app cache',
+		      value: _clearMp3Cache,
+		      onChanged: _saveClearMp3Cache,
+		      ),
                   ],
                 ),
               ),
@@ -5450,9 +5556,11 @@ class _DownloadScreenState extends State<DownloadScreen>
 
     try {
       final downloadedPath = await rust_api.downloadToTemp(query: query);
+      final prefs = await SharedPreferences.getInstance();
 
       final metadata = await rust_api.scanMusicDirectory(
         dirPath: path.dirname(downloadedPath),
+    	autoConvert: prefs.getBool('autoConvert') ?? true,
       );
 
       if (metadata.isNotEmpty) {

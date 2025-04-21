@@ -121,7 +121,7 @@ abstract class RustLibApi extends BaseApi {
   bool crateApiMusicHandlerResumeSong();
 
   List<SongMetadata> crateApiMusicHandlerScanMusicDirectory(
-      {required String dirPath});
+      {required String dirPath, required bool autoConvert});
 
   bool crateApiMusicHandlerSeekToPosition({required double position});
 
@@ -621,11 +621,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @override
   List<SongMetadata> crateApiMusicHandlerScanMusicDirectory(
-      {required String dirPath}) {
+      {required String dirPath, required bool autoConvert}) {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_String(dirPath, serializer);
+        sse_encode_bool(autoConvert, serializer);
         return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 21)!;
       },
       codec: SseCodec(
@@ -633,7 +634,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         decodeErrorData: null,
       ),
       constMeta: kCrateApiMusicHandlerScanMusicDirectoryConstMeta,
-      argValues: [dirPath],
+      argValues: [dirPath, autoConvert],
       apiImpl: this,
     ));
   }
@@ -641,7 +642,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiMusicHandlerScanMusicDirectoryConstMeta =>
       const TaskConstMeta(
         debugName: "scan_music_directory",
-        argNames: ["dirPath"],
+        argNames: ["dirPath", "autoConvert"],
       );
 
   @override

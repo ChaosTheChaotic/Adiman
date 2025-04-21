@@ -684,10 +684,11 @@ fn wire__crate__api__music_handler__scan_music_directory_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_dir_path = <String>::sse_decode(&mut deserializer);
+            let api_auto_convert = <bool>::sse_decode(&mut deserializer);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
                 let output_ok = Result::<_, ()>::Ok(
-                    crate::api::music_handler::scan_music_directory(api_dir_path),
+                    crate::api::music_handler::scan_music_directory(api_dir_path, api_auto_convert),
                 )?;
                 Ok(output_ok)
             })())
