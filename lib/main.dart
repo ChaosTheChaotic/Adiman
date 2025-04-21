@@ -2851,8 +2851,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 Future<void> _loadChecks() async {
   final prefs = await SharedPreferences.getInstance();
   setState(() {
-    _autoConvert = prefs.getBool('autoConvert') ?? true;
-    _clearMp3Cache = prefs.getBool('clearMp3Cache') ?? true;
+    _autoConvert = prefs.getBool('autoConvert') ?? false;
+    _clearMp3Cache = prefs.getBool('clearMp3Cache') ?? false;
   });
 }
 
