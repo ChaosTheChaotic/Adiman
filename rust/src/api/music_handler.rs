@@ -1,5 +1,4 @@
 use flutter_rust_bridge::frb;
-use id3::{Tag, TagLike};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -17,10 +16,10 @@ use sha2::{Sha256, Digest};
 use std::process::{Command, Child};
 use std::cmp::max;
 use std::fs;
-use mp3_duration;
 use chrono;
 use std::sync::atomic::{AtomicBool, Ordering};
 use rayon::{ThreadPool, ThreadPoolBuilder};
+use audiotags::Tag;
 
 fn get_mp3_cache_dir() -> PathBuf {
     let mut cache_dir = std::env::temp_dir();
@@ -505,57 +504,65 @@ pub fn scan_music_directory(dir_path: String, auto_convert: bool) -> Vec<SongMet
     let mut conversion_paths = Vec::new();
     let in_playlist_mode = dir_path.contains(".adilists");
 
-    // First pass: collect existing MP3s and non-MP3s needing conversion
+    // First pass: collect existing files and non-MP3s needing conversion
     for entry in WalkDir::new(&dir_path).follow_links(true).into_iter().filter_map(|e| e.ok()) {
         if !in_playlist_mode && entry.path().components().any(|c| c.as_os_str() == ".adilists") {
             continue;
         }
         if let Some(ext) = entry.path().extension() {
             let ext_lower = ext.to_str().unwrap_or("").to_lowercase();
-            if ext_lower == "mp3" {
-                if let Some(metadata) = extract_metadata(entry.path()) {
-                    songs.push(metadata);
-                }
-            } else if ["m4a", "flac", "ogg", "wav"].contains(&ext_lower.as_str()) {
-                let original_path = entry.path().to_owned();
-                let cached_path = get_cached_mp3_path(&original_path);
-                if cached_path.exists() {
-                    if let Some(metadata) = extract_metadata(&cached_path) {
+            match ext_lower.as_str() {
+                "mp3" | "m4a" | "flac" => {
+                    // Directly read metadata and add to songs
+                    if let Some(metadata) = extract_metadata(entry.path()) {
                         songs.push(metadata);
                     }
-                } else {
-                    conversion_paths.push((original_path, cached_path));
-                }
+                },
+                "ogg" | "wav" => {
+                    let original_path = entry.path().to_owned();
+                    let cached_path = get_cached_mp3_path(&original_path);
+                    if cached_path.exists() {
+                        // Use original's metadata but set path to cached MP3
+                        if let Some(mut metadata) = extract_metadata(&original_path) {
+                            metadata.path = cached_path.to_string_lossy().into_owned();
+                            songs.push(metadata);
+                        }
+                    } else {
+                        conversion_paths.push((original_path, cached_path));
+                    }
+                },
+                _ => (),
             }
         }
     }
 
-    // Convert all non-MP3 files in parallel and wait for completion
+    // Convert WAV/OGG files in parallel
     if !conversion_paths.is_empty() && auto_convert {
         let conv_path_clone = conversion_paths.clone();
         MP3_CONVERSION_POOL.spawn(move || {
             for (original, cached) in &conv_path_clone {
-                let orig_str = original.to_string_lossy().to_string();
-                let cache_str = cached.to_string_lossy().to_string();
-                    let output = Command::new("ffmpeg")
-                        .args(&["-hide_banner", "-loglevel", "error", "-y", "-i", &orig_str, "-threads", "3"])
-                        .args(&["-codec:a", "libmp3lame", "-qscale:a", "2", "-map_metadata", "0", &cache_str])
-                        .output();
-                    if let Ok(output) = output {
-                        if !output.status.success() {
-                            eprintln!("Conversion failed for {}: {:?}", orig_str, output);
-                        }
-                    } else {
-                        eprintln!("Failed to convert {}.", orig_str);
+                let orig_str = original.to_string_lossy();
+                let cache_str = cached.to_string_lossy();
+                let status = Command::new("ffmpeg")
+                    .args(&["-hide_banner", "-loglevel", "error", "-y", "-i", &orig_str])
+                    .args(&["-codec:a", "libmp3lame", "-qscale:a", "2", "-map_metadata", "0", &cache_str])
+                    .status();
+                if let Ok(status) = status {
+                    if !status.success() {
+                        eprintln!("Conversion failed for {}", orig_str);
                     }
+                } else {
+                    eprintln!("Failed to convert {}", orig_str);
+                }
             }
         });
     }
 
-    // Second pass: add converted files to the result
-    for (_, cached_path) in conversion_paths {
-        if cached_path.exists() {
-            if let Some(metadata) = extract_metadata(&cached_path) {
+    // Second pass: add converted WAV/OGG files with original metadata
+    for (original, cached) in conversion_paths {
+        if cached.exists() {
+            if let Some(mut metadata) = extract_metadata(&original) {
+                metadata.path = cached.to_string_lossy().into_owned();
                 songs.push(metadata);
             }
         }
@@ -565,34 +572,45 @@ pub fn scan_music_directory(dir_path: String, auto_convert: bool) -> Vec<SongMet
 }
 
 fn extract_metadata(path: &Path) -> Option<SongMetadata> {
-    if let Ok(tag) = Tag::read_from_path(path) {
-        let title = tag.title().unwrap_or("Unknown Title").to_string();
-        let artist = tag.artist().unwrap_or("Unknown Artist").to_string();
-        let album = tag.album().unwrap_or("Unknown Album").to_string();
-        let genre = tag.genre().unwrap_or("Unknown Genre").to_string();
-        let album_art = tag.pictures().next().map(|pic| {
-            let art = BASE64.encode(&pic.data);
-            if let Ok(player) = PLAYER.lock() {
-                if let Some(p) = player.as_ref() {
-                    let mut cache = p.album_art_cache.lock().unwrap();
-                    cache.insert(path.to_string_lossy().to_string(), art.clone());
-                }
+    let tag = Tag::default().read_from_path(path).ok()?;
+
+    let title = tag.title().map(|s| s.to_string()).unwrap_or_else(|| "Unknown Title".to_string());
+    let artist = tag.artist().map(|s| s.to_string()).unwrap_or_else(|| "Unknown Artist".to_string());
+    let album = tag.album().map(|a| a.title.to_string()).unwrap_or_else(|| "Unknown Album".to_string());
+    let genre = tag.genre().map(|s| s.to_string()).unwrap_or_else(|| "Unknown Genre".to_string());
+
+    // Extract album art
+    let album_art = tag.album_cover().map(|pic| {
+        let art = BASE64.encode(&pic.data);
+        if let Ok(player) = PLAYER.lock() {
+            if let Some(p) = player.as_ref() {
+                let mut cache = p.album_art_cache.lock().unwrap();
+                cache.insert(path.to_string_lossy().to_string(), art.clone());
             }
-            art
-        });
-        let duration = mp3_duration::from_path(&path).map(|d| d.as_secs()).unwrap_or(0);
-        Some(SongMetadata {
-            title,
-            artist,
-            album,
-            duration,
-            path: path.to_string_lossy().to_string(),
-            album_art,
-            genre,
-        })
-    } else {
-        None
-    }
+        }
+        art
+    });
+
+    // Extract duration using rodio's decoder
+    let duration = {
+        let file = std::fs::File::open(path).ok()?;
+        let reader = BufReader::new(file);
+        Decoder::new(reader)
+            .ok()
+            .and_then(|source| source.total_duration())
+            .map(|d| d.as_secs())
+            .unwrap_or(0)
+    };
+
+    Some(SongMetadata {
+        title,
+        artist,
+        album,
+        duration,
+        path: path.to_string_lossy().to_string(),
+        album_art,
+        genre,
+    })
 }
 
 #[frb(sync)]
