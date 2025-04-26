@@ -4526,6 +4526,15 @@ Future<void> _deleteSongFile(Song song) async {
         _lrcData!.lyrics.any((line) => line.lyrics.trim().isNotEmpty);
   }
 
+  bool _rupdateLyricsStatus() {
+    _hasLyrics =
+        _lrcData != null &&
+        _lrcData!.lyrics.isNotEmpty &&
+        _lrcData!.lyrics.any((line) => line.lyrics.trim().isNotEmpty);
+
+    return _hasLyrics;
+  }
+
   @override
   void didUpdateWidget(MusicPlayerScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -5134,7 +5143,7 @@ Future<void> _deleteSongFile(Song song) async {
                             sharedBreathingValue: _breathingAnimation.value,
                           ),
                         ),
-                        if (_showLyrics && _lrcData != null)
+                        if (_showLyrics && _lrcData != null && _rupdateLyricsStatus())
                           Positioned.fill(
                             child: LyricsOverlay(
                               key: ValueKey(currentSong.path),
