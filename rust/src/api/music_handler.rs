@@ -793,33 +793,6 @@ static SEPARATORS: Lazy<RwLock<Vec<String>>> = Lazy::new(|| {
 });
 
 #[frb(sync)]
-pub fn get_artist_via_ffprobe(file_path: String) -> Result<Vec<String>, String> {
-    let output = Command::new("ffprobe")
-        .args(&[
-            "-v", "error",
-            "-show_entries", "format_tags=artist",
-            "-of", "default=nw=1:nk=1",
-            &file_path
-        ])
-        .output()
-        .map_err(|e| format!("Failed to start ffprobe: {}", e))?;
-    if !output.status.success() {
-        return Ok(vec![]);
-    }
-    let artist_line = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if artist_line.is_empty() {
-        return Ok(vec![]);
-    }
-    let separators = SEPARATORS.read().unwrap();
-    let joined = separators.iter().map(|s| regex::escape(s)).collect::<Vec<_>>().join("|");
-    let regex = Regex::new(&format!(r"\s*(?:{})\s*", joined)).map_err(|e| e.to_string())?;
-    Ok(regex.split(&artist_line)
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .collect())
-}
-
-#[frb(sync)]
 pub fn add_separator(separator: String) -> Result<(), String> {
     let mut separators = SEPARATORS.write().unwrap();
     if separators.contains(&separator) {
@@ -857,46 +830,6 @@ pub fn reset_separators() {
         "vs.".to_string(),
         "x".to_string(),
     ];
-}
-
-const ARTIST_CACHE_VERSION: u32 = 1;
-
-#[frb(sync)]
-pub fn batch_get_artists(paths: Vec<String>, cache_dir: String) -> Result<HashMap<String, Vec<String>>, String> {
-    let mut results = HashMap::new();
-    let artist_cache_dir = Path::new(&cache_dir).join("artist_cache");
-    if !artist_cache_dir.exists() {
-        fs::create_dir_all(&artist_cache_dir).map_err(|e| e.to_string())?;
-    }
-    for path in paths.iter() {
-        let mut hasher = Sha256::new();
-        hasher.update(path.as_bytes());
-        let hash = format!("{:x}", hasher.finalize());
-        let cache_file = artist_cache_dir.join(format!("{}.cache", hash));
-        if cache_file.exists() {
-            if let Ok(data) = fs::read_to_string(&cache_file) {
-                if let Ok(json_val) = serde_json::from_str::<Value>(&data) {
-                    if json_val.get("v").and_then(Value::as_u64) == Some(ARTIST_CACHE_VERSION as u64) {
-                        if let Some(artists_val) = json_val.get("artists") {
-                            if let Ok(artists) = serde_json::from_value::<Vec<String>>(artists_val.clone()) {
-                                results.insert(path.clone(), artists);
-                                continue;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        let artists = get_artist_via_ffprobe(path.clone())?;
-        results.insert(path.clone(), artists.clone());
-        let cache_data = json!({
-            "v": ARTIST_CACHE_VERSION,
-            "artists": artists,
-            "timestamp": chrono::Utc::now().timestamp_millis()
-        });
-        let _ = fs::write(&cache_file, cache_data.to_string());
-    }
-    Ok(results)
 }
 
 #[derive(Debug, Serialize, Deserialize)]

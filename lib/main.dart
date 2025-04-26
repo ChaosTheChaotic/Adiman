@@ -1213,19 +1213,13 @@ Future<void> _loadSongs() async {
     final prefs = await SharedPreferences.getInstance();
     int currentCount = 0;
     List<Song> loadedSongs = [];
+    if (prefs.getBool('autoConvert') ?? false) {
     do {
       final metadata = await rust_api.scanMusicDirectory(
         dirPath: currentMusicDirectory,
-	autoConvert: prefs.getBool('autoConvert') ?? true,
+	autoConvert: prefs.getBool('autoConvert') ?? false,
       );
-      final paths = metadata.map((m) => m.path).toList();
-      final cacheDir = await getTemporaryDirectory();
-      final artistCacheDir = '${cacheDir.path}/artist_cache';
-      final artistMap = await rust_api.batchGetArtists(
-        paths: paths,
-        cacheDir: artistCacheDir,
-      );
-      loadedSongs = metadata.map((m) => Song.fromMetadata(m, artists: artistMap[m.path] ?? [m.artist])).toList();
+      loadedSongs = metadata.map((m) => Song.fromMetadata(m)).toList();
       currentCount = loadedSongs.length;
       setState(() {
         songs = loadedSongs;
@@ -1240,6 +1234,7 @@ Future<void> _loadSongs() async {
         await Future.delayed(const Duration(seconds: 1));
       }
     } while (currentCount >= expectedCount);
+  }
     loadedSongs.sort((a, b) => a.title.compareTo(b.title));
   } catch (e) {
     print('Error loading songs: $e');
@@ -2998,7 +2993,7 @@ Widget _buildSettingsSwitch(
     final textColor =
         _currentColor.computeLuminance() > 0.007 ? _currentColor : Colors.white;
     final buttonTextColor =
-        _currentColor.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+        _currentColor.computeLuminance() > 0.007 ? Colors.black : Colors.white;
 
     return RawKeyboardListener(
       focusNode: FocusNode(),
@@ -3534,7 +3529,7 @@ Widget _buildSettingsSwitch(
     required VoidCallback onPressed,
   }) {
     final textColor =
-        _currentColor.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+        _currentColor.computeLuminance() > 0.007 ? Colors.black : Colors.white;
 
     return Material(
       color: Colors.transparent,
@@ -5573,10 +5568,7 @@ class _DownloadScreenState extends State<DownloadScreen>
       );
 
       if (metadata.isNotEmpty) {
-        final artists = await rust_api.getArtistViaFfprobe(
-          filePath: downloadedPath,
-        );
-        _tempSong = Song.fromMetadata(metadata.first, artists: artists);
+        _tempSong = Song.fromMetadata(metadata.first);
 
         if (_tempSong!.albumArt != null) {
           try {
@@ -5600,8 +5592,8 @@ class _DownloadScreenState extends State<DownloadScreen>
               onReloadLibrary: widget.onReloadLibrary,
               musicFolder: widget.musicFolder,
               service: widget.service,
-              song: Song.fromMetadata(metadata.first, artists: artists),
-              songList: [Song.fromMetadata(metadata.first, artists: artists)],
+              song: Song.fromMetadata(metadata.first),
+              songList: [Song.fromMetadata(metadata.first)],
               currentIndex: 0,
               isTemp: true,
               tempPath: downloadedPath,

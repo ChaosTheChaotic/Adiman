@@ -21,9 +21,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   });
 
   @protected
-  Map<String, List<String>> dco_decode_Map_String_list_String_None(dynamic raw);
-
-  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
@@ -51,10 +48,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
-  List<(String, List<String>)> dco_decode_list_record_string_list_string(
-      dynamic raw);
-
-  @protected
   List<SongMetadata> dco_decode_list_song_metadata(dynamic raw);
 
   @protected
@@ -65,9 +58,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PlayerState dco_decode_player_state(dynamic raw);
-
-  @protected
-  (String, List<String>) dco_decode_record_string_list_string(dynamic raw);
 
   @protected
   SongMetadata dco_decode_song_metadata(dynamic raw);
@@ -86,10 +76,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt dco_decode_usize(dynamic raw);
-
-  @protected
-  Map<String, List<String>> sse_decode_Map_String_list_String_None(
-      SseDeserializer deserializer);
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
@@ -119,10 +105,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
-  List<(String, List<String>)> sse_decode_list_record_string_list_string(
-      SseDeserializer deserializer);
-
-  @protected
   List<SongMetadata> sse_decode_list_song_metadata(
       SseDeserializer deserializer);
 
@@ -134,10 +116,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PlayerState sse_decode_player_state(SseDeserializer deserializer);
-
-  @protected
-  (String, List<String>) sse_decode_record_string_list_string(
-      SseDeserializer deserializer);
 
   @protected
   SongMetadata sse_decode_song_metadata(SseDeserializer deserializer);
@@ -159,10 +137,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
-
-  @protected
-  void sse_encode_Map_String_list_String_None(
-      Map<String, List<String>> self, SseSerializer serializer);
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
@@ -195,10 +169,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       Uint8List self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_record_string_list_string(
-      List<(String, List<String>)> self, SseSerializer serializer);
-
-  @protected
   void sse_encode_list_song_metadata(
       List<SongMetadata> self, SseSerializer serializer);
 
@@ -210,10 +180,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_player_state(PlayerState self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_record_string_list_string(
-      (String, List<String>) self, SseSerializer serializer);
 
   @protected
   void sse_encode_song_metadata(SongMetadata self, SseSerializer serializer);

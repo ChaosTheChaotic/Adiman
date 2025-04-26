@@ -65,10 +65,6 @@ Float64List extractWaveformFromMp3(
     RustLib.instance.api.crateApiMusicHandlerExtractWaveformFromMp3(
         mp3Path: mp3Path, sampleCount: sampleCount, channels: channels);
 
-List<String> getArtistViaFfprobe({required String filePath}) =>
-    RustLib.instance.api
-        .crateApiMusicHandlerGetArtistViaFfprobe(filePath: filePath);
-
 void addSeparator({required String separator}) =>
     RustLib.instance.api.crateApiMusicHandlerAddSeparator(separator: separator);
 
@@ -80,11 +76,6 @@ List<String> getCurrentSeparators() =>
 
 void resetSeparators() =>
     RustLib.instance.api.crateApiMusicHandlerResetSeparators();
-
-Map<String, List<String>> batchGetArtists(
-        {required List<String> paths, required String cacheDir}) =>
-    RustLib.instance.api
-        .crateApiMusicHandlerBatchGetArtists(paths: paths, cacheDir: cacheDir);
 
 Future<String> downloadToTemp({required String query}) =>
     RustLib.instance.api.crateApiMusicHandlerDownloadToTemp(query: query);
