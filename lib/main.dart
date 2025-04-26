@@ -2953,77 +2953,85 @@ Widget _buildSettingsSwitch(
   final trackColor = widget.dominantColor.withAlpha(30);
   final textColor = Theme.of(context).textTheme.bodyLarge?.color;
 
-  return ListTile(
-    title: GlowText(
-      title,
-      glowColor: glowColor,
-      style: TextStyle(
-        color: textColor,
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-      ),
-    ),
-    contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-    trailing: MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () => onChanged(!value),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutBack,
-          width: 60,
-          height: 32,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                trackColor,
-                trackColor.withAlpha(10),
-              ],
-            ),
-            border: Border.all(
-              color: widget.dominantColor.withAlpha(value ? 100 : 40),
-              width: 1.5,
-            ),
-            boxShadow: [
-              if (value)
-                BoxShadow(
-                  color: glowColor,
-                  blurRadius: 15,
-                  spreadRadius: 2,
-                ),
-            ],
+  return Material(
+    color: Colors.transparent,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(15),
+      hoverColor: widget.dominantColor.withAlpha(30),
+      onTap: () => onChanged(!value),
+      child: ListTile(
+        title: GlowText(
+          title,
+          glowColor: glowColor,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
           ),
-          child: AnimatedAlign(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutBack,
-            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(
-              margin: const EdgeInsets.all(4),
-              width: 24,
-              height: 24,
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        trailing: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () => onChanged(!value),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutBack,
+              width: 60,
+              height: 32,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
+                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                   colors: [
-                    widget.dominantColor.withAlpha(200),
-                    widget.dominantColor.withAlpha(100),
+                    trackColor,
+                    trackColor.withAlpha(10),
                   ],
                 ),
+                border: Border.all(
+                  color: widget.dominantColor.withAlpha(value ? 100 : 40),
+                  width: 1.5,
+                ),
                 boxShadow: [
-                  BoxShadow(
-                    color: glowColor,
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                  ),
+                  if (value)
+                    BoxShadow(
+                      color: glowColor,
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                    ),
                 ],
               ),
-              child: Icon(
-                value ? Icons.check_rounded : Icons.close_rounded,
-                color: Colors.white,
-                size: 16,
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutBack,
+                alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+                child: Container(
+                  margin: const EdgeInsets.all(4),
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        widget.dominantColor.withAlpha(200),
+                        widget.dominantColor.withAlpha(100),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: glowColor,
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    value ? Icons.check_rounded : Icons.close_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
               ),
             ),
           ),
