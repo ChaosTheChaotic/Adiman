@@ -1213,7 +1213,6 @@ Future<void> _loadSongs() async {
     final prefs = await SharedPreferences.getInstance();
     int currentCount = 0;
     List<Song> loadedSongs = [];
-    if (prefs.getBool('autoConvert') ?? false) {
     do {
       final metadata = await rust_api.scanMusicDirectory(
         dirPath: currentMusicDirectory,
@@ -1230,11 +1229,10 @@ Future<void> _loadSongs() async {
       if (currentCount >= expectedCount) {
         break;
       }
-      else {
+      else if (prefs.getBool('autoConvert') ?? false) {
         await Future.delayed(const Duration(seconds: 1));
       }
     } while (currentCount >= expectedCount);
-  }
     loadedSongs.sort((a, b) => a.title.compareTo(b.title));
   } catch (e) {
     print('Error loading songs: $e');
@@ -2993,7 +2991,7 @@ Widget _buildSettingsSwitch(
     final textColor =
         _currentColor.computeLuminance() > 0.007 ? _currentColor : Colors.white;
     final buttonTextColor =
-        _currentColor.computeLuminance() > 0.007 ? Colors.black : Colors.white;
+        _currentColor.computeLuminance() > 0.007 ? Colors.white : Colors.black;
 
     return RawKeyboardListener(
       focusNode: FocusNode(),
@@ -3529,7 +3527,7 @@ Widget _buildSettingsSwitch(
     required VoidCallback onPressed,
   }) {
     final textColor =
-        _currentColor.computeLuminance() > 0.007 ? Colors.black : Colors.white;
+        _currentColor.computeLuminance() > 0.007 ? Colors.white : Colors.black;
 
     return Material(
       color: Colors.transparent,

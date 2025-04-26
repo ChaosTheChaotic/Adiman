@@ -575,7 +575,23 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
     let tag = Tag::default().read_from_path(path).ok()?;
 
     let title = tag.title().map(|s| s.to_string()).unwrap_or_else(|| "Unknown Title".to_string());
-    let artist = tag.artist().map(|s| s.to_string()).unwrap_or_else(|| "Unknown Artist".to_string());
+    let artist_str = tag.artist().map(|s| s.to_string()).unwrap_or_default();
+    let separators = SEPARATORS.read().unwrap();
+    let pattern = separators
+        .iter()
+        .map(|s| regex::escape(s))
+        .collect::<Vec<_>>()
+        .join("|");
+    let re = Regex::new(&pattern).unwrap();
+    let artists: Vec<String> = re.split(&artist_str)
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    let artist = if artists.is_empty() {
+        "Unknown Artist".to_string()
+    } else {
+        artists.join(", ")
+    };
     let album = tag.album().map(|a| a.title.to_string()).unwrap_or_else(|| "Unknown Album".to_string());
     let genre = tag.genre().map(|s| s.to_string()).unwrap_or_else(|| "Unknown Genre".to_string());
 

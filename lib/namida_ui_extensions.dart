@@ -351,13 +351,13 @@ class EnhancedSongListTile extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 4),
-Text(
-  '${song.artists?.join('/') ?? song.artist} • ${song.album} ${song.genre != "Unknown Genre" ? '•  ${song.genre}' : ""}',
-  style: TextStyle(
-    color: textColor.withValues(alpha:0.8),
-    fontSize: 14,
-  ),
-),
+			  Text(
+			    '${song.artists?.join('/') ?? song.artist} • ${song.album} ${song.genre != "Unknown Genre" ? '•  ${song.genre}' : ""}',
+			    style: TextStyle(
+			    color: textColor.withValues(alpha:0.8),
+			    fontSize: 14,
+			    ),
+			  ),
                         ],
                       ),
                     ),
