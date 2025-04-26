@@ -2949,40 +2949,100 @@ Widget _buildSettingsSwitch(
   required bool value,
   required Function(bool) onChanged,
 }) {
-  final textColor = Theme.of(context).textTheme.bodyLarge?.color;
-  return CheckboxListTile(
-    title: Text(
+  final glowColor = widget.dominantColor.withAlpha(50);
+  final trackColor = Theme.of(context).textTheme.bodyLarge?.color?.withAlpha(30) ?? Colors.grey;
+  
+  return ListTile(
+    title: GlowText(
       title,
+      glowColor: glowColor,
       style: TextStyle(
-        color: textColor,
+        color: Theme.of(context).textTheme.bodyLarge?.color,
         fontSize: 16,
         fontWeight: FontWeight.w500,
       ),
     ),
-    value: value,
-    activeColor: widget.dominantColor,
-    checkColor: Colors.white,
-    controlAffinity: ListTileControlAffinity.leading,
-    tileColor: Colors.transparent,
-    contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+    contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
     dense: true,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-    checkboxShape: const CircleBorder(),
-    side: BorderSide(
-      color: widget.dominantColor.withAlpha(100),
-      width: 1.5,
-    ),
-    secondary: value
-        ? GlowIcon(
-            Icons.check_rounded,
-            color: widget.dominantColor,
-            glowColor: widget.dominantColor.withAlpha(80),
-            size: 24,
+    trailing: AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: value ? [
+          BoxShadow(
+            color: widget.dominantColor.withAlpha(80),
+            blurRadius: 15,
+            spreadRadius: 2,
           )
-        : null,
-    onChanged: (bool? value) => onChanged(value ?? false),
+        ] : null,
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(15),
+        splashColor: widget.dominantColor.withAlpha(30),
+        highlightColor: widget.dominantColor.withAlpha(15),
+        onTap: () => onChanged(!value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          width: 50,
+          height: 30,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            gradient: LinearGradient(
+              colors: value
+                  ? [
+                      widget.dominantColor.withAlpha(200),
+                      widget.dominantColor.withAlpha(150),
+                    ]
+                  : [
+                      trackColor.withAlpha(100),
+                      trackColor.withAlpha(50),
+                    ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+              color: value ? widget.dominantColor.withAlpha(100) : trackColor.withAlpha(50),
+              width: 1.5,
+            ),
+          ),
+          child: Stack(
+            children: [
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                left: value ? 22 : 2,
+                top: 2,
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: value ? Colors.white : trackColor.withAlpha(150),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (value ? widget.dominantColor : trackColor).withAlpha(value ? 100 : 30),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      )
+                    ],
+                  ),
+                  child: value
+                      ? GlowIcon(
+                          Icons.check_rounded,
+                          color: widget.dominantColor,
+                          size: 16,
+                          blurRadius: 8,
+                        )
+                      : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
   );
 }
 
