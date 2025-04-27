@@ -1782,7 +1782,6 @@ version = "0.1.0"
 dependencies = [
  "audiotags",
  "base64",
- "chrono",
  "flutter_rust_bridge",
  "flutter_rust_bridge_codegen",
  "once_cell",
@@ -1790,7 +1789,6 @@ dependencies = [
  "regex",
  "rodio",
  "serde",
- "serde_json",
  "sha2",
  "walkdir",
 ]
