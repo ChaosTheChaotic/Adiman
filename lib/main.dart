@@ -231,6 +231,7 @@ class _MiniPlayerState extends State<MiniPlayer>
             : Colors.white;
     return GestureDetector(
       onTap: () async {
+	ScaffoldMessenger.of(context).hideCurrentSnackBar();
         final result = await Navigator.push(
           context,
           PageRouteBuilder(
@@ -739,6 +740,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   borderRadius: BorderRadius.circular(15),
                                   child: InkWell(
                                     onTap: () {
+				      ScaffoldMessenger.of(context).hideCurrentSnackBar();
                                       Navigator.pop(context);
                                       setState(() {
                                         _currentPlaylistName = playlist;
@@ -824,37 +826,13 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                                   ScaffoldMessenger.of(
                                                     context,
                                                   ).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                        'Playlist renamed to "$newName"',
-                                                        style: TextStyle(
-                                                          color: Colors.white,
-                                                        ),
-                                                      ),
-                                                      backgroundColor:
-                                                          dominantColor,
-                                                      behavior:
-                                                          SnackBarBehavior
-                                                              .floating,
-                                                    ),
+							NamidaSnackbar(backgroundColor: dominantColor, content: 'Playlist renamed to "$newName"')
                                                   );
                                                 } catch (e) {
                                                   ScaffoldMessenger.of(
                                                     context,
                                                   ).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                        'Error renaming playlist: $e',
-                                                        style: TextStyle(
-                                                          color: Colors.white,
-                                                        ),
-                                                      ),
-                                                      backgroundColor:
-                                                          Colors.red,
-                                                      behavior:
-                                                          SnackBarBehavior
-                                                              .floating,
-                                                    ),
+							NamidaSnackbar(backgroundColor: dominantColor, content: 'Error renaming playlist: $e')
                                                   );
                                                 }
                                               }
@@ -902,11 +880,13 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                                             ),
                                                           ),
                                                           onPressed:
-                                                              () =>
+                                                              () {
+								  ScaffoldMessenger.of(context).hideCurrentSnackBar();
                                                                   Navigator.pop(
                                                                     context,
                                                                     false,
-                                                                  ),
+                                                                  );
+																								}
                                                         ),
                                                         TextButton(
                                                           child: Text(
@@ -918,11 +898,13 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                                             ),
                                                           ),
                                                           onPressed:
-                                                              () =>
+                                                              () {
+								  ScaffoldMessenger.of(context).hideCurrentSnackBar();
                                                                   Navigator.pop(
                                                                     context,
                                                                     true,
-                                                                  ),
+                                                                  );
+																								}
                                                         ),
                                                       ],
                                                     ),
@@ -938,19 +920,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                                   ScaffoldMessenger.of(
                                                     context,
                                                   ).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                        'Playlist deleted',
-                                                        style: TextStyle(
-                                                          color: Colors.white,
-                                                        ),
-                                                      ),
-                                                      backgroundColor:
-                                                          dominantColor,
-                                                      behavior:
-                                                          SnackBarBehavior
-                                                              .floating,
-                                                    ),
+                                                    NamidaSnackbar(backgroundColor: dominantColor, content: 'Playlist deleted')
                                                   );
                                                   // Remove the deleted playlist from the list.
                                                   setStateDialog(() {
@@ -962,19 +932,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                                   ScaffoldMessenger.of(
                                                     context,
                                                   ).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                        'Error deleting playlist: $e',
-                                                        style: TextStyle(
-                                                          color: Colors.white,
-                                                        ),
-                                                      ),
-                                                      backgroundColor:
-                                                          Colors.red,
-                                                      behavior:
-                                                          SnackBarBehavior
-                                                              .floating,
-                                                    ),
+                                                   NamidaSnackbar(backgroundColor: dominantColor, content: 'Error deleting playlist: $e') 
                                                   );
                                                 }
                                               }
@@ -997,6 +955,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                             icon: Icons.merge_rounded,
                             label: 'Merge Playlists',
                             onTap: () async {
+			      ScaffoldMessenger.of(context).hideCurrentSnackBar();
                               Navigator.pop(context);
                               final selected =
                                   await _showMultiPlaylistSelection(
@@ -1017,6 +976,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   _currentPlaylistName = null;
                                   currentMusicDirectory = _musicFolder;
                                 });
+				ScaffoldMessenger.of(context).hideCurrentSnackBar();
                                 Navigator.pop(context);
                                 _playPlaylistTransition();
                                 _loadSongs();
@@ -1160,7 +1120,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 'Cancel',
                                 style: TextStyle(color: Colors.white70),
                               ),
-                              onPressed: () => Navigator.pop(context),
+                              onPressed: () {
+				ScaffoldMessenger.of(context).hideCurrentSnackBar();
+				Navigator.pop(context);
+			      },
                             ),
                             const SizedBox(width: 12),
                             DynamicIconButton(
@@ -1169,6 +1132,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 final newName = controller.text.trim();
                                 if (newName.isNotEmpty &&
                                     newName != currentName) {
+				  ScaffoldMessenger.of(context).hideCurrentSnackBar();
                                   Navigator.pop(context, newName);
                                 }
                               },
@@ -1201,7 +1165,7 @@ Future<int> countAudioFiles(String dirPath) async {
       }
     }
   } catch (e) {
-    print('Error counting audio files: $e');
+    NamidaSnackbar(backgroundColor: dominantColor, content: 'Error counting audio files: $e');
   }
   return count;
 }
@@ -1235,7 +1199,7 @@ Future<void> _loadSongs() async {
     } while (currentCount >= expectedCount);
     loadedSongs.sort((a, b) => a.title.compareTo(b.title));
   } catch (e) {
-    print('Error loading songs: $e');
+    NamidaSnackbar(backgroundColor: dominantColor, content: 'Error loading songs: $e');
   }
   setState(() => isLoading = false);
 }
@@ -1393,12 +1357,12 @@ Future<void> _loadSongs() async {
       final link = Link(linkPath);
       if (!await link.exists()) {
         await link.create(songFile.absolute.path);
-        print('Added $songPath to playlist $playlistName');
+        NamidaSnackbar(backgroundColor: dominantColor, content: 'Added $songPath to playlist $playlistName');
       } else {
-        print('Song already in playlist.');
+        NamidaSnackbar(backgroundColor: dominantColor, content: 'Song already in playlist.');
       }
     } else {
-      print('Song file does not exist: $songPath');
+      NamidaSnackbar(backgroundColor: dominantColor, content: 'Song file does not exist: $songPath');
     }
   }
 
@@ -1460,21 +1424,14 @@ Future<void> _loadSongs() async {
             await newLink.create(target);
             existingFiles.add(fileName);
           } catch (e) {
-            print('Error merging playlist "$playlist": $e');
+            NamidaSnackbar(backgroundColor: dominantColor, content: 'Error merging playlist "$playlist": $e');
           }
         }
       }
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Merged ${playlistsToMerge.length} playlists into "$mergedName"',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: dominantColor,
-        behavior: SnackBarBehavior.floating,
-      ),
+	NamidaSnackbar(backgroundColor: dominantColor, content: 'Merged ${playlistsToMerge.length} playlists into "$mergedName"'),
     );
     _loadSongs();
   }
@@ -1586,13 +1543,19 @@ Future<void> _loadSongs() async {
                                   'Cancel',
                                   style: TextStyle(color: Colors.white70),
                                 ),
-                                onPressed: () => Navigator.pop(context),
+                                onPressed: () {
+				  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+				  Navigator.pop(context);
+				},
                               ),
                               const SizedBox(width: 12),
                               DynamicIconButton(
                                 icon: Icons.check_rounded,
                                 onPressed:
-                                    () => Navigator.pop(context, selected),
+                                    () {
+					ScaffoldMessenger.of(context).hideCurrentSnackBar();
+					Navigator.pop(context, selected);
+				},
                                 backgroundColor: dominantColor,
                                 size: 40,
                               ),
@@ -1701,7 +1664,10 @@ Future<void> _loadSongs() async {
                                 alpha: 0.3,
                               ),
                             ),
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () {
+			      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+			      Navigator.pop(context);
+			    },
                             child: Text(
                               'Cancel',
                               style: TextStyle(color: Colors.white70),
@@ -1711,10 +1677,13 @@ Future<void> _loadSongs() async {
                           DynamicIconButton(
                             icon: Icons.check_rounded,
                             onPressed:
-                                () => Navigator.pop(
+                                () {
+				ScaffoldMessenger.of(context).hideCurrentSnackBar();
+				Navigator.pop(
                                   context,
                                   controller.text.trim(),
-                                ),
+                                );
+			    },
                             backgroundColor: dominantColor,
                             size: 40,
                           ),
@@ -1790,7 +1759,10 @@ Future<void> _loadSongs() async {
                           return Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: () => Navigator.pop(context, playlist),
+                              onTap: () {
+				ScaffoldMessenger.of(context).hideCurrentSnackBar();
+				Navigator.pop(context, playlist);
+			      },
                               splashColor: dominantColor.withValues(alpha: 0.1),
                               highlightColor: dominantColor.withValues(
                                 alpha: 0.05,
@@ -1857,10 +1829,10 @@ Future<void> _loadSongs() async {
     final link = Link(linkPath);
     if (await link.exists()) {
       await link.delete();
-      print('Removed $filename from playlist $_currentPlaylistName');
+      NamidaSnackbar(backgroundColor: dominantColor, content: 'Removed $filename from playlist $_currentPlaylistName');
       _loadSongs();
     } else {
-      print('Song link does not exist: $filename');
+      NamidaSnackbar(backgroundColor: dominantColor, content: 'Song link does not exist: $filename');
     }
   }
 
@@ -1910,6 +1882,7 @@ Future<void> _loadSongs() async {
                         icon: Icons.create_new_folder,
                         label: 'Create New Playlist',
                         onTap: () {
+			  ScaffoldMessenger.of(context).hideCurrentSnackBar();
                           Navigator.pop(context);
                           _handleCreatePlaylist(song);
                         },
@@ -1919,6 +1892,7 @@ Future<void> _loadSongs() async {
                         icon: Icons.playlist_add,
                         label: 'Add to Existing',
                         onTap: () {
+			  ScaffoldMessenger.of(context).hideCurrentSnackBar();
                           Navigator.pop(context);
                           _handleAddToExistingPlaylist(song);
                         },
@@ -1929,6 +1903,7 @@ Future<void> _loadSongs() async {
                           icon: Icons.remove_circle,
                           label: 'Remove from Playlist',
                           onTap: () async {
+			    ScaffoldMessenger.of(context).hideCurrentSnackBar();
                             Navigator.pop(context);
                             await _removeSongFromCurrentPlaylist(song);
                           },
@@ -1940,6 +1915,7 @@ Future<void> _loadSongs() async {
                         icon: Icons.delete_forever_rounded,
                         label: 'Delete Song',
                         onTap: () async {
+			  ScaffoldMessenger.of(context).hideCurrentSnackBar();
                           Navigator.pop(context);
                           final confirmed = await _showDeleteConfirmationDialog(
                             song,
@@ -1981,14 +1957,20 @@ Future<void> _loadSongs() async {
                       'Cancel',
                       style: TextStyle(color: Colors.white70),
                     ),
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () {
+		      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+		      Navigator.pop(context, false);
+		    },
                   ),
                   TextButton(
                     child: Text(
                       'Delete',
                       style: TextStyle(color: Colors.redAccent),
                     ),
-                    onPressed: () => Navigator.pop(context, true),
+                    onPressed: () {
+		      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+		      Navigator.pop(context, true);
+		    },
                   ),
                 ],
               ),
@@ -2006,26 +1988,12 @@ Future<void> _loadSongs() async {
           displayedSongs.removeWhere((s) => s.path == song.path);
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Song deleted successfully',
-              style: TextStyle(color: Colors.white),
-            ),
-            backgroundColor: dominantColor,
-            behavior: SnackBarBehavior.floating,
-          ),
+	  NamidaSnackbar(backgroundColor: dominantColor, content: 'Song deleted successfully')
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error deleting song: ${e.toString()}',
-            style: TextStyle(color: Colors.white),
-          ),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
+	NamidaSnackbar(backgroundColor: dominantColor, content: 'Error deleting song: ${e.toString()}')
       );
     }
   }
@@ -2151,6 +2119,7 @@ Future<void> _loadSongs() async {
               if (event is RawKeyDownEvent &&
                   event.logicalKey == LogicalKeyboardKey.escape) {
                 if (_isDrawerOpen) {
+		  ScaffoldMessenger.of(context).hideCurrentSnackBar();
                   Navigator.pop(context);
                   _isDrawerOpen = false;
                 }
@@ -2237,6 +2206,7 @@ Future<void> _loadSongs() async {
                               icon: Icons.settings_rounded,
                               title: 'Settings',
                               onTap: () {
+				ScaffoldMessenger.of(context).hideCurrentSnackBar();
                                 Navigator.pop(context);
                                 Navigator.push(
                                   context,
@@ -2279,6 +2249,7 @@ Future<void> _loadSongs() async {
                               icon: Icons.queue_music,
                               title: 'Playlists',
                               onTap: () async {
+				ScaffoldMessenger.of(context).hideCurrentSnackBar();
                                 Navigator.pop(context);
                                 await _showPlaylistSelectionPopup();
                               },
@@ -2288,6 +2259,7 @@ Future<void> _loadSongs() async {
                               title: 'Download Songs (spotdl required)',
                               onTap: () {
                                 _pauseSong();
+				ScaffoldMessenger.of(context).hideCurrentSnackBar();
                                 Navigator.pop(context);
                                 Navigator.push(
                                   context,
@@ -2301,14 +2273,6 @@ Future<void> _loadSongs() async {
                                 );
                               },
                             ),
-                            /*_buildMenuTile(
-                              icon: Icons.info_rounded,
-                              title:
-                                  'About & GitHub (None yet as these are test builds)',
-                              onTap: () {
-                                Navigator.pop(context);
-                              },
-                            ),*/
                           ],
                         ),
                       ),
@@ -2383,6 +2347,7 @@ Future<void> _loadSongs() async {
                                   song: song,
                                   dominantColor: dominantColor,
                                   onTap: () async {
+				    ScaffoldMessenger.of(context).hideCurrentSnackBar();
                                     final result = await Navigator.push(
                                       context,
                                       PageRouteBuilder(
@@ -2882,31 +2847,17 @@ Future<void> _saveClearMp3Cache(bool value) async {
               await entity.delete(recursive: true);
             }
           } catch (e) {
-            print('Failed to delete ${entity.path}: $e');
+            NamidaSnackbar(backgroundColor: widget.dominantColor, content: 'Failed to delete ${entity.path}: $e');
           }
         }
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Cache cleared successfully',
-            style: TextStyle(color: Colors.white),
-          ),
-          backgroundColor: _currentColor,
-          behavior: SnackBarBehavior.floating,
-        ),
+	NamidaSnackbar(backgroundColor: widget.dominantColor, content: 'Cache cleared successfully')
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error clearing cache: $e',
-            style: const TextStyle(color: Colors.white),
-          ),
-          backgroundColor: _currentColor,
-          behavior: SnackBarBehavior.floating,
-        ),
+	NamidaSnackbar(backgroundColor: widget.dominantColor, content: 'Error clearing cache: $e')
       );
     }
     if (_clearMp3Cache) {
@@ -2924,14 +2875,7 @@ Future<void> _saveClearMp3Cache(bool value) async {
     await widget.onReloadLibrary();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text(
-          'Music library reloaded successfully (if you are waiting for your songs to be converted, you might have to do this again due to the waiting list of songs needing conversion)',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: _currentColor,
-        behavior: SnackBarBehavior.floating,
-      ),
+	NamidaSnackbar(backgroundColor: widget.dominantColor, content:'Music library reloaded successfully (if you are waiting for your songs to be converted, you might have to do this again due to the waiting list of songs needing conversion)')
     );
     setState(() {
       _isReloadingLibrary = false;
@@ -3054,6 +2998,7 @@ Widget _buildSettingsSwitch(
       onKey: (RawKeyEvent event) {
         if (event is RawKeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.escape) {
+	    ScaffoldMessenger.of(context).hideCurrentSnackBar();
             Navigator.pop(context);
           } else if (event.logicalKey == LogicalKeyboardKey.space &&
               FocusScope.of(context).hasFocus &&
@@ -3198,6 +3143,7 @@ Widget _buildSettingsSwitch(
                             await widget.onMusicFolderChanged!(expandedPath);
                           }
 
+			  ScaffoldMessenger.of(context).hideCurrentSnackBar();
                           Navigator.pop(context, expandedPath);
                         },
                         icon: Icon(Icons.save, color: buttonTextColor),
@@ -3378,17 +3324,7 @@ Widget _buildSettingsSwitch(
                                           ScaffoldMessenger.of(
                                             context,
                                           ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                'Separator cannot be empty!',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                              backgroundColor: Colors.redAccent,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                            ),
+						NamidaSnackbar(backgroundColor: widget.dominantColor, content: 'Separator cannot be empty!')
                                           );
                                           return;
                                         }
@@ -3398,18 +3334,7 @@ Widget _buildSettingsSwitch(
                                           ScaffoldMessenger.of(
                                             context,
                                           ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                'Separator already exists!',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                              backgroundColor:
-                                                  Colors.orangeAccent,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                            ),
+						NamidaSnackbar(backgroundColor: widget.dominantColor, content: 'Separator already exists!')
                                           );
                                           return;
                                         }
@@ -3425,18 +3350,8 @@ Widget _buildSettingsSwitch(
                                           ScaffoldMessenger.of(
                                             context,
                                           ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                'Failed to add separator: $e',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                              backgroundColor: Colors.redAccent,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                            ),
-                                          );
+					    NamidaSnackbar(backgroundColor: widget.dominantColor, content: 'Failed to add separator: $e')
+					  );
                                         }
                                       }
                                     },
@@ -3505,19 +3420,7 @@ Widget _buildSettingsSwitch(
                                                 ScaffoldMessenger.of(
                                                   context,
                                                 ).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'Failed to remove separator: $e',
-                                                      style: TextStyle(
-                                                        color: Colors.white,
-                                                      ),
-                                                    ),
-                                                    backgroundColor:
-                                                        Colors.redAccent,
-                                                    behavior:
-                                                        SnackBarBehavior
-                                                            .floating,
-                                                  ),
+							NamidaSnackbar(backgroundColor: widget.dominantColor, content: 'Failed to remove separator: $e')
                                                 );
                                               }
                                             },
@@ -3544,16 +3447,7 @@ Widget _buildSettingsSwitch(
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Failed to reset separators: $e',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          backgroundColor: Colors.redAccent,
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
+					NamidaSnackbar(backgroundColor: widget.dominantColor, content: 'Failed to reset separators: $e')
                                       );
                                     }
                                   },
@@ -3927,6 +3821,7 @@ void _showPlaylistPopup(BuildContext context) {
                       icon: Icons.create_new_folder,
                       label: 'Create New Playlist',
                       onTap: () {
+			ScaffoldMessenger.of(context).hideCurrentSnackBar();
                         Navigator.pop(context);
                         _handleCreatePlaylist(currentSong);
                       },
@@ -3936,6 +3831,7 @@ void _showPlaylistPopup(BuildContext context) {
                       icon: Icons.playlist_add,
                       label: 'Add to Existing',
                       onTap: () {
+			ScaffoldMessenger.of(context).hideCurrentSnackBar();
                         Navigator.pop(context);
                         _handleAddToExistingPlaylist(currentSong);
                       },
@@ -3946,6 +3842,7 @@ void _showPlaylistPopup(BuildContext context) {
                         icon: Icons.remove_circle,
                         label: 'Remove from Playlist',
                         onTap: () async {
+			ScaffoldMessenger.of(context).hideCurrentSnackBar();
                           Navigator.pop(context);
                           await _removeSongFromCurrentPlaylist(currentSong);
                         },
@@ -3957,6 +3854,7 @@ void _showPlaylistPopup(BuildContext context) {
                       icon: Icons.delete_forever_rounded,
                       label: 'Delete Song',
                       onTap: () async {
+			ScaffoldMessenger.of(context).hideCurrentSnackBar();
                         Navigator.pop(context);
                         final confirmed = await _showDeleteConfirmationDialog(currentSong);
                         if (confirmed) {
@@ -4108,7 +4006,10 @@ Widget _buildPlaylistOptionButton({
                                 alpha: 0.3,
                               ),
                             ),
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () {
+			      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+			      Navigator.pop(context);
+			    },
                             child: Text(
                               'Cancel',
                               style: TextStyle(color: Colors.white70),
@@ -4118,10 +4019,13 @@ Widget _buildPlaylistOptionButton({
                           DynamicIconButton(
                             icon: Icons.check_rounded,
                             onPressed:
-                                () => Navigator.pop(
+                                () {
+				ScaffoldMessenger.of(context).hideCurrentSnackBar();
+				Navigator.pop(
                                   context,
                                   controller.text.trim(),
-                                ),
+                                );
+			    },
                             backgroundColor: dominantColor,
                             size: 40,
                           ),
@@ -4144,10 +4048,7 @@ Future<void> _handleCreatePlaylist(Song song) async {
     await createPlaylist(widget.musicFolder, playlistName);
     await addSongToPlaylist(song.path, widget.musicFolder, playlistName);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Created playlist $playlistName'),
-        backgroundColor: dominantColor,
-      ),
+	NamidaSnackbar(backgroundColor: dominantColor, content: 'Created playlist $playlistName')
     );
   }
 }
@@ -4171,10 +4072,7 @@ Future<void> _handleAddToExistingPlaylist(Song song) async {
   if (selectedPlaylist != null && selectedPlaylist.isNotEmpty) {
     await addSongToPlaylist(song.path, widget.musicFolder, selectedPlaylist);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Added to $selectedPlaylist'),
-        backgroundColor: dominantColor,
-      ),
+      NamidaSnackbar(backgroundColor: dominantColor, content: 'Added to $selectedPlaylist')
     );
   }
 }
@@ -4238,7 +4136,10 @@ Future<void> _handleAddToExistingPlaylist(Song song) async {
                           return Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: () => Navigator.pop(context, playlist),
+                              onTap: () {
+				ScaffoldMessenger.of(context).hideCurrentSnackBar();
+				Navigator.pop(context, playlist);
+			      },
                               splashColor: dominantColor.withValues(alpha: 0.1),
                               highlightColor: dominantColor.withValues(
                                 alpha: 0.05,
@@ -4313,12 +4214,12 @@ Future<void> _handleAddToExistingPlaylist(Song song) async {
       final link = Link(linkPath);
       if (!await link.exists()) {
         await link.create(songFile.absolute.path);
-        print('Added $songPath to playlist $playlistName');
+        NamidaSnackbar(backgroundColor: dominantColor, content: 'Added $songPath to playlist $playlistName');
       } else {
-        print('Song already in playlist.');
+        NamidaSnackbar(backgroundColor: dominantColor, content: 'Song already in playlist.');
       }
     } else {
-      print('Song file does not exist: $songPath');
+      NamidaSnackbar(backgroundColor: dominantColor, content: 'Song file does not exist: $songPath');
     }
   }
 
@@ -4355,10 +4256,7 @@ Future<void> _removeSongFromCurrentPlaylist(Song song) async {
   if (await link.exists()) {
     await link.delete();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Removed from playlist'),
-        backgroundColor: dominantColor,
-      ),
+	NamidaSnackbar(backgroundColor: dominantColor, content: 'Removed from playlist')
     );
     widget.service.updatePlaylist(widget.songList, widget.currentIndex);
   }
@@ -4375,11 +4273,17 @@ Future<bool> _showDeleteConfirmationDialog(Song song) async {
       actions: [
         TextButton(
           child: Text('Cancel', style: TextStyle(color: Colors.white70)),
-          onPressed: () => Navigator.pop(context, false),
+          onPressed: () {
+	    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+	    Navigator.pop(context, false);
+	  },
         ),
         TextButton(
           child: Text('Delete', style: TextStyle(color: Colors.redAccent)),
-          onPressed: () => Navigator.pop(context, true),
+          onPressed: () {
+	    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+	    Navigator.pop(context, true);
+	  },
         ),
       ],
     ),
@@ -4395,19 +4299,13 @@ Future<void> _deleteSongFile(Song song) async {
       if (mounted) {
         _handleSkipNext();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Song deleted'),
-            backgroundColor: dominantColor,
-          ),
+	  NamidaSnackbar(backgroundColor: dominantColor, content: 'Song deleted')
         );
       }
     }
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error deleting: ${e.toString()}'),
-        backgroundColor: Colors.red,
-      ),
+	NamidaSnackbar(backgroundColor: dominantColor, content: 'Error deleting: ${e.toString()}')
     );
   }
 }
@@ -4453,7 +4351,7 @@ Future<void> _deleteSongFile(Song song) async {
         });
       }
     } catch (e) {
-      print("Error extracting waveform: $e");
+      NamidaSnackbar(backgroundColor: dominantColor, content: "Error extracting waveform: $e");
       setState(() => _waveformData = _generateDummyWaveformData());
     }
   }
@@ -4468,7 +4366,7 @@ Future<void> _deleteSongFile(Song song) async {
         return lrc_pkg.Lrc.parse(contents);
       }
     } catch (e) {
-      print('Error reading cached lyrics: $e');
+      NamidaSnackbar(backgroundColor: dominantColor, content: 'Error reading cached lyrics: $e');
     }
     return null;
   }
@@ -4482,7 +4380,7 @@ Future<void> _deleteSongFile(Song song) async {
       final file = File('${dir.path}/$hash.lrc');
       await file.writeAsString(lrcContent);
     } catch (e) {
-      print('Error saving lyrics cache: $e');
+      NamidaSnackbar(backgroundColor: dominantColor, content: 'Error saving lyrics cache: $e');
     }
   }
 
@@ -4535,7 +4433,7 @@ Future<void> _deleteSongFile(Song song) async {
         }
       }
     } catch (e) {
-      print('Error fetching lyrics from API: $e');
+      NamidaSnackbar(backgroundColor: dominantColor, content: 'Error fetching lyrics from API: $e');
     }
     // 4. Fallback to local file.
     _checkLocalLyrics();
@@ -4553,7 +4451,7 @@ Future<void> _deleteSongFile(Song song) async {
         return;
       }
     } catch (e) {
-      print('Error loading local lyrics: $e');
+      NamidaSnackbar(backgroundColor: dominantColor, content: 'Error loading local lyrics: $e');
     }
     // 5. Create empty LRC as final fallback.
     _lrcData = lrc_pkg.Lrc(
@@ -4605,7 +4503,7 @@ Future<void> _deleteSongFile(Song song) async {
         }
       }
     } catch (e) {
-      print('Error updating progress: $e');
+      NamidaSnackbar(backgroundColor: dominantColor, content: 'Error updating progress: $e');
     }
   }
 
@@ -4628,7 +4526,7 @@ Future<void> _deleteSongFile(Song song) async {
           });
         }
       } catch (e) {
-        print('Error seeking: $e');
+        NamidaSnackbar(backgroundColor: dominantColor, content: 'Error seeking: $e');
       } finally {
         _isSeeking = false;
       }
@@ -4663,7 +4561,7 @@ Future<void> _deleteSongFile(Song song) async {
         });
       }
     } catch (e) {
-      print('Error starting playback: $e');
+      NamidaSnackbar(backgroundColor: dominantColor, content: 'Error starting playback: $e');
     }
   }
 
@@ -4681,7 +4579,7 @@ Future<void> _deleteSongFile(Song song) async {
         });
       }
     } catch (e) {
-      print('Error generating dominant color: $e');
+      NamidaSnackbar(backgroundColor: dominantColor, content: 'Error generating dominant color: $e');
       if (mounted) setState(() => dominantColor = Colors.purple.shade900);
     }
   }
@@ -4806,7 +4704,7 @@ Future<void> _deleteSongFile(Song song) async {
       }
       setState(() => isPlaying = !isPlaying);
     } catch (e) {
-      print('Error toggling playback: $e');
+      NamidaSnackbar(backgroundColor: dominantColor, content: 'Error toggling playback: $e');
     }
   }
 
@@ -4835,7 +4733,10 @@ Future<void> _deleteSongFile(Song song) async {
             // Background overlay
             Positioned.fill(
               child: GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+		  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+		  Navigator.pop(context);
+		},
                 child: BackdropFilter(
                   filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                   child: Container(color: Colors.black.withAlpha(50)),
@@ -4883,6 +4784,7 @@ Future<void> _deleteSongFile(Song song) async {
                             icon: Icons.save_rounded,
                             label: 'Save to Library',
                             onTap: () {
+			      ScaffoldMessenger.of(context).hideCurrentSnackBar();
                               Navigator.pop(context);
                               _handleSaveToLibrary();
                             },
@@ -4941,13 +4843,14 @@ Future<void> _deleteSongFile(Song song) async {
           await file.delete();
         }
       } catch (e) {
-        print('Error deleting temp file: $e');
+        NamidaSnackbar(backgroundColor: dominantColor, content: 'Error deleting temp file: $e');
       }
     }
     await rust_api.pauseSong();
     widget.service._playbackStateController.add(false);
     _playPauseController.reverse();
     widget.service.onPause();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     Navigator.pushAndRemoveUntil(
       context,
       NamidaPageTransitions.createRoute(
@@ -4979,19 +4882,13 @@ Future<void> _deleteSongFile(Song song) async {
       await sourceFile.delete();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Song saved to library!'),
-          backgroundColor: dominantColor,
-        ),
+	NamidaSnackbar(backgroundColor: dominantColor, content: 'Song saved to library!')
       );
 
       widget.onReloadLibrary.call();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving song: $e'),
-          backgroundColor: Colors.red,
-        ),
+	NamidaSnackbar(backgroundColor: dominantColor, content: 'Error saving song: $e')
       );
     }
   }
@@ -5032,6 +4929,7 @@ Future<void> _deleteSongFile(Song song) async {
 	    if (_isTempFile){
 	      _handleSearchAnother();
 	    } else if (!_isTempFile) {
+	      ScaffoldMessenger.of(context).hideCurrentSnackBar();
 	      Navigator.pop(context, {
 	        'song': currentSong,
 		'index': currentIndex,
@@ -5092,6 +4990,7 @@ Future<void> _deleteSongFile(Song song) async {
 				if (_isTempFile){
 				_handleSearchAnother();
 				} else {
+				ScaffoldMessenger.of(context).hideCurrentSnackBar();
 				Navigator.pop(context, {
 				  'song': currentSong,
 				  'index': currentIndex,
@@ -5456,7 +5355,7 @@ Future<String?> _cacheAlbumArt(String? base64Data) async {
       }
       return file.path;
     } catch (e) {
-      print('Error caching album art: $e');
+      NamidaSnackbar(content: 'Error caching album art: $e');
       return null;
     }
   }
@@ -5541,13 +5440,13 @@ Future<String?> _cacheAlbumArt(String? base64Data) async {
   /*@override
   Future<void> onLoopStatus(LoopStatus loopStatus) async {
     // Implement loop status if needed
-    print("LOOP");
+    NamidaSnackbar(backgroundColor: dominantColor, content: "LOOP");
   }
 
   @override
   Future<void> onShuffle(bool shuffle) async {
     // Implement shuffle if needed
-    print("SHUFFLE");
+    NamidaSnackbar(backgroundColor: dominantColor, content: "SHUFFLE");
   }*/
 }
 
@@ -5633,11 +5532,12 @@ class _DownloadScreenState extends State<DownloadScreen>
               _dominantColor = palette.dominantColor?.color ?? Colors.purple;
             });
           } catch (e) {
-            print('Error generating dominant color: $e');
+            NamidaSnackbar(backgroundColor: Colors.purple, content: 'Error generating dominant color: $e');
             setState(() => _dominantColor = Colors.purple);
           }
         }
 
+	ScaffoldMessenger.of(context).hideCurrentSnackBar();
         await Navigator.push(
           context,
           NamidaPageTransitions.createRoute(
@@ -5658,11 +5558,7 @@ class _DownloadScreenState extends State<DownloadScreen>
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Download failed: $e'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
+	NamidaSnackbar(backgroundColor: _dominantColor, content: 'Download failed: $e')
       );
     } finally {
       if (mounted) setState(() => _isDownloading = false);
@@ -5678,6 +5574,7 @@ Widget build(BuildContext context) {
       if (event is RawKeyDownEvent &&
           event.logicalKey == LogicalKeyboardKey.escape && !_isDownloading) {
 	  rust_api.stopSong();
+	  ScaffoldMessenger.of(context).hideCurrentSnackBar();
           Navigator.pop(context);
       }
     },
@@ -5708,7 +5605,10 @@ Widget build(BuildContext context) {
                     children: [
                       DynamicIconButton(
                         icon: Icons.arrow_back_rounded,
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+			  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+			  Navigator.pop(context);
+			},
                         backgroundColor: _dominantColor,
                         size: 40,
                       ),
