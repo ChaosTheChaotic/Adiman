@@ -933,7 +933,7 @@ class NamidaSnackbar extends SnackBar {
   }) : super(
           key: key,
           content: _NamidaSnackbarContent(content: content),
-          backgroundColor: backgroundColor ?? Colors.transparent,
+          backgroundColor: backgroundColor?.withValues(alpha: 0.3) ?? Colors.transparent,
           elevation: 4,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
