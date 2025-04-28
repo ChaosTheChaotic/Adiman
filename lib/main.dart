@@ -271,6 +271,7 @@ class _MiniPlayerState extends State<MiniPlayer>
             result['dominantColor'],
           );
         }
+	_checkPlayingState();
       },
       child: Material(
         elevation: 4,
@@ -5573,7 +5574,6 @@ Widget build(BuildContext context) {
     onKey: (RawKeyEvent event) {
       if (event is RawKeyDownEvent &&
           event.logicalKey == LogicalKeyboardKey.escape && !_isDownloading) {
-	  rust_api.stopSong();
 	  ScaffoldMessenger.of(context).hideCurrentSnackBar();
           Navigator.pop(context);
       }
