@@ -86,6 +86,10 @@ Future<void> cancelDownload() =>
 bool clearMp3Cache() =>
     RustLib.instance.api.crateApiMusicHandlerClearMp3Cache();
 
+List<String> getArtistViaFfprobe({required String filePath}) =>
+    RustLib.instance.api
+        .crateApiMusicHandlerGetArtistViaFfprobe(filePath: filePath);
+
 class PlayerState {
   final bool initialized;
 

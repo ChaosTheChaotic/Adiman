@@ -5304,7 +5304,7 @@ class AdimanService extends MPRISService {
     destination: 'org.freedesktop.DBus',
     path: DBusObjectPath('/org/freedesktop/DBus'),
     interface: 'org.freedesktop.DBus',
-    name: 'ReleaseName',
+    name: 'Adiman',
     values: [DBusString('org.mpris.MediaPlayer2.adiman')],
   );
     await super.dispose();
@@ -5317,8 +5317,9 @@ class AdimanService extends MPRISService {
 
   void _updateMetadata() async {
     if (_currentSong != null) {
+    // Try this but join in the same way the rust_api.extractMetadata does to remove ffprobe deps
       final artistString =
-          _currentSong!.artists?.join("/") ?? _currentSong!.artist;
+          rust_api.getArtistViaFfprobe(filePath: _currentSong!.path).join("/");
 
       String? cachedArtPath = await _cacheAlbumArt(_currentSong!.albumArt);
       metadata = Metadata(

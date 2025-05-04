@@ -580,7 +580,7 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
         .map(|s| regex::escape(s))
         .collect::<Vec<_>>()
         .join("|");
-    let re = Regex::new(&pattern).unwrap();
+    let re = Regex::new(&format!(r"(?i){}", pattern)).unwrap();
     let artists: Vec<String> = re.split(&artist_str)
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
@@ -939,4 +939,39 @@ pub fn clear_mp3_cache() -> bool {
     } else {
         true
     }
+}
+
+// Here as a temp (hopefully) fix to stop > 1 artist crashing mpris
+#[frb(sync)]
+pub fn get_artist_via_ffprobe(file_path: String) -> Result<Vec<String>, String> {
+    let output = Command::new("ffprobe")
+        .args(&[
+            "-v", "error",
+            "-show_entries", "format_tags=artist",
+            "-of", "default=nw=1:nk=1",
+            &file_path
+        ])
+        .output()
+        .map_err(|e| format!("Failed to start ffprobe: {}", e))?;
+
+    if !output.status.success() {
+        return Ok(vec![]);
+    }
+
+    let artist_line = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    if artist_line.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let separators = SEPARATORS.read().unwrap();
+
+    let joined = separators.iter().map(|s| regex::escape(s)).collect::<Vec<_>>().join("|");
+ 
+    let regex = Regex::new(&format!(r"\s*(?:{})\s*", joined)).map_err(|e| e.to_string())?;
+ 
+    Ok(regex.split(&artist_line)
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect())
 }
