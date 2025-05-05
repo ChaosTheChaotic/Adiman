@@ -549,6 +549,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   String currentMusicDirectory = '';
   String? _currentPlaylistName;
   late final AdimanService service;
+  bool _isInSelectionMode = false;
+  Set<Song> _selectedSongs = {};
 
   final double fixedHeaderHeight = 60.0;
   final double slidingHeaderHeight = 48.0;
@@ -572,7 +574,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   // Music folder path (default to '~/Music')
   String _musicFolder = '~/Music';
 
-  final FocusNode _focusNode = FocusNode();
+  late FocusNode _mainFocusNode;
+  late FocusNode _searchFocusNode;
 
   List<String> customSeparators = [];
 
@@ -580,7 +583,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   void initState() {
     super.initState();
     service = globalService;
-    _focusNode.requestFocus();
+    _mainFocusNode = FocusNode();
+    _searchFocusNode = FocusNode();
+    _mainFocusNode.requestFocus();
     _loadMusicFolder().then((_) {
       _loadSongs();
     });
@@ -609,6 +614,26 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     );
 
     _searchController.addListener(_updateSearchResults);
+  }
+
+void _toggleSongSelection(Song song, bool selected) {
+  setState(() {
+    if (selected) {
+      _selectedSongs.add(song);
+      _isInSelectionMode = true;
+      _mainFocusNode.requestFocus();
+    } else {
+      _selectedSongs.remove(song);
+      if (_selectedSongs.isEmpty) _isInSelectionMode = false;
+    }
+  });
+}
+
+  void _exitSelectionMode() {
+    setState(() {
+      _isInSelectionMode = false;
+      _selectedSongs.clear();
+    });
   }
 
   Future<void> _playPlaylistTransition() async {
@@ -1031,6 +1056,129 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     );
   }
 
+void _handleMultiSelectAction() async {
+  if (_selectedSongs.isEmpty) return;
+  
+  showDialog(
+    context: context,
+    builder: (context) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: _AnimatedPopupWrapper(
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    dominantColor.withValues(alpha: 0.15),
+                    Colors.black.withValues(alpha: 0.6),
+                  ],
+                ),
+                border: Border.all(
+                  color: dominantColor.withValues(alpha: 0.3),
+                  width: 1.2,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GlowText(
+                      'Selected Songs (${_selectedSongs.length})',
+                      glowColor: dominantColor.withValues(alpha: 0.3),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: dominantColor,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildPlaylistOptionButton(
+                      icon: Icons.create_new_folder,
+                      label: 'Create New Playlist',
+                      onTap: () async {
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        Navigator.pop(context);
+                        final playlistName = await _showPlaylistNameDialog();
+                        if (playlistName != null && playlistName.isNotEmpty) {
+                          await createPlaylist(_musicFolder, playlistName);
+                          for (final song in _selectedSongs) {
+                            await addSongToPlaylist(song.path, _musicFolder, playlistName);
+                          }
+                          _exitSelectionMode();
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildPlaylistOptionButton(
+                      icon: Icons.playlist_add,
+                      label: 'Add to Existing Playlist',
+                      onTap: () async {
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        Navigator.pop(context);
+                        final playlists = await listPlaylists(_musicFolder);
+                        final selectedPlaylist = await _showSelectPlaylistDialog(playlists);
+                        if (selectedPlaylist != null && selectedPlaylist.isNotEmpty) {
+                          for (final song in _selectedSongs) {
+                            await addSongToPlaylist(song.path, _musicFolder, selectedPlaylist);
+                          }
+                          _exitSelectionMode();
+                        }
+                      },
+                    ),
+                    if (_currentPlaylistName != null) ...[
+                      const SizedBox(height: 12),
+                      _buildPlaylistOptionButton(
+                        icon: Icons.remove_circle,
+                        label: 'Remove from Playlist',
+                        onTap: () async {
+                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                          Navigator.pop(context);
+                          for (final song in _selectedSongs) {
+                            await _removeSongFromCurrentPlaylist(song);
+                          }
+                          _exitSelectionMode();
+                        },
+                        isDestructive: true,
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    _buildPlaylistOptionButton(
+                      icon: Icons.delete_forever_rounded,
+                      label: 'Delete Selected Songs',
+                      onTap: () async {
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        Navigator.pop(context);
+                        final confirmed = await _showDeleteConfirmationDialog(
+                          _selectedSongs.first, // Show first song name as reference
+                          multipleItems: true,
+                        );
+                        if (confirmed) {
+                          for (final song in _selectedSongs) {
+                            await _deleteSongFile(song);
+                          }
+                          _exitSelectionMode();
+                        }
+                      },
+                      isDestructive: true,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
   Future<String?> _showRenamePlaylistDialog(String currentName) async {
     final controller = TextEditingController(text: currentName);
     return showDialog<String>(
@@ -1293,15 +1441,18 @@ Future<void> _loadSongs() async {
     });
   }
 
-  void _toggleSearch() {
-    setState(() {
-      _isSearchExpanded = !_isSearchExpanded;
-      if (!_isSearchExpanded) {
-        _searchController.clear();
-        displayedSongs = songs;
-      }
-    });
-  }
+void _toggleSearch() {
+  setState(() {
+    _isSearchExpanded = !_isSearchExpanded;
+    if (!_isSearchExpanded) {
+      _searchController.clear();
+      displayedSongs = songs;
+      _mainFocusNode.requestFocus();
+    } else {
+      _searchFocusNode.requestFocus();
+    }
+  });
+}
 
   void _togglePauseSong() {
     if (!showMiniPlayer) return;
@@ -1437,143 +1588,207 @@ Future<void> _loadSongs() async {
     _loadSongs();
   }
 
-  Future<List<String>?> _showMultiPlaylistSelection(
-    List<String> playlists,
-  ) async {
-    final selected = <String>[];
-    return showDialog<List<String>>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              child: _AnimatedPopupWrapper(
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(28),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          dominantColor.withValues(alpha: 0.15),
-                          Colors.black.withValues(alpha: 0.6),
-                        ],
-                      ),
-                      border: Border.all(
-                        color: dominantColor.withValues(alpha: 0.3),
-                        width: 1.2,
-                      ),
+Future<List<String>?> _showMultiPlaylistSelection(
+  List<String> playlists,
+) async {
+  final selected = <String>[];
+  return showDialog<List<String>>(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: _AnimatedPopupWrapper(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(28),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        dominantColor.withValues(alpha: 0.15),
+                        Colors.black.withValues(alpha: 0.6),
+                      ],
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GlowText(
-                            'Select Playlists to Merge',
-                            glowColor: dominantColor.withValues(alpha: 0.3),
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: dominantColor,
-                            ),
+                    border: Border.all(
+                      color: dominantColor.withValues(alpha: 0.3),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GlowText(
+                          'Select Playlists to Merge',
+                          glowColor: dominantColor.withValues(alpha: 0.3),
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: dominantColor,
                           ),
-                          const SizedBox(height: 20),
-                          SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.4,
-                            width: 300,
-                            child: ListView.builder(
-                              itemCount: playlists.length,
-                              itemBuilder: (context, index) {
-                                final playlist = playlists[index];
-                                final isSelected = selected.contains(playlist);
-                                return CheckboxListTile(
-				  title: Text(
-				    playlist,
-				    style: TextStyle(
-				      color: Theme.of(context).textTheme.bodyLarge?.color,
-				      fontSize: 16,
-				    ),
-				  ),
-				  value: isSelected,
-				  activeColor: dominantColor,
-				  checkColor: Colors.white,
-				  controlAffinity: ListTileControlAffinity.leading,
-				  tileColor: Colors.transparent,
-				  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-				  dense: true,
-				  shape: RoundedRectangleBorder(
-				    borderRadius: BorderRadius.circular(12),
-				  ),
-				  checkboxShape: const CircleBorder(),
-				  side: BorderSide(
-				    color: dominantColor.withAlpha(100),
-				    width: 1.5,
-				  ),
-				  secondary: isSelected
-				  ? GlowIcon(
-				    Icons.check_rounded,
-				    color: dominantColor,
-				    glowColor: dominantColor.withAlpha(80),
-				    size: 24,
-				  )
-				  : null,
-				  onChanged: (value) {
-				    setStateDialog(() {
-				      if (value == true) {
-				        selected.add(playlist);
-				      } else {
-				        selected.remove(playlist);
-				      }
-				    });
-				  },
-				);
+                        ),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.4,
+                          width: 300,
+                          child: ListView.builder(
+                            itemCount: playlists.length,
+                            itemBuilder: (context, index) {
+                              final playlist = playlists[index];
+                              final isSelected = selected.contains(playlist);
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        dominantColor.withValues(
+                                          alpha: isSelected ? 0.25 : 0.05,
+                                        ),
+                                        Colors.black.withValues(
+                                          alpha: isSelected ? 0.3 : 0.2,
+                                        ),
+                                      ],
+                                    ),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? dominantColor.withValues(alpha: 0.8)
+                                          : dominantColor.withValues(alpha: 0.2),
+                                      width: isSelected ? 1.2 : 0.5,
+                                    ),
+                                  ),
+                                  child: ListTile(
+                                    leading: GestureDetector(
+                                      onTap: () {
+                                        setStateDialog(() {
+                                          if (isSelected) {
+                                            selected.remove(playlist);
+                                          } else {
+                                            selected.add(playlist);
+                                          }
+                                        });
+                                      },
+                                      child: Container(
+                                        width: 24,
+                                        height: 24,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? dominantColor.withValues(alpha: 0.8)
+                                                : Colors.white.withValues(alpha: 0.2),
+                                            width: 1.0,
+                                          ),
+                                          color: isSelected
+                                              ? dominantColor.withValues(alpha: 0.15)
+                                              : Colors.black.withValues(alpha: 0.3),
+                                          boxShadow: isSelected
+                                              ? [
+                                                  BoxShadow(
+                                                    color: dominantColor.withValues(alpha: 0.4),
+                                                    blurRadius: 8,
+                                                    spreadRadius: 1.5,
+                                                  ),
+                                                ]
+                                              : null,
+                                        ),
+                                        child: isSelected
+                                            ? Center(
+                                                child: GlowIcon(
+                                                  Icons.check_rounded,
+                                                  color: dominantColor,
+                                                  size: 18,
+                                                  glowColor: dominantColor.withValues(alpha: 0.5),
+                                                  blurRadius: 8,
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      playlist,
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge
+                                            ?.color,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    trailing: isSelected
+                                        ? GlowIcon(
+                                            Icons.check_rounded,
+                                            color: dominantColor,
+                                            glowColor:
+                                                dominantColor.withValues(alpha: 0.5),
+                                            blurRadius: 8,
+                                            size: 20,
+                                          )
+                                        : null,
+                                    onTap: () {
+                                      setStateDialog(() {
+                                        if (isSelected) {
+                                          selected.remove(playlist);
+                                        } else {
+                                          selected.add(playlist);
+                                        }
+                                      });
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                              onPressed: () {
+                                ScaffoldMessenger.of(context)
+                                    .hideCurrentSnackBar();
+                                Navigator.pop(context);
                               },
                             ),
-                          ),
-                          const SizedBox(height: 20),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              TextButton(
-                                child: Text(
-                                  'Cancel',
-                                  style: TextStyle(color: Colors.white70),
-                                ),
-                                onPressed: () {
-				  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-				  Navigator.pop(context);
-				},
-                              ),
-                              const SizedBox(width: 12),
-                              DynamicIconButton(
-                                icon: Icons.check_rounded,
-                                onPressed:
-                                    () {
-					ScaffoldMessenger.of(context).hideCurrentSnackBar();
-					Navigator.pop(context, selected);
-				},
-                                backgroundColor: dominantColor,
-                                size: 40,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 12),
+                            DynamicIconButton(
+                              icon: Icons.check_rounded,
+                              onPressed: () {
+                                ScaffoldMessenger.of(context)
+                                    .hideCurrentSnackBar();
+                                Navigator.pop(context, selected);
+                              },
+                              backgroundColor: dominantColor,
+                              size: 40,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-            );
-          },
-        );
-      },
-    );
-  }
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 
   /// Show a styled dialog to input a new playlist name.
   Future<String?> _showPlaylistNameDialog() async {
@@ -1938,46 +2153,46 @@ Future<void> _loadSongs() async {
     );
   }
 
-  Future<bool> _showDeleteConfirmationDialog(Song song) async {
-    return await showDialog<bool>(
-          context: context,
-          builder:
-              (context) => AlertDialog(
-                backgroundColor: dominantColor.withAlpha(30),
-                title: Text(
-                  'Delete Song?',
-                  style: TextStyle(color: Colors.white),
-                ),
-                content: Text(
-                  'This will permanently delete "${song.title}" from your device.',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                actions: [
-                  TextButton(
-                    child: Text(
-                      'Cancel',
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                    onPressed: () {
-		      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-		      Navigator.pop(context, false);
-		    },
-                  ),
-                  TextButton(
-                    child: Text(
-                      'Delete',
-                      style: TextStyle(color: Colors.redAccent),
-                    ),
-                    onPressed: () {
-		      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-		      Navigator.pop(context, true);
-		    },
-                  ),
-                ],
-              ),
-        ) ??
-        false;
-  }
+Future<bool> _showDeleteConfirmationDialog(Song song, {bool multipleItems = false}) async {
+  return await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: dominantColor.withAlpha(30),
+      title: Text(
+        multipleItems ? 'Delete Songs?' : 'Delete Song?',
+        style: TextStyle(color: Colors.white),
+      ),
+      content: Text(
+        multipleItems 
+          ? 'This will permanently delete ${_selectedSongs.length} songs from your device.'
+          : 'This will permanently delete "${song.title}" from your device.',
+        style: TextStyle(color: Colors.white70),
+      ),
+      actions: [
+        TextButton(
+          child: Text(
+            'Cancel',
+            style: TextStyle(color: Colors.white70),
+          ),
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            Navigator.pop(context, false);
+          },
+        ),
+        TextButton(
+          child: Text(
+            'Delete',
+            style: TextStyle(color: Colors.redAccent),
+          ),
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            Navigator.pop(context, true);
+          },
+        ),
+      ],
+    ),
+  ) ?? false;
+}
 
   Future<void> _deleteSongFile(Song song) async {
     try {
@@ -2001,7 +2216,8 @@ Future<void> _loadSongs() async {
 
   @override
   void dispose() {
-    _focusNode.dispose();
+    _mainFocusNode.dispose();
+    _searchFocusNode.dispose();
     _scrollController.dispose();
     _extraHeaderController.dispose();
     _playlistTransitionController.dispose();
@@ -2086,32 +2302,100 @@ Future<void> _loadSongs() async {
     final textColor =
         dominantColor.computeLuminance() > 0.007 ? dominantColor : Colors.white;
     return RawKeyboardListener(
-      focusNode: _focusNode,
+      focusNode: _mainFocusNode,
       onKey: (RawKeyEvent event) {
         if (event is RawKeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.escape) {
             if (_isSearchExpanded) {
               _toggleSearch();
+            } else if (_isInSelectionMode) {
+          	setState(() {
+            	_exitSelectionMode();
+          	});
+            } else if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+          	_scaffoldKey.currentState?.closeDrawer();
+          	_isDrawerOpen = false;
+                _mainFocusNode.requestFocus();
             } else {
-              if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
-                _scaffoldKey.currentState?.closeDrawer();
-                _isDrawerOpen = false;
-              } else {
-                _scaffoldKey.currentState?.openDrawer();
-                _isDrawerOpen = true;
-              }
+          	_scaffoldKey.currentState?.openDrawer();
+          	_isDrawerOpen = true;
+          	_mainFocusNode.requestFocus();
             }
-          } else if (event.logicalKey == LogicalKeyboardKey.space &&
+      	    } else if (event.logicalKey == LogicalKeyboardKey.space &&
               !_isSearchExpanded &&
               !isTextInputFocused()) {
-            _togglePauseSong();
+              _togglePauseSong();
+      	    }
           }
-        }
-      },
+        },
+      child: FocusScope(
+				autofocus: true,
       child: Listener(
         onPointerDown: (_) => _isDrawerOpen = true,
         onPointerUp: (_) => _isDrawerOpen = false,
         child: Scaffold(
+	  floatingActionButton: _isInSelectionMode ? AnimatedScale(
+  	    duration: const Duration(milliseconds: 200),
+	    scale: _isInSelectionMode ? 1.0 : 0.0,
+  	    child: FloatingActionButton(
+    	      onPressed: _handleMultiSelectAction,
+    	      backgroundColor: Colors.transparent,
+    	      elevation: 0,
+    	      highlightElevation: 0,
+    	      child: Container(
+      		width: 56,
+      		height: 56,
+      		decoration: BoxDecoration(
+        	  shape: BoxShape.circle,
+        	  gradient: LinearGradient(
+          	    begin: Alignment.topLeft,
+          	    end: Alignment.bottomRight,
+          	    colors: [
+            	      dominantColor.withValues(alpha: 0.3),
+            	      dominantColor.withValues(alpha: 0.1),
+          	    ],
+        	  ),
+        	  border: Border.all(
+          	    color: dominantColor.withValues(alpha: 0.3),
+          	    width: 1.2,
+        	  ),
+        	  boxShadow: [
+          	    BoxShadow(
+            	      color: dominantColor.withValues(alpha: 0.3),
+            	      blurRadius: 12,
+            	      spreadRadius: 2,
+          	    ),
+          	    BoxShadow(
+            	      color: dominantColor.withValues(alpha: 0.2),
+		      blurRadius: 20,
+            	      spreadRadius: 4,
+          	    ),
+        	  ],
+      		),
+      		child: AnimatedContainer(
+        	  duration: const Duration(milliseconds: 200),
+        	  decoration: BoxDecoration(
+          	    shape: BoxShape.circle,
+          	    gradient: LinearGradient(
+            	      begin: Alignment.topLeft,
+            	      end: Alignment.bottomRight,
+            	      colors: [
+              		dominantColor.withValues(alpha: 0.2),
+              		Colors.black.withValues(alpha: 0.2),
+            	      ],
+          	    ),
+        	  ),
+		  child: GlowIcon(
+          	    Icons.playlist_add_rounded,
+          	    color: Colors.white,
+          	    size: 28,
+          	    glowColor: dominantColor,
+          	    blurRadius: 15,
+        	  ),
+		),
+    	      ),
+  	    ),
+	  ) : null,
           key: _scaffoldKey,
           drawer: RawKeyboardListener(
             focusNode: FocusNode(),
@@ -2346,6 +2630,9 @@ Future<void> _loadSongs() async {
                                 },
                                 child: EnhancedSongListTile(
                                   song: song,
+				  onSelectedChanged: (selected) => _toggleSongSelection(song, selected),
+				  isInSelectionMode: _isInSelectionMode,
+				  isSelected: _selectedSongs.contains(song),
                                   dominantColor: dominantColor,
                                   onTap: () async {
 				    ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -2405,7 +2692,7 @@ Future<void> _loadSongs() async {
                                     if (mounted) {
                                       FocusScope.of(
                                         context,
-                                      ).requestFocus(_focusNode);
+                                      ).requestFocus(_mainFocusNode);
                                     }
                                   },
                                 ),
@@ -2620,6 +2907,7 @@ Future<void> _loadSongs() async {
                                       ),
                                       child: TextField(
                                         controller: _searchController,
+					focusNode: _searchFocusNode,
                                         style: TextStyle(
                                           color: textColor,
                                           fontSize: 16,
@@ -2740,9 +3028,9 @@ Future<void> _loadSongs() async {
           ),
         ),
       ),
-    );
-  }
-}
+    ),
+  );
+}}
 
 class SettingsScreen extends StatefulWidget {
   final AdimanService service;

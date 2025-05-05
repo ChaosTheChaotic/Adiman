@@ -241,7 +241,6 @@ class _NamidaThumbnailState extends State<NamidaThumbnail>
 
   @override
   Widget build(BuildContext context) {
-    // Use the shared breathing value if provided; otherwise fall back on the internal animation.
     final breathingValue =
         widget.sharedBreathingValue ?? _breathingAnimation.value;
     final peakScale = 1.0 + (widget.currentPeak * 0.05);
@@ -278,11 +277,14 @@ class _NamidaThumbnailState extends State<NamidaThumbnail>
   }
 }
 
-class EnhancedSongListTile extends StatelessWidget {
+class EnhancedSongListTile extends StatefulWidget {
   final Song song;
   final VoidCallback onTap;
   final bool isCurrent;
   final Color dominantColor;
+  final bool isSelected;
+  final bool isInSelectionMode;
+  final ValueChanged<bool>? onSelectedChanged;
 
   const EnhancedSongListTile({
     super.key,
@@ -290,37 +292,85 @@ class EnhancedSongListTile extends StatelessWidget {
     required this.onTap,
     this.isCurrent = false,
     required this.dominantColor,
+    this.isSelected = false,
+    this.isInSelectionMode = false,
+    this.onSelectedChanged,
   });
 
-@override
+  @override
+  State<EnhancedSongListTile> createState() => _EnhancedSongListTileState();
+}
+
+class _EnhancedSongListTileState extends State<EnhancedSongListTile> 
+    with SingleTickerProviderStateMixin {
+  late AnimationController _selectionController;
+  late Animation<double> _selectionAnimation;
+  late Animation<Offset> _contentSlideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectionController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    _selectionAnimation = CurvedAnimation(
+      parent: _selectionController,
+      curve: Curves.easeOutCubic,
+    );
+
+    _contentSlideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(40, 0),
+    ).animate(CurvedAnimation(
+      parent: _selectionController,
+      curve: Curves.easeOutQuad,
+    ));
+  }
+
+  @override
   Widget build(BuildContext context) {
-  final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
+    final theme = Theme.of(context);
+    final textColor = theme.textTheme.bodyLarge?.color ?? Colors.white;
+    final primaryColor = theme.colorScheme.primary;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Material(
         color: Colors.transparent,
-        surfaceTintColor: isCurrent ? dominantColor : Colors.transparent,
-        elevation: isCurrent ? 2 : 0,
+        surfaceTintColor: widget.isCurrent ? widget.dominantColor : Colors.transparent,
+        elevation: widget.isCurrent ? 2 : 0,
         child: InkWell(
-          onTap: onTap,
-	  hoverColor: dominantColor.withValues(alpha:0.1),
-	  splashColor: dominantColor.withValues(alpha:0.2),
+          onTap: widget.isInSelectionMode 
+              ? () => widget.onSelectedChanged?.call(!widget.isSelected)
+              : widget.onTap,
+          onLongPress: widget.isInSelectionMode 
+              ? null 
+              : () => widget.onSelectedChanged?.call(true),
+          hoverColor: widget.dominantColor.withValues(alpha: 0.1),
+          splashColor: widget.dominantColor.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(15),
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(15),
               border: Border.all(
-                color: isCurrent 
-                    ? dominantColor.withValues(alpha:0.4)
-                    : Colors.white.withValues(alpha:0.1),
-                width: isCurrent ? 1.2 : 0.5,
+                color: widget.isSelected
+                    ? widget.dominantColor
+                    : (widget.isCurrent 
+                        ? widget.dominantColor.withValues(alpha: 0.4)
+                        : Colors.white.withValues(alpha: 0.1)),
+                width: widget.isSelected || widget.isCurrent ? 1.2 : 0.5,
               ),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  dominantColor.withValues(alpha:isCurrent ? 0.15 : 0.05),
-                  Colors.black.withValues(alpha:0.2),
+                  widget.dominantColor.withValues(
+                      alpha: widget.isSelected 
+                          ? 0.25 
+                          : (widget.isCurrent ? 0.15 : 0.05)),
+                  Colors.black.withValues(alpha: (widget.isSelected ? 0.3 : 0.2)),
                 ],
               ),
             ),
@@ -329,72 +379,148 @@ class EnhancedSongListTile extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    _AlbumArtWithPlayCount(
-                      image: song.albumArt != null
-                          ? MemoryImage(base64Decode(song.albumArt!))
-                          : null,
-                    ),
-                    const SizedBox(width: 16),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            song.title,
-                            style: TextStyle(
-                              //color: isCurrent 
-                              //    ? Theme.of(context).colorScheme.primary 
-                              //    : Colors.white,
-			      color: textColor,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                      child: AnimatedBuilder(
+                        animation: _selectionAnimation,
+                        builder: (context, child) {
+                          return Transform.translate(
+                            offset: _contentSlideAnimation.value,
+                            child: Row(
+                              children: [
+                                _AlbumArtWithPlayCount(
+                                  image: widget.song.albumArt != null
+                                      ? MemoryImage(base64Decode(widget.song.albumArt!))
+                                      : null,
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        widget.song.title,
+                                        style: TextStyle(
+                                          color: textColor,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${widget.song.artists?.join('/') ?? widget.song.artist} • ${widget.song.album} ${widget.song.genre != "Unknown Genre" ? '•  ${widget.song.genre}' : ""}',
+                                        style: TextStyle(
+                                          color: textColor.withValues(alpha: 0.8),
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 4),
-			  Text(
-			    '${song.artists?.join('/') ?? song.artist} • ${song.album} ${song.genre != "Unknown Genre" ? '•  ${song.genre}' : ""}',
-			    style: TextStyle(
-			    color: textColor.withValues(alpha:0.8),
-			    fontSize: 14,
-			    ),
-			  ),
-                        ],
+                          );
+                        },
                       ),
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '${song.duration.inMinutes}:${(song.duration.inSeconds % 60).toString().padLeft(2, '0')}',
-                          style: TextStyle(
-                            //color: isCurrent
-                            //    ? Theme.of(context).colorScheme.primary.withValues(alpha:0.7)
-                            //    : Colors.white.withValues(alpha:0.7),
-			    color: textColor.withValues(alpha:0.7),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      '${widget.song.duration.inMinutes}:${(widget.song.duration.inSeconds % 60).toString().padLeft(2, '0')}',
+                      style: TextStyle(
+                        color: textColor.withValues(alpha: 0.7),
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
-                if (isCurrent)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: GlowIcon(
-                      Icons.check_circle_rounded,
-                      color: Theme.of(context).colorScheme.primary,
-                      blurRadius: 8,
-                      size: 20,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+		AnimatedBuilder(
+  		  animation: _selectionAnimation,
+  		  builder: (context, child) {
+    		    return Positioned(
+      		      left: -28 * (1 - _selectionAnimation.value),
+      		      top: 0,
+      		      bottom: 0,
+      		      child: Opacity(
+        	        opacity: _selectionAnimation.value,
+        		child: Center(
+          		  child: Container(
+            		    width: 24,
+            		    height: 24,
+            		      decoration: BoxDecoration(
+              			borderRadius: BorderRadius.circular(6),
+              			gradient: LinearGradient(
+                		  begin: Alignment.topLeft,
+                		  end: Alignment.bottomRight,
+                		  colors: [
+                  		    widget.dominantColor.withValues(
+                    		    alpha: widget.isSelected ? 0.25 : 0.05,
+                 	 	),
+                  		Colors.black.withValues(
+                    		alpha: widget.isSelected ? 0.3 : 0.2,
+                 	      ),
+                	    ],
+              		  ),
+              		border: Border.all(
+                	  color: widget.isSelected
+                	  ? widget.dominantColor.withValues(alpha: 0.8)
+                    	  : Colors.white.withValues(alpha: 0.2),
+                	  width: widget.isSelected ? 1.2 : 0.5,
+              	  	),
+              		boxShadow: widget.isSelected
+                  	? [
+                      	  BoxShadow(
+                            color: widget.dominantColor.withValues(alpha: 0.4),
+                            blurRadius: 8,
+                            spreadRadius: 1.5,
+                      	  ),
+                    	]
+                      : null,
+            	    ),
+            	    child: widget.isSelected
+                    ? Center(
+                      child: GlowIcon(
+                        Icons.check_rounded,
+                        color: widget.dominantColor,
+                        size: 18,
+                        glowColor: widget.dominantColor.withValues(alpha: 0.5),
+                        blurRadius: 8,
+                      ),
+                    )
+                  : null,
+        	),
+              ),
+	    ),
+    	  );
+  	},
       ),
-    );
+      if (widget.isCurrent && !widget.isInSelectionMode)
+	Positioned(
+	top: 8,
+	right: 8,
+	child: GlowIcon(
+	  Icons.graphic_eq_rounded,
+	  color: primaryColor,
+	  blurRadius: 8,
+	  size: 20,
+        ))],
+    )))), //I dont know what the hell this is lmao
+  );
+}
+
+  @override
+  void didUpdateWidget(EnhancedSongListTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isInSelectionMode != oldWidget.isInSelectionMode) {
+      if (widget.isInSelectionMode) {
+        _selectionController.forward();
+      } else {
+        _selectionController.reverse();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _selectionController.dispose();
+    super.dispose();
   }
 }
 
@@ -554,7 +680,7 @@ class _LyricsOverlayState extends State<LyricsOverlay>
   void _scrollToCurrentLyric() {
     final index = _currentLyricNotifier.value;
     if (index >= 0) {
-      final scrollPosition = index * 45.0; // adjust based on item height
+      final scrollPosition = index * 45.0; // I need a better way of calculating this
       _scrollController.animateTo(
         scrollPosition.clamp(0.0, _scrollController.position.maxScrollExtent),
         duration: const Duration(milliseconds: 800),
@@ -593,7 +719,6 @@ class _LyricsOverlayState extends State<LyricsOverlay>
 
   @override
   Widget build(BuildContext context) {
-    // Use shared breathing value if provided, otherwise fall back on the internal breathing animation.
     final breathingValue = widget.sharedBreathingValue ?? 1.0;
     final peakScale = 1.0 + (widget.currentPeak * 0.05);
     final combinedScale = widget.scale * peakScale * breathingValue;
@@ -646,9 +771,6 @@ class _LyricsOverlayState extends State<LyricsOverlay>
                                 curve: Curves.easeInOut,
                                 style: TextStyle(
                                   fontSize: isCurrent ? 28 : 20,
-                                  //color: isCurrent
-                                  //    ? widget.dominantColor
-                                  //    : Colors.white.withValues(alpha:0.6),
 				  color: textColor,
                                   fontWeight: isCurrent
                                       ? FontWeight.w800
@@ -697,7 +819,6 @@ class _LyricsOverlayState extends State<LyricsOverlay>
 
   @override
   void dispose() {
-    //_scrollController.dispose();
     _currentLyricNotifier.dispose();
     super.dispose();
   }
@@ -710,7 +831,6 @@ class NamidaPageTransitions {
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final color = dominantColor ?? Theme.of(context).colorScheme.primary;
         
-        // Combined scale + fade + blur transition
         return Stack(
           children: [
             // Blurred background
@@ -763,7 +883,6 @@ class NamidaPageTransitions {
     );
   }
 
-  // For dialog-style screens
   static Route createMaterialRoute(Widget page) {
     return MaterialPageRoute(
       builder: (context) => page,
@@ -771,7 +890,6 @@ class NamidaPageTransitions {
     );
   }
 
-  // Radial reveal animation
   static Route createRadialRevealRoute(Widget page, Offset origin, {Color? color}) {
     return PageRouteBuilder(
       pageBuilder: (context, animation, secondaryAnimation) => page,
