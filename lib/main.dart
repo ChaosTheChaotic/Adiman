@@ -3287,8 +3287,10 @@ Widget _buildSettingsSwitch(
       onKey: (RawKeyEvent event) {
         if (event is RawKeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.escape) {
-	    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            Navigator.pop(context);
+	    if (ModalRoute.of(context)?.isCurrent ?? false) {
+	      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              Navigator.pop(context);
+	    }
           } else if (event.logicalKey == LogicalKeyboardKey.space &&
               FocusScope.of(context).hasFocus &&
               FocusScope.of(context).focusedChild is EditableText) {
@@ -5588,13 +5590,13 @@ class AdimanService extends MPRISService {
     await _playbackStateController.close();
     await _trackChangeController.close();
     await client?.close();
-  await client?.callMethod(
-    destination: 'org.freedesktop.DBus',
-    path: DBusObjectPath('/org/freedesktop/DBus'),
-    interface: 'org.freedesktop.DBus',
-    name: 'Adiman',
-    values: [DBusString('org.mpris.MediaPlayer2.adiman')],
-  );
+    await client?.callMethod(
+      destination: 'org.freedesktop.DBus',
+      path: DBusObjectPath('/org/freedesktop/DBus'),
+      interface: 'org.freedesktop.DBus',
+      name: 'Adiman',
+      values: [DBusString('org.mpris.MediaPlayer2.adiman')],
+    );
     await super.dispose();
   }
 
