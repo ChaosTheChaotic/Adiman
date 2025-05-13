@@ -928,7 +928,8 @@ pub fn cancel_download() {
     CANCEL_DOWNLOAD.store(true, Ordering::SeqCst);
 }
 
-// Currently unused because it is an absolute pain to wait for all the songs to come back
+// Currently unused because it is an absolute pain to wait for all the songs to come back but is
+// now a setting
 #[frb(sync)]
 pub fn clear_mp3_cache() -> bool {
     let cache_dir = get_mp3_cache_dir();
