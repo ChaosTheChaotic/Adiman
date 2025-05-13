@@ -802,7 +802,6 @@ static SEPARATORS: Lazy<RwLock<Vec<String>>> = Lazy::new(|| {
         "feat.".to_string(),
         "ft.".to_string(),
         "vs.".to_string(),
-        "x".to_string(),
     ])
 });
 
@@ -842,7 +841,6 @@ pub fn reset_separators() {
         "feat.".to_string(),
         "ft.".to_string(),
         "vs.".to_string(),
-        "x".to_string(),
     ];
 }
 
