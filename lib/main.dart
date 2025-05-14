@@ -3642,9 +3642,7 @@ Future<void> _showSeparatorManagementPopup() async {
                                         }
                                         
                                         try {
-                                          // Add through API
                                           rust_api.addSeparator(separator: newSep);
-                                          // Refresh list from source
                                           final updatedSeparators = await rust_api.getCurrentSeparators();
                                           final prefs = await SharedPreferences.getInstance();
                                           await prefs.setStringList('separators', updatedSeparators);
@@ -3804,11 +3802,12 @@ Future<void> _showSeparatorManagementPopup() async {
                                 ),
                         ),
                         const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: DynamicIconButton(
-                            icon: Icons.restart_alt_rounded,
-                            onPressed: () async {
+                        Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(16),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () async {
                               final confirmed = await showDialog<bool>(
                                 context: context,
                                 builder: (ctx) => AlertDialog(
@@ -3853,7 +3852,40 @@ Future<void> _showSeparatorManagementPopup() async {
                                 }
                               }
                             },
-                            backgroundColor: _currentColor,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: _currentColor.withAlpha(100),
+                                  width: 1.2,
+                                ),
+                                gradient: LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [
+                                    _currentColor.withAlpha(30),
+                                    Colors.black.withAlpha(50),
+                                  ],
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.restart_alt_rounded, color: _currentColor),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Reset to Defaults',
+                                    style: TextStyle(
+                                      color: _currentColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ],
