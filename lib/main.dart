@@ -3101,6 +3101,10 @@ Future<void> _loadChecks() async {
     _autoConvert = prefs.getBool('autoConvert') ?? false;
     _clearMp3Cache = prefs.getBool('clearMp3Cache') ?? false;
   });
+  final savedSeparators = prefs.getStringList('separators');
+  if (savedSeparators != null) {
+    rust_api.setSeparators(separators: savedSeparators);
+  }
 }
 
   String expandTilde(String path) {
@@ -3526,123 +3530,143 @@ Widget _buildSettingsSwitch(
     );
   }
 
-  Future<void> _showSeparatorManagementPopup() async {
-    List<String> currentSeparators = await rust_api.getCurrentSeparators();
-    final TextEditingController _addController = TextEditingController();
-    final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+Future<void> _showSeparatorManagementPopup() async {
+  List<String> currentSeparators = await rust_api.getCurrentSeparators();
+  final TextEditingController _addController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              child: _AnimatedPopupWrapper(
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(28),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          _currentColor.withAlpha(30),
-                          Colors.black.withAlpha(200),
-                        ],
-                      ),
-                      border: Border.all(
-                        color: _currentColor.withAlpha(100),
-                        width: 1.2,
-                      ),
+  await showDialog(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: _AnimatedPopupWrapper(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(28),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        _currentColor.withAlpha(30),
+                        Colors.black.withAlpha(200),
+                      ],
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GlowText(
-                            'Manage Separators',
-                            glowColor: _currentColor.withAlpha(80),
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: _currentColor,
-                            ),
+                    border: Border.all(
+                      color: _currentColor.withAlpha(100),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GlowText(
+                          'Artist Separators',
+                          glowColor: _currentColor.withAlpha(80),
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: _currentColor,
                           ),
-                          const SizedBox(height: 20),
-                          Form(
-                            key: _formKey,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    _currentColor.withAlpha(30),
-                                    Colors.black.withAlpha(100),
-                                  ],
-                                ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            'Used to detect multiple artists in song metadata',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Form(
+                          key: _formKey,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  _currentColor.withAlpha(30),
+                                  Colors.black.withAlpha(100),
+                                ],
                               ),
-                              child: TextFormField(
-                                controller: _addController,
-                                style: TextStyle(color: Colors.white),
-                                cursorColor: _currentColor,
-                                decoration: InputDecoration(
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                  ),
-                                  hintText: 'Add new separator...',
-                                  hintStyle: TextStyle(color: Colors.white70),
-                                  prefixIcon: Icon(
-                                    Icons.add,
-                                    color: _currentColor,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  suffixIcon: DynamicIconButton(
-                                    icon: Icons.check,
+                            ),
+                            child: TextFormField(
+                              controller: _addController,
+                              style: TextStyle(color: Colors.white),
+                              cursorColor: _currentColor,
+                              decoration: InputDecoration(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                hintText: 'Add new separator...',
+                                hintStyle: TextStyle(color: Colors.white70),
+                                prefixIcon: GlowIcon(
+                                  Icons.add_rounded,
+                                  color: _currentColor,
+                                  size: 24,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                suffixIcon: Container(
+                                  margin: const EdgeInsets.only(right: 8),
+                                  child: DynamicIconButton(
+                                    icon: Icons.check_rounded,
                                     onPressed: () async {
                                       if (_formKey.currentState!.validate()) {
-                                        final newSep =
-                                            _addController.text.trim();
-                                        if (newSep.isEmpty) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-						NamidaSnackbar(backgroundColor: widget.dominantColor, content: 'Separator cannot be empty!')
+                                        final newSep = _addController.text.trim();
+                                        if (newSep.isEmpty) return;
+                                        
+                                        if (currentSeparators.contains(newSep)) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            NamidaSnackbar(
+                                              backgroundColor: _currentColor,
+                                              content: 'Separator "$newSep" already exists!',
+                                            )
                                           );
                                           return;
                                         }
-                                        if (currentSeparators.contains(
-                                          newSep,
-                                        )) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-						NamidaSnackbar(backgroundColor: widget.dominantColor, content: 'Separator already exists!')
-                                          );
-                                          return;
-                                        }
+                                        
                                         try {
-                                          rust_api.addSeparator(
-                                            separator: newSep,
-                                          );
+                                          // Add through API
+                                          rust_api.addSeparator(separator: newSep);
+                                          // Refresh list from source
+                                          final updatedSeparators = await rust_api.getCurrentSeparators();
+                                          final prefs = await SharedPreferences.getInstance();
+                                          await prefs.setStringList('separators', updatedSeparators);
+                                          
                                           setStateDialog(() {
-                                            currentSeparators.add(newSep);
+                                            currentSeparators = updatedSeparators;
                                             _addController.clear();
                                           });
+                                          
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            NamidaSnackbar(
+                                              backgroundColor: _currentColor,
+                                              content: 'Added "$newSep" separator',
+                                            )
+                                          );
                                         } catch (e) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-					    NamidaSnackbar(backgroundColor: widget.dominantColor, content: 'Failed to add separator: $e')
-					  );
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            NamidaSnackbar(
+                                              backgroundColor: Colors.redAccent,
+                                              content: 'Failed to add separator: $e',
+                                            )
+                                          );
                                         }
                                       }
                                     },
@@ -3650,115 +3674,200 @@ Widget _buildSettingsSwitch(
                                     size: 36,
                                   ),
                                 ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Enter a separator';
-                                  }
-                                  return null;
-                                },
                               ),
+                              validator: (value) => value!.isEmpty ? 'Enter a separator character' : null,
                             ),
                           ),
-                          const SizedBox(height: 20),
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxHeight:
-                                  MediaQuery.of(context).size.height * 0.4,
-                            ),
-                            child:
-                                currentSeparators.isEmpty
-                                    ? Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: Text(
-                                        'No custom separators added',
-                                        style: TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 20),
+                        Flexible(
+                          child: currentSeparators.isEmpty
+                              ? Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.auto_awesome_mosaic_rounded,
+                                      color: _currentColor.withAlpha(80),
+                                      size: 48,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No custom separators\nAdd some to help identify multiple artists',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 14,
                                       ),
-                                    )
-                                    : ListView.builder(
-                                      shrinkWrap: true,
-                                      itemCount: currentSeparators.length,
-                                      itemBuilder: (context, index) {
-                                        final separator =
-                                            currentSeparators[index];
-                                        return ListTile(
-                                          contentPadding: EdgeInsets.zero,
-                                          leading: Icon(
-                                            Icons.arrow_right,
-                                            color: _currentColor,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                )
+                              : ListView.builder(
+                                  shrinkWrap: true,
+                                  itemCount: currentSeparators.length,
+                                  itemBuilder: (context, index) {
+                                    final separator = currentSeparators[index];
+                                    return Container(
+                                      margin: const EdgeInsets.symmetric(vertical: 4),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            _currentColor.withAlpha(30),
+                                            Colors.black.withAlpha(50),
+                                          ],
+                                        ),
+                                      ),
+                                      child: ListTile(
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                                        leading: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            gradient: RadialGradient(
+                                              colors: [
+                                                _currentColor.withAlpha(80),
+                                                Colors.transparent,
+                                              ],
+                                            ),
                                           ),
-                                          title: Text(
+                                          child: Text(
                                             separator,
                                             style: TextStyle(
                                               color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                          trailing: IconButton(
-                                            icon: Icon(
-                                              Icons.delete,
-                                              color: Colors.redAccent,
-                                            ),
-                                            onPressed: () async {
+                                        ),
+                                        title: Text(
+                                          'Separator ${index + 1}',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        trailing: IconButton(
+                                          icon: GlowIcon(
+                                            Icons.delete_rounded,
+                                            color: Colors.redAccent,
+                                            size: 20,
+                                          ),
+                                          onPressed: () async {
+                                            final confirmed = await showDialog<bool>(
+                                              context: context,
+                                              builder: (ctx) => AlertDialog(
+                                                backgroundColor: Colors.black.withAlpha(200),
+                                                title: Text('Delete Separator?', style: TextStyle(color: Colors.white)),
+                                                content: Text('Remove "$separator"?', style: TextStyle(color: Colors.white70)),
+                                                actions: [
+                                                  TextButton(
+                                                    child: Text('Cancel', style: TextStyle(color: Colors.white70)),
+                                                    onPressed: () => Navigator.pop(ctx, false),
+                                                  ),
+                                                  TextButton(
+                                                    child: Text('Delete', style: TextStyle(color: Colors.redAccent)),
+                                                    onPressed: () => Navigator.pop(ctx, true),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                            
+                                            if (confirmed ?? false) {
                                               try {
-                                                rust_api.removeSeparator(
-                                                  separator: separator,
+                                                rust_api.removeSeparator(separator: separator);
+                                                final updatedSeparators = await rust_api.getCurrentSeparators();
+                                                final prefs = await SharedPreferences.getInstance();
+                                                await prefs.setStringList('separators', updatedSeparators);
+                                                
+                                                setStateDialog(() => currentSeparators = updatedSeparators);
+                                                
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  NamidaSnackbar(
+                                                    backgroundColor: _currentColor,
+                                                    content: 'Removed "$separator" separator',
+                                                  )
                                                 );
-                                                setStateDialog(() {
-                                                  currentSeparators.removeAt(
-                                                    index,
-                                                  );
-                                                });
                                               } catch (e) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-							NamidaSnackbar(backgroundColor: widget.dominantColor, content: 'Failed to remove separator: $e')
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  NamidaSnackbar(
+                                                    backgroundColor: Colors.redAccent,
+                                                    content: 'Failed to remove separator: $e',
+                                                  )
                                                 );
                                               }
-                                            },
-                                          ),
-                                        );
-                                      },
-                                    ),
-                          ),
-                          const SizedBox(height: 20),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: DynamicIconButton(
-                                  icon: Icons.restart_alt_rounded,
-                                  //label: 'Reset Defaults',
-                                  onPressed: () async {
-                                    try {
-                                      rust_api.resetSeparators();
-                                      setStateDialog(() {
-                                        currentSeparators =
-                                            rust_api.getCurrentSeparators();
-                                      });
-                                    } catch (e) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-					NamidaSnackbar(backgroundColor: widget.dominantColor, content: 'Failed to reset separators: $e')
-                                      );
-                                    }
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    );
                                   },
-                                  backgroundColor: _currentColor,
                                 ),
-                              ),
-                            ],
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: DynamicIconButton(
+                            icon: Icons.restart_alt_rounded,
+                            onPressed: () async {
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  backgroundColor: Colors.black.withAlpha(200),
+                                  title: Text('Reset Separators?', style: TextStyle(color: Colors.white)),
+                                  content: Text('Restore to default separators? This cannot be undone.', style: TextStyle(color: Colors.white70)),
+                                  actions: [
+                                    TextButton(
+                                      child: Text('Cancel', style: TextStyle(color: Colors.white70)),
+                                      onPressed: () => Navigator.pop(ctx, false),
+                                    ),
+                                    TextButton(
+                                      child: Text('Reset', style: TextStyle(color: _currentColor)),
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              
+                              if (confirmed ?? false) {
+                                try {
+                                  rust_api.resetSeparators();
+                                  final updatedSeparators = await rust_api.getCurrentSeparators();
+                                  final prefs = await SharedPreferences.getInstance();
+                                  await prefs.setStringList('separators', updatedSeparators);
+                                  
+                                  setStateDialog(() => currentSeparators = updatedSeparators);
+                                  
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    NamidaSnackbar(
+                                      backgroundColor: _currentColor,
+                                      content: 'Restored default separators',
+                                    )
+                                  );
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    NamidaSnackbar(
+                                      backgroundColor: Colors.redAccent,
+                                      content: 'Failed to reset: $e',
+                                    )
+                                  );
+                                }
+                              }
+                            },
+                            backgroundColor: _currentColor,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-            );
-          },
-        );
-      },
-    );
-  }
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 
   Widget _buildActionButton({
     required IconData icon,

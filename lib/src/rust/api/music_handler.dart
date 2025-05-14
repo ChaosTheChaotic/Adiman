@@ -77,6 +77,9 @@ List<String> getCurrentSeparators() =>
 void resetSeparators() =>
     RustLib.instance.api.crateApiMusicHandlerResetSeparators();
 
+void setSeparators({required List<String> separators}) => RustLib.instance.api
+    .crateApiMusicHandlerSetSeparators(separators: separators);
+
 Future<String> downloadToTemp({required String query}) =>
     RustLib.instance.api.crateApiMusicHandlerDownloadToTemp(query: query);
 

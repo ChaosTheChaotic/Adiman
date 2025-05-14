@@ -844,6 +844,12 @@ pub fn reset_separators() {
     ];
 }
 
+#[frb(sync)]
+pub fn set_separators(separators: Vec<String>) {
+    let mut sep = SEPARATORS.write().unwrap();
+    *sep = separators;
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Track {
     pub name: String,
