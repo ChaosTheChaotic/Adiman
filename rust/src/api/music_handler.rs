@@ -1,23 +1,26 @@
-use flutter_rust_bridge::frb;
-use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use std::sync::{Mutex, mpsc::{self, Sender, Receiver}, Arc, RwLock};
-use once_cell::sync::Lazy;
-use rodio::{Decoder, Sink, Source, OutputStream, OutputStreamHandle};
-use std::time::{Duration, Instant};
-use std::collections::HashMap;
-use std::io::{Cursor, BufReader, Read, Seek, SeekFrom};
-use std::thread;
-use regex::Regex;
-use sha2::{Sha256, Digest};
-use std::process::{Command, Child};
-use std::cmp::max;
-use std::fs;
-use std::sync::atomic::{AtomicBool, Ordering};
-use rayon::{ThreadPool, ThreadPoolBuilder};
 use audiotags::Tag;
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use flutter_rust_bridge::frb;
+use once_cell::sync::Lazy;
+use rayon::{ThreadPool, ThreadPoolBuilder};
+use regex::Regex;
+use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::cmp::max;
+use std::collections::HashMap;
+use std::fs;
+use std::io::{BufReader, Cursor, Read, Seek, SeekFrom};
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{
+    mpsc::{self, Receiver, Sender},
+    Arc, Mutex, RwLock,
+};
+use std::thread;
+use std::time::{Duration, Instant};
+use walkdir::WalkDir;
 
 fn get_mp3_cache_dir() -> PathBuf {
     let mut cache_dir = std::env::temp_dir();
@@ -157,7 +160,9 @@ impl AudioPlayer {
             }
             let paused_pos = *self.paused_position.lock().unwrap();
             let now = Instant::now();
-            let new_start = now.checked_sub(Duration::from_secs_f32(paused_pos)).unwrap_or(now);
+            let new_start = now
+                .checked_sub(Duration::from_secs_f32(paused_pos))
+                .unwrap_or(now);
             *self.start_time.lock().unwrap() = new_start;
             *self.is_paused.lock().unwrap() = false;
             return true;
@@ -222,15 +227,17 @@ impl AudioPlayer {
                         let mut channels = 2;
                         let mut total_duration = Duration::from_secs(0);
                         let mut initial_data = Vec::new();
-                        if reader.read_to_end(&mut initial_data).is_ok() && !initial_data.is_empty() {
+                        if reader.read_to_end(&mut initial_data).is_ok() && !initial_data.is_empty()
+                        {
                             let cursor = Cursor::new(initial_data.clone());
                             if let Ok(dec) = Decoder::new(cursor) {
                                 sample_rate = dec.sample_rate();
                                 channels = dec.channels();
                                 decoder = Some(dec);
                                 let samples_count = initial_data.len() / (channels as usize * 2);
-                                total_duration =
-                                    Duration::from_secs_f64(samples_count as f64 / sample_rate as f64);
+                                total_duration = Duration::from_secs_f64(
+                                    samples_count as f64 / sample_rate as f64,
+                                );
                             }
                         }
                         let _ = reader.seek(SeekFrom::Start(0));
@@ -238,10 +245,8 @@ impl AudioPlayer {
                             // Preload a (possibly empty) initial chunk
                             let mut guard = chunks.lock().unwrap();
                             if let Some(ref mut dec) = decoder {
-                                let samples: Vec<f32> = dec
-                                    .take(0)
-                                    .map(|s| s as f32 / i16::MAX as f32)
-                                    .collect();
+                                let samples: Vec<f32> =
+                                    dec.take(0).map(|s| s as f32 / i16::MAX as f32).collect();
                                 guard.push(AudioChunk { samples });
                             }
                         }
@@ -288,12 +293,17 @@ impl AudioPlayer {
                                     if reader.read_to_end(&mut file_data).is_ok() {
                                         let cursor = Cursor::new(file_data);
                                         if let Ok(decoder) = Decoder::new(cursor) {
-                                            let mut samples = Vec::with_capacity(sample_rate as usize);
+                                            let mut samples =
+                                                Vec::with_capacity(sample_rate as usize);
                                             for sample in decoder {
                                                 samples.push(sample as f32 / i16::MAX as f32);
-                                                if samples.len() >= (sample_rate as usize * channels as usize) {
+                                                if samples.len()
+                                                    >= (sample_rate as usize * channels as usize)
+                                                {
                                                     if let Ok(mut guard) = chunks_clone.lock() {
-                                                        guard.push(AudioChunk { samples: samples.clone() });
+                                                        guard.push(AudioChunk {
+                                                            samples: samples.clone(),
+                                                        });
                                                     }
                                                     samples.clear();
                                                 }
@@ -311,11 +321,12 @@ impl AudioPlayer {
                     } else {
                         println!("Failed to open file: {}", &path);
                     }
-                },
+                }
                 PlayerMessage::Seek(position) => {
                     if let Ok(buffer_guard) = buffer.lock() {
                         if let Some(ref buf) = *buffer_guard {
-                            let target_sample_index = (position * buf.sample_rate as f32) as usize * buf.channels as usize;
+                            let target_sample_index = (position * buf.sample_rate as f32) as usize
+                                * buf.channels as usize;
                             let (current_chunk, position_in_chunk) = {
                                 let guard = buf.chunks.lock().unwrap();
                                 let mut accumulated = 0;
@@ -345,14 +356,16 @@ impl AudioPlayer {
                                         AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
                                         *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
                                         let now = Instant::now();
-                                        let new_start = now.checked_sub(Duration::from_secs_f32(position)).unwrap_or(now);
+                                        let new_start = now
+                                            .checked_sub(Duration::from_secs_f32(position))
+                                            .unwrap_or(now);
                                         *player.start_time.lock().unwrap() = new_start;
                                     }
                                 }
                             }
                         }
                     }
-                },
+                }
                 PlayerMessage::Stop => break,
             }
         }
@@ -369,10 +382,12 @@ impl AudioPlayer {
             *self.start_time.lock().unwrap() = Instant::now();
         }
         if let Ok(sender) = self.sender.lock() {
-            sender.send(PlayerMessage::Load {
-                path: path.to_string(),
-                position: 0.0,
-            }).is_ok()
+            sender
+                .send(PlayerMessage::Load {
+                    path: path.to_string(),
+                    position: 0.0,
+                })
+                .is_ok()
         } else {
             false
         }
@@ -386,7 +401,9 @@ impl AudioPlayer {
                 }
             }
             let now = Instant::now();
-            let new_start = now.checked_sub(Duration::from_secs_f32(position)).unwrap_or(now);
+            let new_start = now
+                .checked_sub(Duration::from_secs_f32(position))
+                .unwrap_or(now);
             *self.start_time.lock().unwrap() = new_start;
         }
         if let Ok(sender) = self.sender.lock() {
@@ -492,9 +509,8 @@ pub fn initialize_player() -> bool {
     false
 }
 
-static MP3_CONVERSION_POOL: Lazy<ThreadPool> = Lazy::new(|| {
-    ThreadPoolBuilder::new().num_threads(2).build().unwrap()
-});
+static MP3_CONVERSION_POOL: Lazy<ThreadPool> =
+    Lazy::new(|| ThreadPoolBuilder::new().num_threads(2).build().unwrap());
 
 #[frb(sync)]
 pub fn scan_music_directory(dir_path: String, auto_convert: bool) -> Vec<SongMetadata> {
@@ -503,8 +519,17 @@ pub fn scan_music_directory(dir_path: String, auto_convert: bool) -> Vec<SongMet
     let in_playlist_mode = dir_path.contains(".adilists");
 
     // First pass: collect existing files and non-MP3s needing conversion
-    for entry in WalkDir::new(&dir_path).follow_links(true).into_iter().filter_map(|e| e.ok()) {
-        if !in_playlist_mode && entry.path().components().any(|c| c.as_os_str() == ".adilists") {
+    for entry in WalkDir::new(&dir_path)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        if !in_playlist_mode
+            && entry
+                .path()
+                .components()
+                .any(|c| c.as_os_str() == ".adilists")
+        {
             continue;
         }
         if let Some(ext) = entry.path().extension() {
@@ -515,7 +540,7 @@ pub fn scan_music_directory(dir_path: String, auto_convert: bool) -> Vec<SongMet
                     if let Some(metadata) = extract_metadata(entry.path()) {
                         songs.push(metadata);
                     }
-                },
+                }
                 "ogg" | "wav" => {
                     let original_path = entry.path().to_owned();
                     let cached_path = get_cached_mp3_path(&original_path);
@@ -528,7 +553,7 @@ pub fn scan_music_directory(dir_path: String, auto_convert: bool) -> Vec<SongMet
                     } else {
                         conversion_paths.push((original_path, cached_path));
                     }
-                },
+                }
                 _ => (),
             }
         }
@@ -543,7 +568,15 @@ pub fn scan_music_directory(dir_path: String, auto_convert: bool) -> Vec<SongMet
                 let cache_str = cached.to_string_lossy();
                 let status = Command::new("ffmpeg")
                     .args(&["-hide_banner", "-loglevel", "error", "-y", "-i", &orig_str])
-                    .args(&["-codec:a", "libmp3lame", "-qscale:a", "2", "-map_metadata", "0", &cache_str])
+                    .args(&[
+                        "-codec:a",
+                        "libmp3lame",
+                        "-qscale:a",
+                        "2",
+                        "-map_metadata",
+                        "0",
+                        &cache_str,
+                    ])
                     .status();
                 if let Ok(status) = status {
                     if !status.success() {
@@ -572,7 +605,10 @@ pub fn scan_music_directory(dir_path: String, auto_convert: bool) -> Vec<SongMet
 fn extract_metadata(path: &Path) -> Option<SongMetadata> {
     let tag = Tag::default().read_from_path(path).ok()?;
 
-    let title = tag.title().map(|s| s.to_string()).unwrap_or_else(|| "Unknown Title".to_string());
+    let title = tag
+        .title()
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "Unknown Title".to_string());
     let artist_str = tag.artist().map(|s| s.to_string()).unwrap_or_default();
     let separators = SEPARATORS.read().unwrap();
     let pattern = separators
@@ -581,7 +617,8 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
         .collect::<Vec<_>>()
         .join("|");
     let re = Regex::new(&format!(r"(?i){}", pattern)).unwrap();
-    let artists: Vec<String> = re.split(&artist_str)
+    let artists: Vec<String> = re
+        .split(&artist_str)
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect();
@@ -590,8 +627,14 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
     } else {
         artists.join(", ")
     };
-    let album = tag.album().map(|a| a.title.to_string()).unwrap_or_else(|| "Unknown Album".to_string());
-    let genre = tag.genre().map(|s| s.to_string()).unwrap_or_else(|| "Unknown Genre".to_string());
+    let album = tag
+        .album()
+        .map(|a| a.title.to_string())
+        .unwrap_or_else(|| "Unknown Album".to_string());
+    let genre = tag
+        .genre()
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "Unknown Genre".to_string());
 
     // Extract album art
     let album_art = tag.album_cover().map(|pic| {
@@ -712,7 +755,11 @@ pub fn get_cached_album_art(path: String) -> Option<String> {
 
 #[frb(sync)]
 pub fn get_current_song_path() -> Option<String> {
-    PLAYER.lock().unwrap().as_ref().map(|p| p.current_file.lock().unwrap().clone())
+    PLAYER
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(|p| p.current_file.lock().unwrap().clone())
 }
 
 #[frb(sync)]
@@ -720,8 +767,14 @@ pub fn get_realtime_peaks() -> Vec<f32> {
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         if let Some(ref buffer) = *player.buffer.lock().unwrap() {
             let guard = buffer.chunks.lock().unwrap();
-            guard.iter()
-                .map(|chunk| chunk.samples.iter().fold(0.0f32, |acc, &x| acc.max(x.abs())))
+            guard
+                .iter()
+                .map(|chunk| {
+                    chunk
+                        .samples
+                        .iter()
+                        .fold(0.0f32, |acc, &x| acc.max(x.abs()))
+                })
                 .collect()
         } else {
             Vec::new()
@@ -749,23 +802,35 @@ pub fn is_playing() -> bool {
 /// Note: This requires FFmpeg to be installed on your Linux system.
 
 #[frb(sync)]
-pub fn extract_waveform_from_mp3(mp3_path: String, sample_count: Option<u32>, channels: Option<u32>) -> Result<Vec<f64>, String> {
+pub fn extract_waveform_from_mp3(
+    mp3_path: String,
+    sample_count: Option<u32>,
+    channels: Option<u32>,
+) -> Result<Vec<f64>, String> {
     let sample_count = sample_count.unwrap_or(1000) as usize;
     let channels = channels.unwrap_or(2);
     let output = Command::new("ffmpeg")
         .args(&[
             "-hide_banner",
-            "-loglevel", "error",
-            "-i", &mp3_path,
-            "-f", "s16le",
-            "-acodec", "pcm_s16le",
-            "-ac", &channels.to_string(),
-            "-"
+            "-loglevel",
+            "error",
+            "-i",
+            &mp3_path,
+            "-f",
+            "s16le",
+            "-acodec",
+            "pcm_s16le",
+            "-ac",
+            &channels.to_string(),
+            "-",
         ])
         .output()
         .map_err(|e| format!("Failed to start ffmpeg: {}", e))?;
     if !output.status.success() {
-        return Err(format!("FFmpeg exited with code {}. Ensure FFmpeg is installed and the file exists.", output.status));
+        return Err(format!(
+            "FFmpeg exited with code {}. Ensure FFmpeg is installed and the file exists.",
+            output.status
+        ));
     }
     let pcm_bytes = output.stdout;
     let sample_size_in_bytes = 2;
@@ -781,8 +846,11 @@ pub fn extract_waveform_from_mp3(mp3_path: String, sample_count: Option<u32>, ch
         let mut count = 0;
         for ch in 0..channels as usize {
             let offset = (frame * channels as usize + ch) * sample_size_in_bytes;
-            if offset + sample_size_in_bytes > pcm_bytes.len() { break; }
-            let sample_value = i16::from_le_bytes([pcm_bytes[offset], pcm_bytes[offset + 1]]) as f64;
+            if offset + sample_size_in_bytes > pcm_bytes.len() {
+                break;
+            }
+            let sample_value =
+                i16::from_le_bytes([pcm_bytes[offset], pcm_bytes[offset + 1]]) as f64;
             sum += sample_value.abs() / 32768.0;
             count += 1;
         }
@@ -818,7 +886,8 @@ pub fn add_separator(separator: String) -> Result<(), String> {
 #[frb(sync)]
 pub fn remove_separator(separator: &str) -> Result<(), String> {
     let mut separators = SEPARATORS.write().unwrap();
-    let index = separators.iter()
+    let index = separators
+        .iter()
         .position(|s| s == separator)
         .ok_or_else(|| "Separator not found".to_string())?;
     separators.remove(index);
@@ -866,11 +935,12 @@ pub fn download_to_temp(query: String) -> Result<String, String> {
     // Reset cancellation flag at the start of the download.
     CANCEL_DOWNLOAD.store(false, Ordering::SeqCst);
     let (tx, rx) = mpsc::channel();
-    
+
     std::thread::spawn(move || {
         let result = (|| {
             let temp_dir = std::env::temp_dir();
-            let temp_path = temp_dir.to_str()
+            let temp_path = temp_dir
+                .to_str()
                 .ok_or("Failed to get temp directory")?
                 .to_string();
 
@@ -879,8 +949,10 @@ pub fn download_to_temp(query: String) -> Result<String, String> {
             let mut child: Child = Command::new("spotdl")
                 .args(&[
                     "--no-cache",
-                    "--format", "mp3",
-                    "--output", &output_path,
+                    "--format",
+                    "mp3",
+                    "--output",
+                    &output_path,
                     &query,
                 ])
                 .spawn()
@@ -900,19 +972,19 @@ pub fn download_to_temp(query: String) -> Result<String, String> {
                             return Err(format!("Download failed with exit code: {}", status));
                         }
                         break;
-                    },
+                    }
                     Ok(None) => {
                         // Process still running, sleep briefly before polling again.
                         // Best I could think of on 4 hours of sleep
                         std::thread::sleep(Duration::from_millis(100));
-                    },
+                    }
                     Err(e) => return Err(format!("Error waiting for download process: {}", e)),
                 }
             }
 
             let dir = std::fs::read_dir(&temp_path)
                 .map_err(|e| format!("Error reading temp dir: {}", e))?;
-            
+
             for entry in dir {
                 let entry = entry.map_err(|e| format!("Error reading entry: {}", e))?;
                 if let Some(ext) = entry.path().extension() {
@@ -921,7 +993,7 @@ pub fn download_to_temp(query: String) -> Result<String, String> {
                     }
                 }
             }
-            
+
             Err("No MP3 file found after download".into())
         })();
         tx.send(result).unwrap();
@@ -951,10 +1023,13 @@ pub fn clear_mp3_cache() -> bool {
 pub fn get_artist_via_ffprobe(file_path: String) -> Result<Vec<String>, String> {
     let output = Command::new("ffprobe")
         .args(&[
-            "-v", "error",
-            "-show_entries", "format_tags=artist",
-            "-of", "default=nw=1:nk=1",
-            &file_path
+            "-v",
+            "error",
+            "-show_entries",
+            "format_tags=artist",
+            "-of",
+            "default=nw=1:nk=1",
+            &file_path,
         ])
         .output()
         .map_err(|e| format!("Failed to start ffprobe: {}", e))?;
@@ -971,11 +1046,16 @@ pub fn get_artist_via_ffprobe(file_path: String) -> Result<Vec<String>, String> 
 
     let separators = SEPARATORS.read().unwrap();
 
-    let joined = separators.iter().map(|s| regex::escape(s)).collect::<Vec<_>>().join("|");
- 
+    let joined = separators
+        .iter()
+        .map(|s| regex::escape(s))
+        .collect::<Vec<_>>()
+        .join("|");
+
     let regex = Regex::new(&format!(r"\s*(?:{})\s*", joined)).map_err(|e| e.to_string())?;
- 
-    Ok(regex.split(&artist_line)
+
+    Ok(regex
+        .split(&artist_line)
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect())
