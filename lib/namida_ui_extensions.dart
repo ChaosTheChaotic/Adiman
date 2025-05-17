@@ -170,11 +170,6 @@ class _WaveformPainter extends CustomPainter {
   }
 }
 
-///
-/// The NamidaThumbnail now accepts an optional [sharedBreathingValue] so that its breathing
-/// effect can be synchronized with the LyricsOverlay. If [sharedBreathingValue] is provided,
-/// it is used instead of the internal animation value.
-///
 class NamidaThumbnail extends StatefulWidget {
   final ImageProvider image;
   final bool isPlaying;
@@ -271,6 +266,8 @@ class _NamidaThumbnailState extends State<NamidaThumbnail>
     return AnimatedBuilder(
       animation: Listenable.merge([_breathingController, _peakController]),
       builder: (context, _) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
         return Transform.scale(
           scale: breathingValue + (peakValue - 1.0),
           child: Container(
@@ -297,6 +294,7 @@ class _NamidaThumbnailState extends State<NamidaThumbnail>
         );
       },
     );
+   });
   }
 }
 
@@ -659,11 +657,6 @@ class ParticlePlayButton extends StatelessWidget {
   }
 }
 
-///
-/// The LyricsOverlay now accepts an optional [sharedBreathingValue] so that its breathing
-/// animation can be synchronized with NamidaThumbnail. When provided, the same breathing value
-/// is used in computing the combined scale.
-///
 class LyricsOverlay extends StatefulWidget {
   final lrc_pkg.Lrc lrc;
   final Duration currentPosition;
@@ -672,12 +665,14 @@ class LyricsOverlay extends StatefulWidget {
   final double currentPeak;
   final double? sharedBreathingValue;
   final Function(Duration)? onLyricTap;
+  final bool isPlaying;
 
   const LyricsOverlay({
     super.key,
     required this.lrc,
     required this.currentPosition,
     required this.dominantColor,
+    required this.isPlaying,
     this.scale = 1.0,
     this.currentPeak = 0.0,
     this.sharedBreathingValue,
@@ -692,10 +687,34 @@ class _LyricsOverlayState extends State<LyricsOverlay>
     with SingleTickerProviderStateMixin {
   final _scrollController = ScrollController();
   final _currentLyricNotifier = ValueNotifier<int>(-1);
+  late AnimationController _breathingController;
+  late AnimationController _peakController;
+  late Animation<double> _breathingAnimation;
+  late Animation<double> _peakAnimation;
+  double _targetPeakScale = 1.0;
 
   @override
   void initState() {
     super.initState();
+    _breathingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _breathingAnimation = Tween<double>(begin: 0.97, end: 1.03).animate(
+      CurvedAnimation(parent: _breathingController, curve: Curves.easeInOut),
+    );
+    
+    _peakController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    )..value = 1.0;
+    _peakAnimation = Tween<double>(begin: 1.0, end: 1.0).animate(
+      CurvedAnimation(parent: _peakController, curve: Curves.easeOut),
+    );
+
+    if (widget.isPlaying) {
+      _breathingController.repeat(reverse: true);
+    }
     _currentLyricNotifier.addListener(_scrollToCurrentLyric);
     _updateCurrentLyric();
   }
@@ -724,6 +743,26 @@ class _LyricsOverlayState extends State<LyricsOverlay>
   void didUpdateWidget(covariant LyricsOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
     _updateCurrentLyric(); 
+    if (widget.isPlaying != oldWidget.isPlaying) {
+      if (widget.isPlaying) {
+        _breathingController.repeat(reverse: true);
+      } else {
+        _breathingController.stop();
+      }
+    }
+    
+    if (widget.currentPeak != oldWidget.currentPeak) {
+      _targetPeakScale = 1.0 + (widget.currentPeak * 0.05);
+      _peakAnimation = Tween<double>(
+        begin: _peakAnimation.value,
+        end: _targetPeakScale,
+      ).animate(
+        CurvedAnimation(parent: _peakController, curve: Curves.easeOut),
+      );
+      _peakController
+        ..value = 0.0
+        ..forward();
+    }
   }
 
   void _updateCurrentLyric() {
@@ -742,103 +781,107 @@ class _LyricsOverlayState extends State<LyricsOverlay>
 
   @override
   Widget build(BuildContext context) {
-    final breathingValue = widget.sharedBreathingValue ?? 1.0;
-    final peakScale = 1.0 + (widget.currentPeak * 0.05);
-    final combinedScale = breathingValue + (peakScale - 1.0);
+    final breathingValue = widget.sharedBreathingValue ?? _breathingAnimation.value;
+    final peakValue = _peakAnimation.value;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Transform.scale(
-          scale: combinedScale,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTapDown: (details) {
-	      if (widget.lrc.lyrics.isEmpty) return;
-                final box = context.findRenderObject() as RenderBox;
-                final localPosition = box.globalToLocal(details.globalPosition);
-                final lyricIndex = (localPosition.dy ~/ 65)
-                    .clamp(0, widget.lrc.lyrics.length - 1);
-                widget.onLyricTap?.call(widget.lrc.lyrics[lyricIndex].timestamp);
-              },
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                child: Container(
-                  width: constraints.maxWidth,
-                  height: constraints.maxHeight,
-                  decoration: const BoxDecoration(color: Colors.transparent),
-                  child: ValueListenableBuilder<int>(
-                    valueListenable: _currentLyricNotifier,
-                    builder: (context, currentIndex, _) {
-                      return ListView.builder(
-                        controller: _scrollController,
-                        physics: const BouncingScrollPhysics(),
-                        padding: EdgeInsets.zero,
-                        itemCount: widget.lrc.lyrics.length,
-                        itemBuilder: (context, index) {
-                          final lyric = widget.lrc.lyrics[index];
-                          final isCurrent = index == currentIndex;
-			  final textColor = isCurrent 
-			  ? widget.dominantColor 
-			  : (widget.dominantColor.computeLuminance() > 0.3 
-			  ? Colors.black 
-			  : Colors.white).withValues(alpha:0.6);
-                          return InkWell(
-                            onTap: () =>
-                                widget.onLyricTap?.call(lyric.timestamp),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              child: AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                                style: TextStyle(
-                                  fontSize: isCurrent ? 28 : 20,
-				  color: textColor,
-                                  fontWeight: isCurrent
-                                      ? FontWeight.w800
-                                      : FontWeight.normal,
-                                  shadows: isCurrent
-                                      ? [
-                                          Shadow(
-                                            color: Colors.black.withValues(alpha:0.5),
-                                            blurRadius: 15,
-                                          )
-                                        ]
-                                      : null,
-                                ),
-                                child: GlowText(
-                                  lyric.lyrics,
-                                  textAlign: TextAlign.center,
-                                  glowColor: isCurrent
-                                      ? (widget.dominantColor.withValues(alpha:0.3).computeLuminance() > 0.3 ? Colors.black : Colors.white)
-                                      : Colors.transparent,
-                                  blurRadius: 15,
-				  style: TextStyle(
-				  shadows: [
-				  Shadow(
-				  color: Colors.black.withValues(alpha:0.7),
-				  blurRadius: 0,
-				  offset: Offset(1, 1),
-				),
-				  ],
-				),
+    return AnimatedBuilder(
+      animation: Listenable.merge([_breathingController, _peakController]),
+      builder: (context, _) {
+        return LayoutBuilder(
+        builder: (context, constraints) {
+          return Transform.scale(
+            scale: breathingValue + (peakValue - 1.0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTapDown: (details) {
+  	      if (widget.lrc.lyrics.isEmpty) return;
+                  final box = context.findRenderObject() as RenderBox;
+                  final localPosition = box.globalToLocal(details.globalPosition);
+                  final lyricIndex = (localPosition.dy ~/ 65)
+                      .clamp(0, widget.lrc.lyrics.length - 1);
+                  widget.onLyricTap?.call(widget.lrc.lyrics[lyricIndex].timestamp);
+                },
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                  child: Container(
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    decoration: const BoxDecoration(color: Colors.transparent),
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: _currentLyricNotifier,
+                      builder: (context, currentIndex, _) {
+                        return ListView.builder(
+                          controller: _scrollController,
+                          physics: const BouncingScrollPhysics(),
+                          padding: EdgeInsets.zero,
+                          itemCount: widget.lrc.lyrics.length,
+                          itemBuilder: (context, index) {
+                            final lyric = widget.lrc.lyrics[index];
+                            final isCurrent = index == currentIndex;
+  			  final textColor = isCurrent 
+  			  ? widget.dominantColor 
+  			  : (widget.dominantColor.computeLuminance() > 0.3 
+  			  ? Colors.black 
+  			  : Colors.white).withValues(alpha:0.6);
+                            return InkWell(
+                              onTap: () =>
+                                  widget.onLyricTap?.call(lyric.timestamp),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: AnimatedDefaultTextStyle(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                  style: TextStyle(
+                                    fontSize: isCurrent ? 28 : 20,
+  				  color: textColor,
+                                    fontWeight: isCurrent
+                                        ? FontWeight.w800
+                                        : FontWeight.normal,
+                                    shadows: isCurrent
+                                        ? [
+                                            Shadow(
+                                              color: Colors.black.withValues(alpha:0.5),
+                                              blurRadius: 15,
+                                            )
+                                          ]
+                                        : null,
+                                  ),
+                                  child: GlowText(
+                                    lyric.lyrics,
+                                    textAlign: TextAlign.center,
+                                    glowColor: isCurrent
+                                        ? (widget.dominantColor.withValues(alpha:0.3).computeLuminance() > 0.3 ? Colors.black : Colors.white)
+                                        : Colors.transparent,
+                                    blurRadius: 15,
+  				  style: TextStyle(
+  				  shadows: [
+  				  Shadow(
+  				  color: Colors.black.withValues(alpha:0.7),
+  				  blurRadius: 0,
+  				  offset: Offset(1, 1),
+      				        ),
+      				      ],
+      			            ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          );
-                        },
-                      );
-                    },
+      		            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        );
-      },
-    );
-  }
+          );
+        },
+      );
+    }
+  );
+}
 
   @override
   void dispose() {

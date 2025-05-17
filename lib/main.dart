@@ -5514,6 +5514,7 @@ Future<void> _deleteSongFile(Song song) async {
                         if (_showLyrics && _lrcData != null && _rupdateLyricsStatus())
                           Positioned.fill(
                             child: LyricsOverlay(
+			      isPlaying: isPlaying,
                               key: ValueKey(currentSong.path),
                               lrc: _lrcData!,
                               currentPosition: Duration(
