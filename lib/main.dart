@@ -5076,7 +5076,6 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         'track_name': currentSong.title,
         'artist_name': currentSong.artist,
         if (currentSong.album.isNotEmpty) 'album_name': currentSong.album,
-        //if (currentSong.duration != null)
         'duration': currentSong.duration.inSeconds.toString(),
       };
 
@@ -5085,7 +5084,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         uri,
         headers: {
           'User-Agent':
-              'Adiman/1.0.0 (https://github.com/notYetOnGithub/adiman)',
+              'Adiman (https://github.com/ChaosTheChaotic/Adiman)',
         },
       );
 
