@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-flutter_rust_bridge = "=2.9.0"
+flutter_rust_bridge = "=2.10.0"
 rodio = { version = "0.20.1", features = ["symphonia-all"] }
 serde = { version = "1.0", features = ["derive"] }
 walkdir = "2.3.3"
@@ -19,7 +19,7 @@ sha2 = "0.10.8"
 audiotags = "0.5.0"
 
 [build-dependencies]
-flutter_rust_bridge_codegen = "=2.9.0"
+flutter_rust_bridge_codegen = "=2.10.0"
 
 [lints.rust]
 unsafe_code = "allow"

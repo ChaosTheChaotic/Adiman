@@ -42,6 +42,48 @@ static void my_application_activate(GApplication* application) {
     gtk_widget_show(GTK_WIDGET(header_bar));
     gtk_header_bar_set_title(header_bar, "adiman");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
+    
+    GtkCssProvider* provider = gtk_css_provider_new();
+    const char* css = R"(
+      headerbar {
+        background-color: rgba(0, 0, 0, 0.65);
+        border: none;
+        box-shadow: none;
+        padding: 4px;
+      }
+      headerbar button {
+        color: #ffffff;
+        border-radius: 999px;
+        padding: 0;
+        margin: 4px 2px;
+        min-width: 34px;
+        min-height: 34px;
+        -gtk-icon-shadow: none;
+        background-image: none;
+        border: none;
+        box-shadow: none;
+        background-color: rgba(255, 255, 255, 0.08);
+        transition: all 150ms ease;
+      }
+      headerbar button:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+      }
+      headerbar button:active {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+      headerbar button.close:hover {
+        background-color: rgba(255, 55, 55, 0.3);
+      }
+      headerbar button.close:active {
+        background-color: rgba(255, 55, 55, 0.4);
+      }
+    )";
+    gtk_css_provider_load_from_data(provider, css, -1, NULL);
+    GtkStyleContext* context = gtk_widget_get_style_context(GTK_WIDGET(header_bar));
+    gtk_style_context_add_provider(context, 
+      GTK_STYLE_PROVIDER(provider), 
+      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION
+    );
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
     gtk_window_set_title(window, "adiman");

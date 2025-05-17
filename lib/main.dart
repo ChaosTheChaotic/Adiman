@@ -203,15 +203,15 @@ class _MiniPlayerState extends State<MiniPlayer>
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    if (song.albumArt == null) return Colors.purple.shade900;
+    if (song.albumArt == null) return Color(0xFF383770);
     try {
       final imageBytes = base64Decode(song.albumArt!);
       final codec = await ui.instantiateImageCodec(imageBytes);
       final frame = await codec.getNextFrame();
       final palette = await PaletteGenerator.fromImage(frame.image);
-      return palette.dominantColor?.color ?? Colors.purple.shade900;
+      return palette.dominantColor?.color ?? Color(0xFF383770);
     } catch (e) {
-      return Colors.purple.shade900;
+      return Color(0xFF383770);
     }
   }
 
@@ -465,7 +465,7 @@ class MyApp extends StatelessWidget {
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         scrollbars: false,
       ),
-      theme: _buildDynamicTheme(Colors.purple),
+      theme: _buildDynamicTheme(Color(0xFF383770)),
       home: const SongSelectionScreen(),
     );
   }
@@ -540,7 +540,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   Song? currentSong;
   int currentIndex = 0;
   bool showMiniPlayer = false;
-  Color dominantColor = Colors.purple.shade900;
+  Color dominantColor = Color(0xFF383770);
   final ScrollController _scrollController = ScrollController();
   double _lastOffset = 0;
   late AnimationController _extraHeaderController;
@@ -680,6 +680,7 @@ void _toggleSongSelection(Song song, bool selected) {
     bool isDestructive = false,
   }) {
     final color = isDestructive ? Colors.redAccent : dominantColor;
+    final iconColor = isDestructive ? Colors.redAccent : dominantColor.computeLuminance() > 0.007 ? dominantColor :  Theme.of(context).textTheme.bodyLarge?.color;
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(15),
@@ -696,7 +697,7 @@ void _toggleSongSelection(Song song, bool selected) {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              GlowIcon(icon, color: color, blurRadius: 8, size: 24),
+              GlowIcon(icon, color: iconColor, blurRadius: 8, size: 24),
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
@@ -751,11 +752,11 @@ void _toggleSongSelection(Song song, bool selected) {
                         children: [
                           GlowText(
                             'Select Playlist',
-                            glowColor: dominantColor.withValues(alpha: 0.3),
+                            glowColor: (dominantColor.computeLuminance() > 0.007) ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color!.withValues(alpha: 0.3),
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
-                              color: dominantColor,
+                              color: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -802,7 +803,7 @@ void _toggleSongSelection(Song song, bool selected) {
                                         children: [
                                           GlowIcon(
                                             Icons.queue_music_rounded,
-                                            color: dominantColor,
+                                            color: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                                             blurRadius: 8,
                                             size: 24,
                                           ),
@@ -823,7 +824,7 @@ void _toggleSongSelection(Song song, bool selected) {
                                           IconButton(
                                             icon: GlowIcon(
                                               Icons.edit_rounded,
-                                              color: dominantColor,
+                                              color: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                                               blurRadius: 8,
                                               size: 20,
                                             ),
@@ -1025,7 +1026,7 @@ void _toggleSongSelection(Song song, bool selected) {
                                   children: [
                                     Icon(
                                       Icons.library_music_rounded,
-                                      color: dominantColor,
+                                      color: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                                     ),
                                     const SizedBox(width: 16),
                                     Text(
@@ -1239,7 +1240,7 @@ void _handleMultiSelectAction() async {
                           child: TextField(
                             controller: controller,
                             style: TextStyle(color: Colors.white),
-                            cursorColor: dominantColor,
+                            cursorColor: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                             decoration: InputDecoration(
                               contentPadding: EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -1372,15 +1373,15 @@ Future<void> _loadSongs() async {
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    if (song.albumArt == null) return Colors.purple.shade900;
+    if (song.albumArt == null) return Color(0xFF383770);
     try {
       final imageBytes = base64Decode(song.albumArt!);
       final codec = await ui.instantiateImageCodec(imageBytes);
       final frame = await codec.getNextFrame();
       final palette = await PaletteGenerator.fromImage(frame.image);
-      return palette.dominantColor?.color ?? Colors.purple.shade900;
+      return palette.dominantColor?.color ?? Color(0xFF383770);
     } catch (e) {
-      return Colors.purple.shade900;
+      return Color(0xFF383770);
     }
   }
 
@@ -1626,11 +1627,11 @@ Future<List<String>?> _showMultiPlaylistSelection(
                       children: [
                         GlowText(
                           'Select Playlists to Merge',
-                          glowColor: dominantColor.withValues(alpha: 0.3),
+                          glowColor: (dominantColor.computeLuminance() > 0.007) ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color!.withValues(alpha: 0.3),
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
-                            color: dominantColor,
+                            color: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -1705,9 +1706,9 @@ Future<List<String>?> _showMultiPlaylistSelection(
                                             ? Center(
                                                 child: GlowIcon(
                                                   Icons.check_rounded,
-                                                  color: dominantColor,
+                                        	  color: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                                                   size: 18,
-                                                  glowColor: dominantColor.withValues(alpha: 0.5),
+                                                  glowColor: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color!.withValues(alpha: 0.5),
                                                   blurRadius: 8,
                                                 ),
                                               )
@@ -1724,16 +1725,6 @@ Future<List<String>?> _showMultiPlaylistSelection(
                                         fontSize: 16,
                                       ),
                                     ),
-                                    trailing: isSelected
-                                        ? GlowIcon(
-                                            Icons.check_rounded,
-                                            color: dominantColor,
-                                            glowColor:
-                                                dominantColor.withValues(alpha: 0.5),
-                                            blurRadius: 8,
-                                            size: 20,
-                                          )
-                                        : null,
                                     onTap: () {
                                       setStateDialog(() {
                                         if (isSelected) {
@@ -1849,7 +1840,7 @@ Future<List<String>?> _showMultiPlaylistSelection(
                         child: TextField(
                           controller: controller,
                           style: const TextStyle(color: Colors.white),
-                          cursorColor: dominantColor,
+                          cursorColor: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                           decoration: InputDecoration(
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
@@ -2602,7 +2593,7 @@ Future<bool> _showDeleteConfirmationDialog(Song song, {bool multipleItems = fals
                             child: Center(
                               child: CircularProgressIndicator(
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.purple,
+                                  Color(0xFF383770),
                                 ),
                               ),
                             ),
@@ -2750,7 +2741,7 @@ Future<bool> _showDeleteConfirmationDialog(Song song, {bool multipleItems = fals
                                               SortOption.title)
                                             Icon(
                                               Icons.check,
-                                              color: dominantColor,
+                                              color: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                                               size: 18,
                                             ),
                                           if (_selectedSortOption ==
@@ -2768,7 +2759,7 @@ Future<bool> _showDeleteConfirmationDialog(Song song, {bool multipleItems = fals
                                               SortOption.titleReversed)
                                             Icon(
                                               Icons.check,
-                                              color: dominantColor,
+                                              color: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                                               size: 18,
                                             ),
                                           if (_selectedSortOption ==
@@ -2786,7 +2777,7 @@ Future<bool> _showDeleteConfirmationDialog(Song song, {bool multipleItems = fals
                                               SortOption.artist)
                                             Icon(
                                               Icons.check,
-                                              color: dominantColor,
+                                              color: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                                               size: 18,
                                             ),
                                           if (_selectedSortOption ==
@@ -2804,7 +2795,7 @@ Future<bool> _showDeleteConfirmationDialog(Song song, {bool multipleItems = fals
                                               SortOption.artistReversed)
                                             Icon(
                                               Icons.check,
-                                              color: dominantColor,
+                                              color: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                                               size: 18,
                                             ),
                                           if (_selectedSortOption ==
@@ -2822,7 +2813,7 @@ Future<bool> _showDeleteConfirmationDialog(Song song, {bool multipleItems = fals
                                               SortOption.genre)
                                             Icon(
                                               Icons.check,
-                                              color: dominantColor,
+                                              color: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                                               size: 18,
                                             ),
                                           if (_selectedSortOption ==
@@ -2840,7 +2831,7 @@ Future<bool> _showDeleteConfirmationDialog(Song song, {bool multipleItems = fals
                                               SortOption.genreReversed)
                                             Icon(
                                               Icons.check,
-                                              color: dominantColor,
+                                              color: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                                               size: 18,
                                             ),
                                           if (_selectedSortOption ==
@@ -2912,7 +2903,7 @@ Future<bool> _showDeleteConfirmationDialog(Song song, {bool multipleItems = fals
                                           color: textColor,
                                           fontSize: 16,
                                         ),
-                                        cursorColor: dominantColor,
+                        		cursorColor: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                                         decoration: InputDecoration(
                                           hintText: 'Search songs...',
                                           hintStyle: TextStyle(
@@ -3052,7 +3043,7 @@ class SettingsScreen extends StatefulWidget {
     required this.onReloadLibrary,
     this.currentSong,
     this.currentIndex = 0,
-    this.dominantColor = Colors.purple,
+    this.dominantColor = const Color(0xFF383770),
     required this.songs,
     required this.musicFolder,
     this.onUpdateMiniPlayer,
@@ -3280,10 +3271,8 @@ Widget _buildSettingsSwitch(
 
   @override
   Widget build(BuildContext context) {
-    final textColor =
-        _currentColor.computeLuminance() > 0.007 ? _currentColor : Colors.white;
-    final buttonTextColor =
-        _currentColor.computeLuminance() > 0.007 ? Colors.white : Colors.black;
+    final textColor = _currentColor.computeLuminance() > 0.007 ? _currentColor : Theme.of(context).textTheme.bodyLarge?.color;
+    final buttonTextColor = Theme.of(context).textTheme.bodyLarge?.color;
 
     return RawKeyboardListener(
       focusNode: FocusNode(),
@@ -3364,11 +3353,11 @@ Widget _buildSettingsSwitch(
                       child: TextField(
                         controller: _musicFolderController,
                         style: TextStyle(color: textColor, fontSize: 16),
-                        cursorColor: _currentColor,
+                            cursorColor: _currentColor.computeLuminance() > 0.007 ? _currentColor : Theme.of(context).textTheme.bodyLarge?.color,
                         decoration: InputDecoration(
                           hintText: 'Enter music folder path...',
                           hintStyle: TextStyle(
-                            color: textColor.withValues(alpha: 0.6),
+                            color: textColor!.withValues(alpha: 0.6),
                             fontWeight: FontWeight.w300,
                           ),
                           prefixIcon: Icon(
@@ -3605,7 +3594,7 @@ Future<void> _showSeparatorManagementPopup() async {
                             child: TextFormField(
                               controller: _addController,
                               style: TextStyle(color: Colors.white),
-                              cursorColor: _currentColor,
+                              cursorColor: _currentColor.computeLuminance() > 0.007 ? _currentColor : Theme.of(context).textTheme.bodyLarge?.color,
                               decoration: InputDecoration(
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -3907,8 +3896,9 @@ Future<void> _showSeparatorManagementPopup() async {
     required bool isLoading,
     required VoidCallback onPressed,
   }) {
-    final textColor =
-        _currentColor.computeLuminance() > 0.007 ? Colors.white : Colors.black;
+    //final textColor =
+    //    _currentColor.computeLuminance() > 0.007 ? Colors.white : Colors.black;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color;
 
     return Material(
       color: Colors.transparent,
@@ -3958,7 +3948,7 @@ Future<void> _showSeparatorManagementPopup() async {
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: textColor.withValues(alpha: 0.5),
+                color: textColor!.withValues(alpha: 0.5),
               ),
             ],
           ),
@@ -3996,7 +3986,7 @@ class SongListTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.purple.withValues(alpha: 0.2),
+                      color: Color(0xFF383770).withValues(alpha: 0.2),
                       blurRadius: 5,
                       spreadRadius: 1,
                     ),
@@ -4153,7 +4143,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
     _focusNode = FocusNode();
     _focusNode.requestFocus();
-    dominantColor = Colors.purple.shade900;
+    dominantColor = Color(0xFF383770);
     currentSong = widget.song;
     currentIndex = widget.currentIndex;
     _playPauseController = AnimationController(
@@ -4313,6 +4303,7 @@ Widget _buildPlaylistOptionButton({
   bool isDestructive = false,
 }) {
   final color = isDestructive ? Colors.redAccent : dominantColor;
+  final iconColor = isDestructive ? Colors.redAccent : Theme.of(context).textTheme.bodyLarge?.color;
   return Material(
     color: Colors.transparent,
     borderRadius: BorderRadius.circular(15),
@@ -4330,7 +4321,7 @@ Widget _buildPlaylistOptionButton({
         margin: const EdgeInsets.only(bottom: 8),
         child: Row(
           children: [
-            GlowIcon(icon, color: color, size: 24),
+            GlowIcon(icon, color: iconColor, size: 24),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -4407,7 +4398,7 @@ Widget _buildPlaylistOptionButton({
                         child: TextField(
                           controller: controller,
                           style: const TextStyle(color: Colors.white),
-                          cursorColor: dominantColor,
+                          cursorColor: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                           decoration: InputDecoration(
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
@@ -5007,12 +4998,12 @@ Future<void> _deleteSongFile(Song song) async {
       if (mounted) {
         setState(() {
           dominantColor =
-              palette.dominantColor?.color ?? Colors.purple.shade900;
+              palette.dominantColor?.color ?? Color(0xFF383770);
         });
       }
     } catch (e) {
       NamidaSnackbar(backgroundColor: dominantColor, content: 'Error generating dominant color: $e');
-      if (mounted) setState(() => dominantColor = Colors.purple.shade900);
+      if (mounted) setState(() => dominantColor = Color(0xFF383770));
     }
   }
 
@@ -5513,7 +5504,7 @@ Future<void> _deleteSongFile(Song song) async {
                                       base64Decode(currentSong.albumArt!),
                                     )
                                     : const AssetImage(
-                                          'assets/default_album.png',
+                                          'assets/default_album.png', // do this sometime soon (cuz i will and wont procastinate)
                                         )
                                         as ImageProvider,
                             isPlaying: isPlaying,
@@ -5921,7 +5912,7 @@ class _DownloadScreenState extends State<DownloadScreen>
   final FocusNode _searchFocus = FocusNode();
   Track? _currentTrack;
   late AnimationController _breathingController;
-  Color _dominantColor = Colors.purple;
+  Color _dominantColor = Color(0xFF383770);
   late FocusNode _focusNode;
   bool _isDownloading = false;
   Song? _tempSong;
@@ -5962,11 +5953,11 @@ class _DownloadScreenState extends State<DownloadScreen>
             final frame = await codec.getNextFrame();
             final palette = await PaletteGenerator.fromImage(frame.image);
             setState(() {
-              _dominantColor = palette.dominantColor?.color ?? Colors.purple;
+              _dominantColor = palette.dominantColor?.color ?? Color(0xFF383770);
             });
           } catch (e) {
-            NamidaSnackbar(backgroundColor: Colors.purple, content: 'Error generating dominant color: $e');
-            setState(() => _dominantColor = Colors.purple);
+            NamidaSnackbar(backgroundColor: Color(0xFF383770), content: 'Error generating dominant color: $e');
+            setState(() => _dominantColor = Color(0xFF383770));
           }
         }
 
@@ -6137,7 +6128,7 @@ Widget build(BuildContext context) {
                 onClose: () {
                   setState(() {
                     _tempSong = null;
-                    _dominantColor = Colors.purple;
+                    _dominantColor = Color(0xFF383770);
                   });
                   rust_api.stopSong();
                 },

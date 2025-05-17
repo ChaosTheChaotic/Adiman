@@ -50,7 +50,7 @@ class WaveformSeekBar extends StatefulWidget {
     super.key,
     required this.waveformData,
     required this.progress,
-    this.activeColor = Colors.purple,
+    this.activeColor = const Color(0xFF383770),
     this.inactiveColor = Colors.grey,
     required this.onSeek,
   });
@@ -200,22 +200,31 @@ class NamidaThumbnail extends StatefulWidget {
 class _NamidaThumbnailState extends State<NamidaThumbnail>
     with SingleTickerProviderStateMixin {
   late AnimationController _breathingController;
+  late AnimationController _peakController;
   late Animation<double> _breathingAnimation;
+  late Animation<double> _peakAnimation;
+  double _targetPeakScale = 1.0;
 
   @override
   void initState() {
     super.initState();
+    
     _breathingController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    _breathingAnimation = Tween<double>(
-      begin: 0.97,
-      end: 1.03,
-    ).animate(CurvedAnimation(
-      parent: _breathingController,
-      curve: Curves.easeInOut,
-    ));
+    _breathingAnimation = Tween<double>(begin: 0.97, end: 1.03).animate(
+      CurvedAnimation(parent: _breathingController, curve: Curves.easeInOut),
+    );
+    
+    _peakController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    )..value = 1.0;
+    _peakAnimation = Tween<double>(begin: 1.0, end: 1.0).animate(
+      CurvedAnimation(parent: _peakController, curve: Curves.easeOut),
+    );
+
     if (widget.isPlaying) {
       _breathingController.repeat(reverse: true);
     }
@@ -224,55 +233,69 @@ class _NamidaThumbnailState extends State<NamidaThumbnail>
   @override
   void didUpdateWidget(NamidaThumbnail oldWidget) {
     super.didUpdateWidget(oldWidget);
+    
     if (widget.isPlaying != oldWidget.isPlaying) {
       if (widget.isPlaying) {
         _breathingController.repeat(reverse: true);
       } else {
         _breathingController.stop();
       }
-    } 
+    }
+    
+    if (widget.currentPeak != oldWidget.currentPeak) {
+      _targetPeakScale = 1.0 + (widget.currentPeak * 0.05);
+      _peakAnimation = Tween<double>(
+        begin: _peakAnimation.value,
+        end: _targetPeakScale,
+      ).animate(
+        CurvedAnimation(parent: _peakController, curve: Curves.easeOut),
+      );
+      _peakController
+        ..value = 0.0
+        ..forward();
+    }
   }
 
   @override
   void dispose() {
     _breathingController.dispose();
+    _peakController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final breathingValue =
-        widget.sharedBreathingValue ?? _breathingAnimation.value;
-    final peakScale = 1.0 + (widget.currentPeak * 0.05);
-    final combinedScale =
-        widget.showBreathingEffect ? peakScale * breathingValue : peakScale;
-
-    return Transform.scale(
-      scale: combinedScale,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 100),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.white.withValues(alpha:breathingValue * 0.3),
-                spreadRadius: breathingValue * 6,
-                blurRadius: 30,
-		blurStyle: BlurStyle.outer,
+    final breathingValue = widget.sharedBreathingValue ?? _breathingAnimation.value;
+    final peakValue = _peakAnimation.value;
+    
+    return AnimatedBuilder(
+      animation: Listenable.merge([_breathingController, _peakController]),
+      builder: (context, _) {
+        return Transform.scale(
+          scale: breathingValue + (peakValue - 1.0),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.white.withAlpha((breathingValue * 70).toInt()),
+                  spreadRadius: breathingValue * 6,
+                  blurRadius: 30,
+                  blurStyle: BlurStyle.outer,
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image(
+                image: widget.image,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
               ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image(
-              image: widget.image,
-              fit: BoxFit.cover,
-              gaplessPlayback: true,
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

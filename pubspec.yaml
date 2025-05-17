@@ -36,7 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   rust_lib_adiman:
     path: rust_builder
-  flutter_rust_bridge: 2.9.0
+  flutter_rust_bridge: 2.10.0
   palette_generator: ^0.3.3+6
   path_provider: ^2.1.5
   flutter_glow: ^0.3.2

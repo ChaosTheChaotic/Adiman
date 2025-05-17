@@ -60,7 +60,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 # Screenshots
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
-  <img src="images/main-screen-2.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+  <img src="images/main-screen.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
   <img src="images/music-player.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
   <img src="images/settings.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
   <img src="images/download.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
