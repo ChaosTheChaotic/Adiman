@@ -744,7 +744,7 @@ class _LyricsOverlayState extends State<LyricsOverlay>
   Widget build(BuildContext context) {
     final breathingValue = widget.sharedBreathingValue ?? 1.0;
     final peakScale = 1.0 + (widget.currentPeak * 0.05);
-    final combinedScale = widget.scale * peakScale * breathingValue;
+    final combinedScale = breathingValue + (peakScale - 1.0);
 
     return LayoutBuilder(
       builder: (context, constraints) {

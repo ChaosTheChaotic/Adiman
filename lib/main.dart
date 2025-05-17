@@ -5339,8 +5339,6 @@ Future<void> _deleteSongFile(Song song) async {
         _waveformData.isNotEmpty ? _waveformData[waveformIndex] : 0.0;
     final textColor =
         Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
-    final titleColor =
-        dominantColor.computeLuminance() > 0.007 ? dominantColor : Colors.white;
     _updateParticleOptions();
 
     return RawKeyboardListener(
@@ -5448,7 +5446,7 @@ Future<void> _deleteSongFile(Song song) async {
                             GlowText(
                               currentSong.title,
                               style: TextStyle(
-                                color: titleColor,
+                              color: dominantColor.computeLuminance() > 0.007 ? dominantColor : Theme.of(context).textTheme.bodyLarge?.color,
                                 fontSize: 28,
                                 fontWeight: FontWeight.w700,
                               ),
