@@ -194,7 +194,7 @@ class NamidaThumbnail extends StatefulWidget {
 }
 
 class _NamidaThumbnailState extends State<NamidaThumbnail>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _breathingController;
   late AnimationController _peakController;
   late Animation<double> _breathingAnimation;
