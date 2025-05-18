@@ -1780,6 +1780,7 @@ dependencies = [
 name = "rust_lib_adiman"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "audiotags",
  "base64",
  "flutter_rust_bridge",

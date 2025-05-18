@@ -2,13 +2,14 @@ use audiotags::Tag;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use flutter_rust_bridge::frb;
 use once_cell::sync::Lazy;
+use rayon::prelude::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use regex::Regex;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::cmp::max;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{BufReader, Cursor, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
@@ -214,7 +215,6 @@ impl AudioPlayer {
         while let Ok(message) = receiver.recv() {
             match message {
                 PlayerMessage::Load { path, position } => {
-                    //println!("Loading file: {}", &path);
                     if let Ok(file) = fs::File::open(&path) {
                         let mut reader = BufReader::new(file);
                         if position > 0.0 {
@@ -948,6 +948,8 @@ pub fn download_to_temp(query: String) -> Result<String, String> {
 
             let mut child: Child = Command::new("spotdl")
                 .args(&[
+                    "--log-level",
+                    "DEBUG",
                     "--no-cache",
                     "--format",
                     "mp3",
@@ -1018,7 +1020,8 @@ pub fn clear_mp3_cache() -> bool {
     }
 }
 
-// Here as a temp (hopefully) fix to stop > 1 artist crashing mpris
+// Here as a temp (hopefully) fix to stop > 1 artist crashing mpris until I can find a better way
+// to do it
 #[frb(sync)]
 pub fn get_artist_via_ffprobe(file_path: String) -> Result<Vec<String>, String> {
     let output = Command::new("ffprobe")
@@ -1058,5 +1061,109 @@ pub fn get_artist_via_ffprobe(file_path: String) -> Result<Vec<String>, String> 
         .split(&artist_line)
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
+        .collect())
+}
+
+fn parse_lrc_metadata(
+    content: &str,
+) -> Option<(String, String, String, String, String, Vec<String>)> {
+    let mut title = None;
+    let mut artist = None;
+    let mut path = None;
+    let mut genre = None;
+    let mut album = None;
+    let mut lyrics = Vec::new();
+
+    for line in content.lines() {
+        if line.starts_with("#TITLE: ") {
+            title = Some(line["#TITLE: ".len()..].trim().to_string());
+        } else if line.starts_with("#ARTIST: ") {
+            artist = Some(line["#ARTIST: ".len()..].trim().to_string());
+        } else if line.starts_with("#PATH: ") {
+            path = Some(line["#PATH: ".len()..].trim().to_string());
+        } else if line.starts_with("#GENRE: ") {
+            genre = Some(line["#GENRE: ".len()..].trim().to_string());
+        } else if line.starts_with("#ALBUM: ") {
+            album = Some(line["#ALBUM: ".len()..].trim().to_string());
+        } else if !line.starts_with('#') {
+            lyrics.push(line.to_string());
+        }
+    }
+
+    match (title, artist, path, genre, album) {
+        (Some(t), Some(a), Some(p), Some(g), Some(alb)) => Some((t, a, p, g, alb, lyrics)),
+        _ => None,
+    }
+}
+
+#[frb]
+pub fn search_lyrics(
+    lyrics_dir: String,
+    query: String,
+    song_dir: String,
+) -> anyhow::Result<Vec<SongMetadata>> {
+    let query_lower = query.to_lowercase();
+
+    // Build lookup maps
+    let path_map: HashMap<String, SongMetadata> = scan_music_directory(song_dir, false)
+        .into_iter()
+        .map(|sm| (sm.path.clone(), sm))
+        .collect();
+
+    let mut title_artist_map: HashMap<(String, String, String, String), Vec<SongMetadata>> =
+        HashMap::new();
+    for sm in path_map.values() {
+        title_artist_map
+            .entry((
+                sm.title.clone(),
+                sm.artist.clone(),
+                sm.genre.clone(),
+                sm.album.clone(),
+            ))
+            .or_default()
+            .push(sm.clone());
+    }
+
+    let path_map = Arc::new(path_map);
+    let title_artist_map = Arc::new(title_artist_map);
+
+    // Process LRC files in parallel
+    let entries: Vec<_> =
+        std::fs::read_dir(Path::new(&lyrics_dir))?.collect::<Result<Vec<_>, _>>()?;
+
+    let results: Vec<SongMetadata> = entries
+        .par_iter()
+        .filter_map(|entry| {
+            let path = entry.path();
+            if path.extension().map(|e| e == "lrc").unwrap_or(false) {
+                let content = std::fs::read_to_string(&path).ok()?;
+                let (title, artist, lrc_path, genre, album, lyrics) = parse_lrc_metadata(&content)?;
+
+                // Check if any lyric matches
+                let has_match = lyrics
+                    .iter()
+                    .any(|line| line.to_lowercase().contains(&query_lower));
+
+                if !has_match {
+                    return None;
+                }
+
+                // Try to find matching metadata
+                path_map.get(&lrc_path).cloned().or_else(|| {
+                    title_artist_map
+                        .get(&(title, artist, genre, album))
+                        .and_then(|v| v.first().cloned())
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Deduplicate results
+    let mut seen = HashSet::new();
+    Ok(results
+        .into_iter()
+        .filter(|sm| seen.insert(sm.path.clone()))
         .collect())
 }

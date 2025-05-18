@@ -544,7 +544,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   String? _currentPlaylistName;
   late final AdimanService service;
   bool _isInSelectionMode = false;
-  Set<Song> _selectedSongs = {};
+  final Set<Song> _selectedSongs = {};
+  List<Song> metadataSongs = [];
+  List<Song> lyricsSongs = [];
 
   final double fixedHeaderHeight = 60.0;
   final double slidingHeaderHeight = 48.0;
@@ -1397,20 +1399,50 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     setState(() => isLoading = false);
   }
 
-  void _updateSearchResults() {
+  void _updateSearchResults() async {
     final query = _searchController.text.toLowerCase();
     if (query.isEmpty) {
       setState(() {
+        metadataSongs = [];
+        lyricsSongs = [];
         displayedSongs = songs;
       });
-    } else {
+      return;
+    }
+
+    try {
+      final tDir = await getTemporaryDirectory();
+      final lyricResults = await rust_api.searchLyrics(
+        lyricsDir: "${tDir.path}/lyrics",
+        query: query,
+        songDir: currentMusicDirectory,
+      );
+
+      final lyricPaths = lyricResults.map((r) => r.path).toSet();
+
       setState(() {
-        displayedSongs = songs.where((song) {
-          final titleMatch = song.title.toLowerCase().contains(query);
-          final artistMatch = song.artist.toLowerCase().contains(query);
-          final genreMatch = song.genre.toLowerCase().contains(query);
-          return titleMatch || artistMatch || genreMatch;
+        metadataSongs = songs.where((song) {
+          return song.title.toLowerCase().contains(query) ||
+              song.artist.toLowerCase().contains(query) ||
+              song.genre.toLowerCase().contains(query);
         }).toList();
+
+        lyricsSongs = songs.where((song) {
+          return lyricPaths.contains(song.path);
+        }).toList();
+
+        displayedSongs = [...metadataSongs, ...lyricsSongs];
+      });
+    } catch (e) {
+      NamidaSnackbar(content: 'Error searching lyrics: $e');
+      // Fallback to metadata search
+      setState(() {
+        displayedSongs = songs
+            .where((song) =>
+                song.title.toLowerCase().contains(query) ||
+                song.artist.toLowerCase().contains(query) ||
+                song.genre.toLowerCase().contains(query))
+            .toList();
       });
     }
   }
@@ -2388,6 +2420,206 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     );
   }
 
+  Widget _buildMetadataSectionHeader(BuildContext context) {
+    final iconColor =
+        dominantColor.computeLuminance() > 0.007 ? dominantColor : Colors.white;
+    final glowIntensity = dominantColor.withAlpha(60);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  dominantColor.withAlpha(20),
+                  Colors.black.withAlpha(80),
+                ],
+              ),
+              border: Border.all(
+                color: dominantColor.withAlpha(100),
+                width: 1.5,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: dominantColor.withAlpha(40),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              child: Row(
+                children: [
+                  GlowIcon(
+                    Icons.info_outline_rounded,
+                    color: iconColor,
+                    glowColor: glowIntensity,
+                    blurRadius: 10,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 16),
+                  GlowText(
+                    'Metadata Matches',
+                    glowColor: glowIntensity,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: iconColor,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLyricsSectionHeader(BuildContext context) {
+    final iconColor =
+        dominantColor.computeLuminance() > 0.007 ? dominantColor : Colors.white;
+    final glowIntensity = dominantColor.withAlpha(60);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  dominantColor.withAlpha(20),
+                  Colors.black.withAlpha(80),
+                ],
+              ),
+              border: Border.all(
+                color: dominantColor.withAlpha(100),
+                width: 1.5,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: dominantColor.withAlpha(40),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              child: Row(
+                children: [
+                  GlowIcon(
+                    Icons.lyrics_rounded,
+                    color: iconColor,
+                    glowColor: glowIntensity,
+                    blurRadius: 10,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 16),
+                  GlowText(
+                    'Lyrics Matches',
+                    glowColor: glowIntensity,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: iconColor,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSongItem(Song song) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onSecondaryTap: () {
+        _showPlaylistPopup(song);
+      },
+      child: EnhancedSongListTile(
+        song: song,
+        onSelectedChanged: (selected) => _toggleSongSelection(song, selected),
+        isInSelectionMode: _isInSelectionMode,
+        isSelected: _selectedSongs.contains(song),
+        dominantColor: dominantColor,
+        onTap: () async {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          final result = await Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, _, __) => MusicPlayerScreen(
+                onReloadLibrary: _loadSongs,
+                musicFolder: _musicFolder,
+                service: service,
+                song: song,
+                songList: displayedSongs,
+                currentPlaylistName: _currentPlaylistName,
+                currentIndex: displayedSongs.indexOf(
+                  song,
+                ),
+              ),
+              transitionsBuilder: (
+                context,
+                animation,
+                secondaryAnimation,
+                child,
+              ) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(
+                      begin: 0.95,
+                      end: 1.0,
+                    ).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeInOutQuad,
+                      ),
+                    ),
+                    child: child,
+                  ),
+                );
+              },
+            ),
+          );
+          if (result != null && result is Map<String, dynamic>) {
+            setState(() {
+              currentSong = result['song'] ?? currentSong;
+              currentIndex = result['index'] ?? currentIndex;
+              dominantColor = result['dominantColor'] ?? dominantColor;
+              showMiniPlayer = true;
+            });
+          }
+          if (mounted) {
+            FocusScope.of(
+              context,
+            ).requestFocus(_mainFocusNode);
+          }
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final textColor =
@@ -2397,12 +2629,12 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
       onKey: (RawKeyEvent event) {
         if (event is RawKeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.escape) {
-            if (_isSearchExpanded) {
-              _toggleSearch();
-            } else if (_isInSelectionMode) {
+            if (_isInSelectionMode) {
               setState(() {
                 _exitSelectionMode();
               });
+            } else if (_isSearchExpanded) {
+              _toggleSearch();
             } else if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
               _scaffoldKey.currentState?.closeDrawer();
               _isDrawerOpen = false;
@@ -2714,89 +2946,62 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                             )
                           else
                             SliverList(
-                              delegate: SliverChildBuilderDelegate((
-                                context,
-                                index,
-                              ) {
-                                final song = displayedSongs[index];
-                                return GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onSecondaryTap: () {
-                                    _showPlaylistPopup(song);
-                                  },
-                                  child: EnhancedSongListTile(
-                                    song: song,
-                                    onSelectedChanged: (selected) =>
-                                        _toggleSongSelection(song, selected),
-                                    isInSelectionMode: _isInSelectionMode,
-                                    isSelected: _selectedSongs.contains(song),
-                                    dominantColor: dominantColor,
-                                    onTap: () async {
-                                      ScaffoldMessenger.of(context)
-                                          .hideCurrentSnackBar();
-                                      final result = await Navigator.push(
-                                        context,
-                                        PageRouteBuilder(
-                                          pageBuilder: (context, _, __) =>
-                                              MusicPlayerScreen(
-                                            onReloadLibrary: _loadSongs,
-                                            musicFolder: _musicFolder,
-                                            service: service,
-                                            song: song,
-                                            songList: displayedSongs,
-                                            currentPlaylistName:
-                                                _currentPlaylistName,
-                                            currentIndex:
-                                                displayedSongs.indexOf(
-                                              song,
-                                            ),
-                                          ),
-                                          transitionsBuilder: (
-                                            context,
-                                            animation,
-                                            secondaryAnimation,
-                                            child,
-                                          ) {
-                                            return FadeTransition(
-                                              opacity: animation,
-                                              child: ScaleTransition(
-                                                scale: Tween<double>(
-                                                  begin: 0.95,
-                                                  end: 1.0,
-                                                ).animate(
-                                                  CurvedAnimation(
-                                                    parent: animation,
-                                                    curve: Curves.easeInOutQuad,
-                                                  ),
-                                                ),
-                                                child: child,
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      );
-                                      if (result != null &&
-                                          result is Map<String, dynamic>) {
-                                        setState(() {
-                                          currentSong =
-                                              result['song'] ?? currentSong;
-                                          currentIndex =
-                                              result['index'] ?? currentIndex;
-                                          dominantColor =
-                                              result['dominantColor'] ??
-                                                  dominantColor;
-                                          showMiniPlayer = true;
-                                        });
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  if (_searchController.text.isNotEmpty) {
+                                    int currentPos = 0;
+
+                                    // Metadata Section
+                                    if (metadataSongs.isNotEmpty) {
+                                      if (index == currentPos) {
+                                        return _buildMetadataSectionHeader(
+                                            context);
                                       }
-                                      if (mounted) {
-                                        FocusScope.of(
-                                          context,
-                                        ).requestFocus(_mainFocusNode);
+                                      currentPos++;
+                                      if (index <
+                                          currentPos + metadataSongs.length) {
+                                        final song =
+                                            metadataSongs[index - currentPos];
+                                        return _buildSongItem(song);
                                       }
-                                    },
-                                  ),
-                                );
-                              }, childCount: displayedSongs.length),
+                                      currentPos += metadataSongs.length;
+                                    }
+
+                                    // Lyrics Section
+                                    if (lyricsSongs.isNotEmpty) {
+                                      if (index == currentPos) {
+                                        return _buildLyricsSectionHeader(
+                                            context);
+                                      }
+                                      currentPos++;
+                                      if (index <
+                                          currentPos + lyricsSongs.length) {
+                                        final song =
+                                            lyricsSongs[index - currentPos];
+                                        return _buildSongItem(song);
+                                      }
+                                      currentPos += lyricsSongs.length;
+                                    }
+
+                                    return null; // Out of bounds
+                                  } else {
+                                    // Non-search mode: Display all songs without headers
+                                    if (index < displayedSongs.length) {
+                                      final song = displayedSongs[index];
+                                      return _buildSongItem(song);
+                                    }
+                                    return null;
+                                  }
+                                },
+                                childCount: _searchController.text.isNotEmpty
+                                    ? (metadataSongs.isNotEmpty
+                                            ? 1 + metadataSongs.length
+                                            : 0) +
+                                        (lyricsSongs.isNotEmpty
+                                            ? 1 + lyricsSongs.length
+                                            : 0)
+                                    : displayedSongs.length,
+                              ),
                             ),
                         ],
                       ),
@@ -5038,14 +5243,15 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     return null;
   }
 
-  Future<void> _saveLyricsToCache(String songPath, String lrcContent) async {
+  Future<void> _saveLyricsToCache(Song song, String lrcContent) async {
     try {
       final cacheDir = await getTemporaryDirectory();
       final dir = Directory('${cacheDir.path}/lyrics');
       if (!await dir.exists()) await dir.create(recursive: true);
-      final hash = md5.convert(utf8.encode(songPath)).toString();
+      final hash = md5.convert(utf8.encode(song.path)).toString();
       final file = File('${dir.path}/$hash.lrc');
-      await file.writeAsString(lrcContent);
+      await file.writeAsString(
+          "#TITLE: ${song.title}\n#ARTIST: ${song.artist}\n#PATH: ${song.path}\n#GENRE: ${song.genre}\n#ALBUM: ${song.album}\n$lrcContent");
     } catch (e) {
       NamidaSnackbar(
           backgroundColor: dominantColor,
@@ -5076,7 +5282,6 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         'track_name': currentSong.title,
         'artist_name': currentSong.artist,
         if (currentSong.album.isNotEmpty) 'album_name': currentSong.album,
-        //if (currentSong.duration != null)
         'duration': currentSong.duration.inSeconds.toString(),
       };
 
@@ -5084,8 +5289,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
       final response = await http.get(
         uri,
         headers: {
-          'User-Agent':
-              'Adiman/1.0.0 (https://github.com/notYetOnGithub/adiman)',
+          'User-Agent': 'Adiman (https://github.com/ChaosTheChaotic/Adiman)',
         },
       );
 
@@ -5095,7 +5299,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         if (syncedLyrics != null && syncedLyrics.isNotEmpty) {
           _lrcData = lrc_pkg.Lrc.parse(syncedLyrics);
           if (_lrcData!.lyrics.isNotEmpty) {
-            await _saveLyricsToCache(currentSong.path, syncedLyrics);
+            await _saveLyricsToCache(currentSong, syncedLyrics);
             _updateLyricsStatus();
             setState(() {});
             return;
@@ -5582,6 +5786,16 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     _trackChangeSubscription?.cancel();
     _breathingController.dispose();
     _fadeController.dispose();
+    if (widget.isTemp && widget.tempPath != null) {
+      try {
+        final file = File(widget.tempPath!);
+        if (file.existsSync()) {
+          file.deleteSync();
+        }
+      } catch (e) {
+        NamidaSnackbar(content: 'Error deleting temp file: $e');
+      }
+    }
     super.dispose();
   }
 
