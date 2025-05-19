@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-linux-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -14,8 +14,12 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y curl unzip fuse libgtk-3-0 libblkid1 liblzma5
-        
+        sudo apt-get install -y \
+          curl unzip fuse \
+          libgtk-3-0 libblkid1 liblzma5 \
+          libasound2-dev libpulse-dev  # Audio dependencies
+        sudo modprobe fuse  # Required for AppImage tools
+
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
@@ -34,14 +38,11 @@ jobs:
         wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
         chmod +x appimagetool-x86_64.AppImage
 
-    - name: Install flutter_rust_bridge
-      run: cargo install flutter_rust_bridge_codegen
-
-    - name: Install cargo expand
-      run: cargo install cargo-expand
-
     - name: Build project
       run: |
+        # Install required cargo components
+        cargo install flutter_rust_bridge_codegen
+        # Generate bindings and build
         flutter_rust_bridge_codegen generate
         flutter build linux --release
 
