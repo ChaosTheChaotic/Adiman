@@ -17,9 +17,8 @@ jobs:
         sudo apt-get install -y \
           curl unzip fuse \
           libgtk-3-0 libblkid1 liblzma5 \
-          libasound2-dev libpulse-dev  # Audio dependencies
-        sudo modprobe fuse  # Required for AppImage tools
-
+          libasound2-dev libpulse-dev
+        sudo modprobe fuse
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
