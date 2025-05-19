@@ -1,7 +1,7 @@
 name: Build AppImage
 
 on:
-  workflow_dispatch:  # Allows manual triggering
+  workflow_dispatch:
     inputs:
       branch:
         description: 'Branch to build from'
@@ -25,8 +25,10 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y \
           curl unzip fuse \
-          libgtk-3-0 libblkid1 liblzma5 \
-          libasound2-dev libpulse-dev
+          libgtk-3-0 libgtk-3-dev \
+          libblkid1 liblzma5 \
+          libasound2-dev libpulse-dev \
+          cmake ninja-build clang
         sudo modprobe fuse
 
     - name: Setup Flutter
@@ -42,6 +44,10 @@ jobs:
         components: rustfmt, clippy
         override: true
 
+    - name: Install rust deps
+      run: |
+        cargo install cargo-expand flutter_rust_bridge_codegen
+
     - name: Install appimagetool
       run: |
         wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
@@ -49,8 +55,6 @@ jobs:
 
     - name: Build project
       run: |
-        cargo install flutter_rust_bridge_codegen
-        cargo install cargo-expand
         flutter_rust_bridge_codegen generate
         flutter build linux --release
 
