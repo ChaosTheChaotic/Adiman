@@ -45,9 +45,7 @@ jobs:
     - name: Prepare AppDir
       run: |
         mkdir -p Adiman.AppDir
-        # Copy built files
         cp -r build/linux/x64/release/bundle/* Adiman.AppDir/
-        # Copy appimage assets
         cp appimagestuff/{AppRun,Adiman.desktop,Adiman.png} Adiman.AppDir/
         chmod +x Adiman.AppDir/AppRun
 
@@ -56,7 +54,7 @@ jobs:
         ARCH=x86_64 ./appimagetool-x86_64.AppImage Adiman.AppDir
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: Adiman-x86_64.AppImage
         path: Adiman-x86_64.AppImage
