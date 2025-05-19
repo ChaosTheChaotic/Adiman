@@ -1,15 +1,24 @@
 name: Build AppImage
 
 on:
+  workflow_dispatch:  # Allows manual triggering
+    inputs:
+      branch:
+        description: 'Branch to build from'
+        required: true
+        default: 'master'
+        type: string
   push:
     branches: [ master ]
 
 jobs:
   build:
-    runs-on: ubuntu-linux-latest
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.branch || 'master' }}
 
     - name: Install system dependencies
       run: |
@@ -19,6 +28,7 @@ jobs:
           libgtk-3-0 libblkid1 liblzma5 \
           libasound2-dev libpulse-dev
         sudo modprobe fuse
+
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
@@ -39,9 +49,8 @@ jobs:
 
     - name: Build project
       run: |
-        # Install required cargo components
         cargo install flutter_rust_bridge_codegen
-        # Generate bindings and build
+        cargo install cargo-expand
         flutter_rust_bridge_codegen generate
         flutter build linux --release
 
