@@ -1,0 +1,62 @@
+name: Build AppImage
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y curl unzip fuse libgtk-3-0 libblkid1 liblzma5
+        
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: stable
+
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        components: rustfmt, clippy
+        override: true
+
+    - name: Install appimagetool
+      run: |
+        wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x appimagetool-x86_64.AppImage
+
+    - name: Install flutter_rust_bridge
+      run: cargo install flutter_rust_bridge_codegen
+
+    - name: Build project
+      run: |
+        flutter_rust_bridge_codegen generate
+        flutter build linux --release
+
+    - name: Prepare AppDir
+      run: |
+        mkdir -p Adiman.AppDir
+        # Copy built files
+        cp -r build/linux/x64/release/bundle/* Adiman.AppDir/
+        # Copy appimage assets
+        cp appimagestuff/{AppRun,Adiman.desktop,Adiman.png} Adiman.AppDir/
+        chmod +x Adiman.AppDir/AppRun
+
+    - name: Build AppImage
+      run: |
+        ARCH=x86_64 ./appimagetool-x86_64.AppImage Adiman.AppDir
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: Adiman-x86_64.AppImage
+        path: Adiman-x86_64.AppImage
