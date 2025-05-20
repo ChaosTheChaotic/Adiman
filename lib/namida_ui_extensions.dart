@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'main.dart';
 import 'package:lrc/lrc.dart' as lrc_pkg;
 import 'dart:ui' as ui;
@@ -413,10 +412,10 @@ class _EnhancedSongListTileState extends State<EnhancedSongListTile>
                                   offset: _contentSlideAnimation.value,
                                   child: Row(
                                     children: [
-                                      _AlbumArtWithPlayCount(
+                                      _AlbumArt(
+					heroTag: 'albumArt-${widget.song.path}',
                                         image: widget.song.albumArt != null
-                                            ? MemoryImage(base64Decode(
-                                                widget.song.albumArt!))
+                                            ? MemoryImage(widget.song.albumArt!)
                                             : null,
                                       ),
                                       const SizedBox(width: 16),
@@ -558,11 +557,13 @@ class _EnhancedSongListTileState extends State<EnhancedSongListTile>
   }
 }
 
-class _AlbumArtWithPlayCount extends StatelessWidget {
+class _AlbumArt extends StatelessWidget {
   final ImageProvider? image;
+  final String heroTag;
 
-  const _AlbumArtWithPlayCount({
+  const _AlbumArt({
     required this.image,
+    required this.heroTag,
   });
 
   @override
@@ -585,6 +586,79 @@ class _AlbumArtWithPlayCount extends StatelessWidget {
           child: image == null
               ? const Icon(Icons.music_note, color: Colors.white, size: 32)
               : null,
+        ),
+        Positioned.fill(
+          child: Hero(
+            tag: heroTag,
+            flightShuttleBuilder: (
+              BuildContext flightContext,
+              Animation<double> animation,
+              HeroFlightDirection flightDirection,
+              BuildContext fromHeroContext,
+              BuildContext toHeroContext,
+            ) {
+              return Stack(
+                children: [
+                  if (flightDirection == HeroFlightDirection.push)
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        image: image != null
+                            ? DecorationImage(
+                                image: image!,
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      child: image == null
+                          ? const Icon(Icons.music_note, color: Colors.white, size: 32)
+                          : null,
+                    ),
+                  AnimatedBuilder(
+                    animation: animation,
+                    builder: (context, child) {
+                      return Container(
+                        width: Tween<double>(
+                          begin: 56.0,
+                          end: MediaQuery.of(context).size.width * 0.8,
+                        ).evaluate(animation),
+                        height: Tween<double>(
+                          begin: 56.0,
+                          end: MediaQuery.of(context).size.width * 0.8,
+                        ).evaluate(animation),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(
+                            Tween<double>(begin: 12.0, end: 20.0)
+                                .evaluate(animation),
+                          ),
+                          image: image != null
+                              ? DecorationImage(
+                                  image: image!,
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: image == null
+                            ? const Icon(Icons.music_note,
+                                color: Colors.white, size: 32)
+                            : null,
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.transparent,
+              ),
+            ),
+          ),
         ),
       ],
     );

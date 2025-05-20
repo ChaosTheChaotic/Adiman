@@ -1,5 +1,4 @@
 use audiotags::Tag;
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use flutter_rust_bridge::frb;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
@@ -69,7 +68,7 @@ pub struct SongMetadata {
     pub album: String,
     pub duration: u64,
     pub path: String,
-    pub album_art: Option<String>,
+    pub album_art: Option<Vec<u8>>,
     pub genre: String,
 }
 
@@ -91,7 +90,7 @@ struct AudioPlayer {
     current_file: Mutex<String>,
     start_time: Mutex<Instant>,
     playing: Mutex<bool>,
-    album_art_cache: Mutex<HashMap<String, String>>,
+    album_art_cache: Mutex<HashMap<String, Vec<u8>>>,
     sender: Mutex<Sender<PlayerMessage>>,
     buffer: Arc<Mutex<Option<StreamingBuffer>>>,
     paused_position: Mutex<f32>,
@@ -414,6 +413,12 @@ impl AudioPlayer {
     }
 }
 
+impl Drop for AudioPlayer {
+    fn drop(&mut self) {
+        let _ = self.sender.lock().unwrap().send(PlayerMessage::Stop);
+    }
+}
+
 struct StreamingSource {
     buffer: Arc<Mutex<Option<StreamingBuffer>>>,
     current_chunk: usize,
@@ -493,7 +498,6 @@ impl Iterator for StreamingSource {
 unsafe impl Send for AudioPlayer {}
 unsafe impl Sync for AudioPlayer {}
 
-#[frb(sync)]
 pub fn initialize_player() -> bool {
     let mut state = PLAYER_STATE.lock().unwrap();
     if !state.initialized {
@@ -512,7 +516,6 @@ pub fn initialize_player() -> bool {
 static MP3_CONVERSION_POOL: Lazy<ThreadPool> =
     Lazy::new(|| ThreadPoolBuilder::new().num_threads(2).build().unwrap());
 
-#[frb(sync)]
 pub fn scan_music_directory(dir_path: String, auto_convert: bool) -> Vec<SongMetadata> {
     let mut songs = Vec::new();
     let mut conversion_paths = Vec::new();
@@ -638,14 +641,14 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
 
     // Extract album art
     let album_art = tag.album_cover().map(|pic| {
-        let art = BASE64.encode(&pic.data);
+        let art_bytes = pic.data.to_vec();
         if let Ok(player) = PLAYER.lock() {
             if let Some(p) = player.as_ref() {
                 let mut cache = p.album_art_cache.lock().unwrap();
-                cache.insert(path.to_string_lossy().to_string(), art.clone());
+                cache.insert(path.to_string_lossy().to_string(), art_bytes.clone());
             }
         }
-        art
+        art_bytes
     });
 
     // Extract duration using rodio's decoder
@@ -670,7 +673,6 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
     })
 }
 
-#[frb(sync)]
 pub fn play_song(path: String) -> bool {
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.play(&path)
@@ -679,7 +681,6 @@ pub fn play_song(path: String) -> bool {
     }
 }
 
-#[frb(sync)]
 pub fn pause_song() -> bool {
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.pause()
@@ -688,7 +689,6 @@ pub fn pause_song() -> bool {
     }
 }
 
-#[frb(sync)]
 pub fn resume_song() -> bool {
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.resume()
@@ -697,7 +697,6 @@ pub fn resume_song() -> bool {
     }
 }
 
-#[frb(sync)]
 pub fn stop_song() -> bool {
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.stop()
@@ -706,7 +705,6 @@ pub fn stop_song() -> bool {
     }
 }
 
-#[frb(sync)]
 pub fn get_playback_position() -> f32 {
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.get_position()
@@ -715,7 +713,6 @@ pub fn get_playback_position() -> f32 {
     }
 }
 
-#[frb(sync)]
 pub fn seek_to_position(position: f32) -> bool {
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.seek(position)
@@ -724,7 +721,6 @@ pub fn seek_to_position(position: f32) -> bool {
     }
 }
 
-#[frb(sync)]
 pub fn skip_to_next(songs: Vec<String>, current_index: usize) -> bool {
     if current_index + 1 < songs.len() {
         if let Some(player) = PLAYER.lock().unwrap().as_ref() {
@@ -734,7 +730,6 @@ pub fn skip_to_next(songs: Vec<String>, current_index: usize) -> bool {
     false
 }
 
-#[frb(sync)]
 pub fn skip_to_previous(songs: Vec<String>, current_index: usize) -> bool {
     if current_index > 0 {
         if let Some(player) = PLAYER.lock().unwrap().as_ref() {
@@ -744,8 +739,7 @@ pub fn skip_to_previous(songs: Vec<String>, current_index: usize) -> bool {
     false
 }
 
-#[frb(sync)]
-pub fn get_cached_album_art(path: String) -> Option<String> {
+pub fn get_cached_album_art(path: String) -> Option<Vec<u8>> {
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.album_art_cache.lock().unwrap().get(&path).cloned()
     } else {
@@ -753,7 +747,6 @@ pub fn get_cached_album_art(path: String) -> Option<String> {
     }
 }
 
-#[frb(sync)]
 pub fn get_current_song_path() -> Option<String> {
     PLAYER
         .lock()
@@ -762,7 +755,6 @@ pub fn get_current_song_path() -> Option<String> {
         .map(|p| p.current_file.lock().unwrap().clone())
 }
 
-#[frb(sync)]
 pub fn get_realtime_peaks() -> Vec<f32> {
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         if let Some(ref buffer) = *player.buffer.lock().unwrap() {
@@ -784,7 +776,6 @@ pub fn get_realtime_peaks() -> Vec<f32> {
     }
 }
 
-#[frb(sync)]
 pub fn is_playing() -> bool {
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         *player.playing.lock().unwrap()
@@ -801,7 +792,6 @@ pub fn is_playing() -> bool {
 ///
 /// Note: This requires FFmpeg to be installed on your Linux system.
 
-#[frb(sync)]
 pub fn extract_waveform_from_mp3(
     mp3_path: String,
     sample_count: Option<u32>,
@@ -873,7 +863,6 @@ static SEPARATORS: Lazy<RwLock<Vec<String>>> = Lazy::new(|| {
     ])
 });
 
-#[frb(sync)]
 pub fn add_separator(separator: String) -> Result<(), String> {
     let mut separators = SEPARATORS.write().unwrap();
     if separators.contains(&separator) {
@@ -883,7 +872,6 @@ pub fn add_separator(separator: String) -> Result<(), String> {
     Ok(())
 }
 
-#[frb(sync)]
 pub fn remove_separator(separator: &str) -> Result<(), String> {
     let mut separators = SEPARATORS.write().unwrap();
     let index = separators
@@ -894,12 +882,10 @@ pub fn remove_separator(separator: &str) -> Result<(), String> {
     Ok(())
 }
 
-#[frb(sync)]
 pub fn get_current_separators() -> Vec<String> {
     SEPARATORS.read().unwrap().clone()
 }
 
-#[frb(sync)]
 pub fn reset_separators() {
     let mut separators = SEPARATORS.write().unwrap();
     *separators = vec![
@@ -913,7 +899,6 @@ pub fn reset_separators() {
     ];
 }
 
-#[frb(sync)]
 pub fn set_separators(separators: Vec<String>) {
     let mut sep = SEPARATORS.write().unwrap();
     *sep = separators;
@@ -1010,7 +995,6 @@ pub fn cancel_download() {
 
 // Currently unused because it is an absolute pain to wait for all the songs to come back but is
 // now a setting
-#[frb(sync)]
 pub fn clear_mp3_cache() -> bool {
     let cache_dir = get_mp3_cache_dir();
     if cache_dir.exists() {
@@ -1022,7 +1006,6 @@ pub fn clear_mp3_cache() -> bool {
 
 // Here as a temp (hopefully) fix to stop > 1 artist crashing mpris until I can find a better way
 // to do it
-#[frb(sync)]
 pub fn get_artist_via_ffprobe(file_path: String) -> Result<Vec<String>, String> {
     let output = Command::new("ffprobe")
         .args(&[

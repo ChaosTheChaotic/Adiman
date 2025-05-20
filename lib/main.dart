@@ -4,9 +4,9 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:path/path.dart' as path;
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
+import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
 import 'package:adiman/src/rust/frb_generated.dart';
 import 'package:flutter/material.dart';
-import 'package:palette_generator/palette_generator.dart';
 import 'namida_ui_extensions.dart';
 import 'package:lrc/lrc.dart' as lrc_pkg;
 import 'package:flutter_glow/flutter_glow.dart';
@@ -25,7 +25,7 @@ class Song {
   final List<String>? artists;
   final String album;
   final String path;
-  final String? albumArt;
+  final Uint8List? albumArt;
   final Duration duration;
   final String genre;
 
@@ -47,7 +47,7 @@ class Song {
       artists: artists ?? [metadata.artist as String],
       album: metadata.album as String,
       path: metadata.path as String,
-      albumArt: metadata.albumArt as String?,
+      albumArt: metadata.albumArt as Uint8List?,
       duration: Duration(seconds: (metadata.duration as BigInt).toInt()),
       genre: metadata.genre as String,
     );
@@ -203,15 +203,14 @@ class _MiniPlayerState extends State<MiniPlayer>
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    if (song.albumArt == null) return Color(0xFF383770);
+    if (song.albumArt == null) return const Color(0xFF383770);
+
     try {
-      final imageBytes = base64Decode(song.albumArt!);
-      final codec = await ui.instantiateImageCodec(imageBytes);
-      final frame = await codec.getNextFrame();
-      final palette = await PaletteGenerator.fromImage(frame.image);
-      return palette.dominantColor?.color ?? Color(0xFF383770);
+      final colorValue =
+          await color_extractor.getDominantColor(data: song.albumArt!);
+      return Color(colorValue ?? 0xFF383770);
     } catch (e) {
-      return Color(0xFF383770);
+      return const Color(0xFF383770);
     }
   }
 
@@ -227,7 +226,7 @@ class _MiniPlayerState extends State<MiniPlayer>
   Widget build(BuildContext context) {
     final textColor = widget.dominantColor.computeLuminance() > 0.007
         ? widget.dominantColor
-        : Colors.white;
+        : Theme.of(context).textTheme.bodyLarge?.color;
     return GestureDetector(
       onTap: () async {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -316,7 +315,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                       borderRadius: BorderRadius.circular(12),
                       child: widget.song.albumArt != null
                           ? Image.memory(
-                              base64Decode(widget.song.albumArt!),
+                              widget.song.albumArt!,
                               fit: BoxFit.cover,
                               gaplessPlayback: true,
                             )
@@ -349,7 +348,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                       Text(
                         widget.song.artist,
                         style: TextStyle(
-                          color: textColor.withValues(alpha: 0.8),
+                          color: textColor!.withValues(alpha: 0.8),
                           fontSize: 12,
                         ),
                         maxLines: 1,
@@ -359,7 +358,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                   ),
                 ),
                 Hero(
-                  tag: 'controls-prev-${widget.song.path}',
+                  tag: 'controls-prev',
                   child: Material(
                     color: widget.dominantColor.withValues(alpha: 0.2),
                     shape: const CircleBorder(),
@@ -376,7 +375,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                   ),
                 ),
                 Hero(
-                  tag: 'controls-playPause-${widget.song.path}',
+                  tag: 'controls-playPause',
                   child: Material(
                     color: widget.dominantColor.withValues(alpha: 0.2),
                     shape: const CircleBorder(),
@@ -403,7 +402,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                   ),
                 ),
                 Hero(
-                  tag: 'controls-next-${widget.song.path}',
+                  tag: 'controls-next',
                   child: Material(
                     color: widget.dominantColor.withValues(alpha: 0.2),
                     shape: const CircleBorder(),
@@ -1448,14 +1447,14 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    if (song.albumArt == null) return Color(0xFF383770);
+    if (song.albumArt == null) return const Color(0xFF383770);
+
     try {
-      final imageBytes = base64Decode(song.albumArt!);
-      final codec = await ui.instantiateImageCodec(imageBytes);
-      final frame = await codec.getNextFrame();
-      final palette = await PaletteGenerator.fromImage(frame.image);
-      return palette.dominantColor?.color ?? Color(0xFF383770);
+      final colorValue =
+          await color_extractor.getDominantColor(data: song.albumArt!);
+      return Color(colorValue ?? 0xFF383770);
     } catch (e) {
+      NamidaSnackbar(content: 'Failed to get dominant color $e');
       return Color(0xFF383770);
     }
   }
@@ -4416,7 +4415,6 @@ class SongListTile extends StatelessWidget {
           child: ListTile(
             onTap: onTap,
             leading: Hero(
-              //tag: 'main-${song.path}',
               tag: 'albumArt-${song.path}',
               child: Container(
                 width: 50,
@@ -4435,7 +4433,7 @@ class SongListTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   child: song.albumArt != null
                       ? Image.memory(
-                          base64Decode(song.albumArt!),
+                          song.albumArt!,
                           fit: BoxFit.cover,
                           gaplessPlayback: true,
                           errorBuilder: (context, error, stackTrace) =>
@@ -4610,7 +4608,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _startPlaying());
 
-    isPlaying = rust_api.isPlaying();
+    rust_api.isPlaying().then((value) {
+      isPlaying = value;
+    });
+
     _progressTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (isPlaying && !_isSeeking && mounted) {
         _updateProgress();
@@ -4634,8 +4635,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   void _showPlaylistPopup(BuildContext context) {
     final currentSong = widget.song;
-    final textColor =
-        dominantColor.computeLuminance() > 0.007 ? dominantColor : Colors.white;
+    final textColor = dominantColor.computeLuminance() > 0.007
+        ? dominantColor
+        : Theme.of(context).textTheme.bodyLarge?.color;
     showDialog(
       context: context,
       builder: (context) {
@@ -5449,20 +5451,23 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   Future<void> _updateDominantColor() async {
     try {
       if (currentSong.albumArt == null) return;
-      final imageBytes = base64Decode(currentSong.albumArt!);
-      final codec = await ui.instantiateImageCodec(imageBytes);
-      final frame = await codec.getNextFrame();
-      final palette = await PaletteGenerator.fromImage(frame.image);
+
+      final colorValue =
+          await color_extractor.getDominantColor(data: currentSong.albumArt!);
+
       if (mounted) {
         setState(() {
-          dominantColor = palette.dominantColor?.color ?? Color(0xFF383770);
+          dominantColor = Color(colorValue ?? 0xFF383770);
         });
       }
     } catch (e) {
       NamidaSnackbar(
-          backgroundColor: dominantColor,
-          content: 'Error generating dominant color: $e');
-      if (mounted) setState(() => dominantColor = Color(0xFF383770));
+        backgroundColor: dominantColor,
+        content: 'Error generating dominant color: $e',
+      );
+      if (mounted) {
+        setState(() => dominantColor = const Color(0xFF383770));
+      }
     }
   }
 
@@ -5970,7 +5975,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                           child: NamidaThumbnail(
                             image: currentSong.albumArt != null
                                 ? MemoryImage(
-                                    base64Decode(currentSong.albumArt!),
+                                    currentSong.albumArt!,
                                   )
                                 : const AssetImage(
                                     'assets/default_album.png', // do this sometime soon (cuz i will and wont procastinate)
@@ -6053,7 +6058,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Hero(
-                                tag: 'controls-prev-${currentSong.path}',
+                                tag: 'controls-prev',
                                 child: DynamicIconButton(
                                   icon: Icons.skip_previous_rounded,
                                   onPressed: currentIndex > 0
@@ -6064,7 +6069,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                               ),
                               const SizedBox(width: 24),
                               Hero(
-                                tag: 'controls-playPause-${currentSong.path}',
+                                tag: 'controls-playPause',
                                 child: ParticlePlayButton(
                                   isPlaying: isPlaying,
                                   color: dominantColor,
@@ -6073,7 +6078,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                               ),
                               const SizedBox(width: 24),
                               Hero(
-                                tag: 'controls-next-${currentSong.path}',
+                                tag: 'controls-next',
                                 child: DynamicIconButton(
                                   icon: Icons.skip_next_rounded,
                                   onPressed:
@@ -6205,9 +6210,10 @@ class AdimanService extends MPRISService {
 
   void _updateMetadata() async {
     if (_currentSong != null) {
+      final artist =
+          await rust_api.getArtistViaFfprobe(filePath: _currentSong!.path);
       // Try this but join in the same way the rust_api.extractMetadata does to remove ffprobe deps
-      final artistString =
-          rust_api.getArtistViaFfprobe(filePath: _currentSong!.path).join("/");
+      final artistString = artist.join("/");
 
       String? cachedArtPath = await _cacheAlbumArt(_currentSong!.albumArt);
       metadata = Metadata(
@@ -6222,8 +6228,8 @@ class AdimanService extends MPRISService {
     }
   }
 
-  Future<String?> _cacheAlbumArt(String? base64Data) async {
-    if (base64Data == null) return null;
+  Future<String?> _cacheAlbumArt(Uint8List? data) async {
+    if (data == null) return null;
     try {
       final dir = await getTemporaryDirectory();
       final cacheDir = Directory('${dir.path}/album_art_cache');
@@ -6238,10 +6244,10 @@ class AdimanService extends MPRISService {
         } catch (_) {}
       }
 
-      final hash = md5.convert(utf8.encode(base64Data)).toString();
+      final hash = md5.convert(utf8.encode(_currentSong!.title)).toString();
       final file = File('${cacheDir.path}/$hash.png');
       if (!await file.exists()) {
-        await file.writeAsBytes(base64Decode(base64Data));
+        await file.writeAsBytes(data);
       }
       return file.path;
     } catch (e) {
@@ -6414,13 +6420,10 @@ class _DownloadScreenState extends State<DownloadScreen>
 
         if (_tempSong!.albumArt != null) {
           try {
-            final imageBytes = base64Decode(_tempSong!.albumArt!);
-            final codec = await ui.instantiateImageCodec(imageBytes);
-            final frame = await codec.getNextFrame();
-            final palette = await PaletteGenerator.fromImage(frame.image);
+            final colorValue = await color_extractor.getDominantColor(
+                data: _tempSong!.albumArt!);
             setState(() {
-              _dominantColor =
-                  palette.dominantColor?.color ?? Color(0xFF383770);
+              _dominantColor = Color(colorValue ?? 0xFF383770);
             });
           } catch (e) {
             NamidaSnackbar(

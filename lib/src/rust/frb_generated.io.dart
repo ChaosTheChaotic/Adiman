@@ -3,6 +3,7 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'api/color_extractor.dart';
 import 'api/music_handler.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -46,6 +47,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Float64List dco_decode_list_prim_f_64_strict(dynamic raw);
 
   @protected
+  List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
@@ -56,6 +60,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
+
+  @protected
+  Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
 
   @protected
   PlayerState dco_decode_player_state(dynamic raw);
@@ -106,6 +113,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Float64List sse_decode_list_prim_f_64_strict(SseDeserializer deserializer);
 
   @protected
+  List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
@@ -117,6 +127,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
+  Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
   PlayerState sse_decode_player_state(SseDeserializer deserializer);
@@ -173,6 +186,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       Float64List self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
       Uint8List self, SseSerializer serializer);
 
@@ -185,6 +201,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_prim_u_8_strict(
+      Uint8List? self, SseSerializer serializer);
 
   @protected
   void sse_encode_player_state(PlayerState self, SseSerializer serializer);

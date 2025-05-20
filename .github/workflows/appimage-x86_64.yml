@@ -44,7 +44,7 @@ jobs:
         components: rustfmt, clippy
         override: true
 
-    - name: Install rust deps
+    - name: Install Rust Deps
       run: |
         cargo install cargo-expand flutter_rust_bridge_codegen
 
