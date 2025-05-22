@@ -2692,10 +2692,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   Widget build(BuildContext context) {
     final textColor =
         dominantColor.computeLuminance() > 0.007 ? dominantColor : Colors.white;
-    return RawKeyboardListener(
+    return KeyboardListener(
       focusNode: _mainFocusNode,
-      onKey: (RawKeyEvent event) {
-        if (event is RawKeyDownEvent) {
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.escape) {
             if (_isInSelectionMode) {
               setState(() {
@@ -2790,11 +2790,11 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                   )
                 : null,
             key: _scaffoldKey,
-            drawer: RawKeyboardListener(
+            drawer: KeyboardListener(
               focusNode: FocusNode(),
               autofocus: true,
-              onKey: (event) {
-                if (event is RawKeyDownEvent &&
+              onKeyEvent: (event) {
+                if (event is KeyDownEvent &&
                     event.logicalKey == LogicalKeyboardKey.escape) {
                   if (_isDrawerOpen) {
                     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -3711,11 +3711,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         : Theme.of(context).textTheme.bodyLarge?.color;
     final buttonTextColor = Theme.of(context).textTheme.bodyLarge?.color;
 
-    return RawKeyboardListener(
+    return KeyboardListener(
       focusNode: FocusNode(),
       autofocus: true,
-      onKey: (RawKeyEvent event) {
-        if (event is RawKeyDownEvent) {
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.escape) {
             if (ModalRoute.of(context)?.isCurrent ?? false) {
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -5881,11 +5881,11 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
     _updateParticleOptions();
 
-    return RawKeyboardListener(
+    return KeyboardListener(
       focusNode: _focusNode,
       autofocus: true,
-      onKey: (RawKeyEvent event) {
-        if (event is RawKeyDownEvent) {
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.escape) {
             if (_isTempFile) {
               _handleSearchAnother();
@@ -6558,11 +6558,11 @@ class _DownloadScreenState extends State<DownloadScreen>
 
   @override
   Widget build(BuildContext context) {
-    return RawKeyboardListener(
+    return KeyboardListener(
       focusNode: _focusNode,
       autofocus: true,
-      onKey: (RawKeyEvent event) {
-        if (event is RawKeyDownEvent &&
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent &&
             event.logicalKey == LogicalKeyboardKey.escape &&
             !_isDownloading) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -6627,11 +6627,11 @@ class _DownloadScreenState extends State<DownloadScreen>
             ),
             if (_isDownloading)
               Positioned.fill(
-                child: RawKeyboardListener(
+                child: KeyboardListener(
                   focusNode: FocusNode(),
                   autofocus: true,
-                  onKey: (RawKeyEvent event) {
-                    if (event is RawKeyDownEvent &&
+                  onKeyEvent: (event) {
+                    if (event is KeyDownEvent &&
                         event.logicalKey == LogicalKeyboardKey.escape) {
                       setState(() => _isDownloading = false);
                       rust_api.cancelDownload();
