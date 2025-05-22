@@ -1441,6 +1441,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
         metadataSongs = songs.where((song) {
           return song.title.toLowerCase().contains(query) ||
               song.artist.toLowerCase().contains(query) ||
+	      song.album.toLowerCase().contains(query) ||
               song.genre.toLowerCase().contains(query);
         }).toList();
 
@@ -1458,6 +1459,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
             .where((song) =>
                 song.title.toLowerCase().contains(query) ||
                 song.artist.toLowerCase().contains(query) ||
+		song.album.toLowerCase().contains(query) ||
                 song.genre.toLowerCase().contains(query))
             .toList();
       });
