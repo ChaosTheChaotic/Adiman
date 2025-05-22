@@ -413,7 +413,7 @@ class _EnhancedSongListTileState extends State<EnhancedSongListTile>
                                   child: Row(
                                     children: [
                                       _AlbumArt(
-					heroTag: 'albumArt-${widget.song.path}',
+                                        heroTag: 'albumArt-${widget.song.path}',
                                         image: widget.song.albumArt != null
                                             ? MemoryImage(widget.song.albumArt!)
                                             : null,
@@ -613,7 +613,8 @@ class _AlbumArt extends StatelessWidget {
                             : null,
                       ),
                       child: image == null
-                          ? const Icon(Icons.music_note, color: Colors.white, size: 32)
+                          ? const Icon(Icons.music_note,
+                              color: Colors.white, size: 32)
                           : null,
                     ),
                   AnimatedBuilder(

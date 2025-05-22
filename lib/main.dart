@@ -296,34 +296,51 @@ class _MiniPlayerState extends State<MiniPlayer>
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
-                Hero(
-                  tag: 'albumArt-${widget.song.path}',
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: widget.dominantColor.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: widget.song.albumArt != null
-                          ? Image.memory(
-                              widget.song.albumArt!,
-                              fit: BoxFit.cover,
-                              gaplessPlayback: true,
-                            )
-                          : GlowIcon(
-                              Icons.music_note,
-                              color: Colors.white,
-                              glowColor: Colors.white,
-                            ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  switchInCurve: Curves.easeOutBack,
+                  switchOutCurve: Curves.easeInCirc,
+                  transitionBuilder:
+                      (Widget child, Animation<double> animation) {
+                    return ScaleTransition(
+                      scale: Tween<double>(begin: 0.8, end: 1.0)
+                          .animate(animation),
+                      child: FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Hero(
+                    key: ValueKey(widget.song.path),
+                    tag: 'albumArt-${widget.song.path}',
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: widget.dominantColor.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: widget.song.albumArt != null
+                            ? Image.memory(
+                                widget.song.albumArt!,
+                                fit: BoxFit.cover,
+                                gaplessPlayback: true,
+                              )
+                            : GlowIcon(
+                                Icons.music_note,
+                                color: Colors.white,
+                                glowColor: Colors.white,
+                              ),
+                      ),
                     ),
                   ),
                 ),
@@ -546,6 +563,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   final Set<Song> _selectedSongs = {};
   List<Song> metadataSongs = [];
   List<Song> lyricsSongs = [];
+  Map<String, bool> _deletingSongs = {};
 
   final double fixedHeaderHeight = 60.0;
   final double slidingHeaderHeight = 48.0;
@@ -2210,10 +2228,50 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
-                          color: dominantColor,
+                          color: dominantColor.computeLuminance() > 0.007
+                              ? dominantColor
+                              : Theme.of(context).textTheme.bodyLarge?.color,
                         ),
                       ),
                       const SizedBox(height: 20),
+                      _buildPlaylistOptionButton(
+                        icon: Icons.queue_play_next,
+                        label: 'Play Next',
+                        onTap: () {
+                          final selectedSong = song;
+                          // Find the current song's index in the main songs list
+                          int mainCurrentIndex = songs
+                              .indexWhere((s) => s.path == currentSong!.path);
+                          if (mainCurrentIndex == -1) {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(NamidaSnackbar(
+                              backgroundColor: dominantColor,
+                              content: 'Current song not found in library.',
+                            ));
+                            return;
+                          }
+                          // Insert into the main songs list
+                          List<Song> newSongs = List.from(songs);
+                          newSongs.insert(mainCurrentIndex + 1, selectedSong);
+                          // Update displayedSongs if not searching
+                          if (_searchController.text.isEmpty) {
+                            displayedSongs = List.from(newSongs);
+                          }
+                          // Update the service's playlist
+                          service.updatePlaylist(newSongs, mainCurrentIndex);
+                          setState(() {
+                            songs = newSongs;
+                          });
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(NamidaSnackbar(
+                            backgroundColor: dominantColor,
+                            content:
+                                'Added "${selectedSong.title}" to play next.',
+                          ));
+                          Navigator.pop(context);
+                        },
+                      ),
+                      const SizedBox(height: 12),
                       _buildPlaylistOptionButton(
                         icon: Icons.create_new_folder,
                         label: 'Create New Playlist',
@@ -2320,20 +2378,36 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     try {
       final file = File(song.path);
       if (await file.exists()) {
-        await file.delete();
         setState(() {
-          songs.removeWhere((s) => s.path == song.path);
-          displayedSongs.removeWhere((s) => s.path == song.path);
+          _deletingSongs[song.path] = true;
+        });
+        await Future.delayed(const Duration(milliseconds: 300));
+        await file.delete();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+              backgroundColor: dominantColor,
+              content: 'Song deleted successfully'));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _deletingSongs.remove(song.path);
         });
         ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
             backgroundColor: dominantColor,
-            content: 'Song deleted successfully'));
+            content: 'Error deleting song: ${e.toString()}'));
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
-          backgroundColor: dominantColor,
-          content: 'Error deleting song: ${e.toString()}'));
     }
+  }
+
+  void _onSongDeletionComplete(Song song) {
+    setState(() {
+      songs.remove(song);
+      displayedSongs.remove(song);
+      _deletingSongs.remove(song.path);
+    });
   }
 
   @override
@@ -2555,66 +2629,61 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
       onSecondaryTap: () {
         _showPlaylistPopup(song);
       },
-      child: EnhancedSongListTile(
-        song: song,
-        onSelectedChanged: (selected) => _toggleSongSelection(song, selected),
-        isInSelectionMode: _isInSelectionMode,
-        isSelected: _selectedSongs.contains(song),
-        dominantColor: dominantColor,
-        onTap: () async {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          final result = await Navigator.push(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (context, _, __) => MusicPlayerScreen(
-                onReloadLibrary: _loadSongs,
-                musicFolder: _musicFolder,
-                service: service,
-                song: song,
-                songList: displayedSongs,
-                currentPlaylistName: _currentPlaylistName,
-                currentIndex: displayedSongs.indexOf(
-                  song,
-                ),
-              ),
-              transitionsBuilder: (
-                context,
-                animation,
-                secondaryAnimation,
-                child,
-              ) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: ScaleTransition(
-                    scale: Tween<double>(
-                      begin: 0.95,
-                      end: 1.0,
-                    ).animate(
-                      CurvedAnimation(
-                        parent: animation,
-                        curve: Curves.easeInOutQuad,
-                      ),
-                    ),
-                    child: child,
-                  ),
-                );
-              },
-            ),
-          );
-          if (result != null && result is Map<String, dynamic>) {
-            setState(() {
-              currentSong = result['song'] ?? currentSong;
-              currentIndex = result['index'] ?? currentIndex;
-              dominantColor = result['dominantColor'] ?? dominantColor;
-              showMiniPlayer = true;
-            });
-          }
-          if (mounted) {
-            FocusScope.of(
+      child: AnimatedDeletionWrapper(
+        key: ValueKey(song.path),
+        isDeleting: _deletingSongs[song.path] ?? false,
+        onDeletionComplete: () => _onSongDeletionComplete(song),
+        duration: const Duration(milliseconds: 300),
+        child: EnhancedSongListTile(
+          song: song,
+          onSelectedChanged: (selected) => _toggleSongSelection(song, selected),
+          isInSelectionMode: _isInSelectionMode,
+          isSelected: _selectedSongs.contains(song),
+          dominantColor: dominantColor,
+          onTap: () async {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            final result = await Navigator.push(
               context,
-            ).requestFocus(_mainFocusNode);
-          }
-        },
+              PageRouteBuilder(
+                pageBuilder: (context, _, __) => MusicPlayerScreen(
+                  onReloadLibrary: _loadSongs,
+                  musicFolder: _musicFolder,
+                  service: service,
+                  song: song,
+                  songList: displayedSongs,
+                  currentPlaylistName: _currentPlaylistName,
+                  currentIndex: displayedSongs.indexOf(song),
+                ),
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(
+                      scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+                        CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeInOutQuad,
+                        ),
+                      ),
+                      child: child,
+                    ),
+                  );
+                },
+              ),
+            );
+            if (result != null && result is Map<String, dynamic>) {
+              setState(() {
+                currentSong = result['song'] ?? currentSong;
+                currentIndex = result['index'] ?? currentIndex;
+                dominantColor = result['dominantColor'] ?? dominantColor;
+                showMiniPlayer = true;
+              });
+            }
+            if (mounted) {
+              FocusScope.of(context).requestFocus(_mainFocusNode);
+            }
+          },
+        ),
       ),
     );
   }
@@ -4635,9 +4704,6 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   void _showPlaylistPopup(BuildContext context) {
     final currentSong = widget.song;
-    final textColor = dominantColor.computeLuminance() > 0.007
-        ? dominantColor
-        : Theme.of(context).textTheme.bodyLarge?.color;
     showDialog(
       context: context,
       builder: (context) {
@@ -4674,7 +4740,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
-                          color: textColor,
+                          color: Theme.of(context).textTheme.bodyLarge?.color,
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -5948,42 +6014,72 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        Hero(
-                          tag: 'albumArt-${currentSong.path}',
-                          flightShuttleBuilder: (
-                            flightContext,
-                            animation,
-                            direction,
-                            fromHeroContext,
-                            toHeroContext,
-                          ) {
-                            return AnimatedBuilder(
-                              animation: animation,
-                              builder: (context, child) {
-                                final scale = Tween<double>(
-                                  begin: 0.5,
-                                  end: 1.0,
-                                ).evaluate(animation);
-                                return Transform.scale(
-                                  scale: scale,
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 600),
+                          transitionBuilder:
+                              (Widget child, Animation<double> animation) {
+                            return SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0.5, 0.0),
+                                end: Offset.zero,
+                              ).animate(CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOutCubic,
+                              )),
+                              child: FadeTransition(
+                                opacity: animation,
+                                child: ScaleTransition(
+                                  scale: Tween<double>(
+                                    begin: 0.8,
+                                    end: 1.0,
+                                  ).animate(CurvedAnimation(
+                                    parent: animation,
+                                    curve: Curves.easeOutBack,
+                                  )),
                                   child: child,
-                                );
-                              },
-                              child: toHeroContext.widget,
+                                ),
+                              ),
                             );
                           },
-                          child: NamidaThumbnail(
-                            image: currentSong.albumArt != null
-                                ? MemoryImage(
-                                    currentSong.albumArt!,
-                                  )
-                                : const AssetImage(
-                                    'assets/default_album.png', // do this sometime soon (cuz i will and wont procastinate)
-                                  ) as ImageProvider,
-                            isPlaying: isPlaying,
-                            currentPeak: currentPeak,
-                            showBreathingEffect: true,
-                            sharedBreathingValue: _breathingAnimation.value,
+                          child: Hero(
+                            key: ValueKey<String>(
+                                'albumArt-${currentSong.path}'),
+                            tag: 'albumArt-${currentSong.path}',
+                            flightShuttleBuilder: (
+                              flightContext,
+                              animation,
+                              direction,
+                              fromHeroContext,
+                              toHeroContext,
+                            ) {
+                              return AnimatedBuilder(
+                                animation: animation,
+                                builder: (context, child) {
+                                  final scale = Tween<double>(
+                                    begin: 0.5,
+                                    end: 1.0,
+                                  ).evaluate(animation);
+                                  return Transform.scale(
+                                    scale: scale,
+                                    child: child,
+                                  );
+                                },
+                                child: toHeroContext.widget,
+                              );
+                            },
+                            child: NamidaThumbnail(
+                              image: currentSong.albumArt != null
+                                  ? MemoryImage(
+                                      currentSong.albumArt!,
+                                    )
+                                  : const AssetImage(
+                                      'assets/default_album.png', // do this sometime soon (cuz i will and wont procastinate)
+                                    ) as ImageProvider,
+                              isPlaying: isPlaying,
+                              currentPeak: currentPeak,
+                              showBreathingEffect: true,
+                              sharedBreathingValue: _breathingAnimation.value,
+                            ),
                           ),
                         ),
                         if (_showLyrics &&
@@ -6652,6 +6748,109 @@ class _DownloadScreenState extends State<DownloadScreen>
   void dispose() {
     _breathingController.dispose();
     _focusNode.dispose();
+    super.dispose();
+  }
+}
+
+class AnimatedDeletionWrapper extends StatefulWidget {
+  final Widget child;
+  final bool isDeleting;
+  final VoidCallback onDeletionComplete;
+  final Duration duration;
+
+  const AnimatedDeletionWrapper({
+    super.key,
+    required this.child,
+    required this.isDeleting,
+    required this.onDeletionComplete,
+    this.duration = const Duration(milliseconds: 300),
+  });
+
+  @override
+  State<AnimatedDeletionWrapper> createState() =>
+      _AnimatedDeletionWrapperState();
+}
+
+class _AnimatedDeletionWrapperState extends State<AnimatedDeletionWrapper>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: widget.duration,
+    );
+
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.8,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOutQuad,
+    ));
+
+    _opacityAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(-0.3, 0.0),
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOutQuad,
+    ));
+
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        widget.onDeletionComplete();
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(AnimatedDeletionWrapper oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isDeleting && !oldWidget.isDeleting) {
+      _controller.forward();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _opacityAnimation.value,
+          child: Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Transform.translate(
+              offset: Offset(
+                _slideAnimation.value.dx * MediaQuery.of(context).size.width,
+                0,
+              ),
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: widget.child,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
     super.dispose();
   }
 }

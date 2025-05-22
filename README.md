@@ -43,6 +43,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 
 - Can play music (duh)
 - Adaptive ui
+- Smooth animations
 - Playlists
 - Downloading songs via spotdl command line (this takes a while due to all the rate limits so unfortunately you just have to wait it out)
 - Waveform seekbar
