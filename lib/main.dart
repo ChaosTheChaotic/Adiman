@@ -2254,6 +2254,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                           }
                           // Insert into the main songs list
                           List<Song> newSongs = List.from(songs);
+			  newSongs.removeWhere((s) => s.path == selectedSong.path);
                           newSongs.insert(mainCurrentIndex + 1, selectedSong);
                           // Update displayedSongs if not searching
                           if (_searchController.text.isEmpty) {
