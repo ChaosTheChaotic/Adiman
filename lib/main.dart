@@ -2252,6 +2252,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                             ));
                             return;
                           }
+			  if (selectedSong == currentSong){
+			    ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(backgroundColor: dominantColor, content: 'Cannot make currently playing song next, use repeat function'));
+			    return;
+			  }
                           // Insert into the main songs list
                           List<Song> newSongs = List.from(songs);
 			  newSongs.removeWhere((s) => s.path == selectedSong.path);
