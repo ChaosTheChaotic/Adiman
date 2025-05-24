@@ -5318,77 +5318,97 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     return null;
   }
 
-  Future<void> _saveLyricsToCache(Song song, String lrcContent) async {
-    try {
-      final cacheDir = await getTemporaryDirectory();
-      final dir = Directory('${cacheDir.path}/lyrics');
-      if (!await dir.exists()) await dir.create(recursive: true);
-      final hash = md5.convert(utf8.encode(song.path)).toString();
-      final file = File('${dir.path}/$hash.lrc');
-      await file.writeAsString(
-          "#TITLE: ${song.title}\n#ARTIST: ${song.artist}\n#PATH: ${song.path}\n#GENRE: ${song.genre}\n#ALBUM: ${song.album}\n$lrcContent");
-    } catch (e) {
-      NamidaSnackbar(
-          backgroundColor: dominantColor,
-          content: 'Error saving lyrics cache: $e');
-    }
+Future<void> _saveLyricsToCache(Song song, String lrcContent) async {
+  try {
+    final dir = await getTemporaryDirectory();
+    final cacheDir = Directory('${dir.path}/lyrics');
+    if (!await cacheDir.exists()) await cacheDir.create(recursive: true);
+
+    // Generate hash from original song's path
+    final hash = md5.convert(utf8.encode(song.path)).toString();
+    final file = File('${cacheDir.path}/$hash.lrc');
+    
+    // Use original song's metadata
+    await file.writeAsString(
+      "#TITLE: ${song.title}\n"
+      "#ARTIST: ${song.artist}\n"
+      "#PATH: ${song.path}\n"
+      "#GENRE: ${song.genre}\n"
+      "#ALBUM: ${song.album}\n"
+      "$lrcContent"
+    );
+  } catch (e) {
+    NamidaSnackbar(
+      backgroundColor: dominantColor,
+      content: 'Error saving lyrics cache: $e',
+    );
   }
+}
 
-  Future<void> _loadLyrics() async {
-    _lrcData = null;
-    try {
-      // 1. Check cache.
-      final cachedLrc = await _getCachedLyrics(currentSong.path);
-      if (cachedLrc != null) {
-        _lrcData = cachedLrc;
-        _updateLyricsStatus();
-        setState(() {});
-        return;
-      }
+Future<void> _loadLyrics() async {
+  // Capture current song details at start of process
+  final originalSong = currentSong;
+  final originalSongPath = originalSong.path;
 
-      // 2. Check if required fields are present.
-      if (currentSong.title.isEmpty || currentSong.artist.isEmpty) {
-        _checkLocalLyrics();
-        return;
-      }
+  _lrcData = null;
+  try {
+    // 1. Check cache using original song path
+    final cachedLrc = await _getCachedLyrics(originalSongPath);
+    if (cachedLrc != null) {
+      if (currentSong.path != originalSongPath) return; // Verify still same song
+      _lrcData = cachedLrc;
+      _updateLyricsStatus();
+      setState(() {});
+      return;
+    }
 
-      // 3. Fetch from LRCLIB API.
-      final params = {
-        'track_name': currentSong.title,
-        'artist_name': currentSong.artist,
-        if (currentSong.album.isNotEmpty) 'album_name': currentSong.album,
-        'duration': currentSong.duration.inSeconds.toString(),
-      };
+    // 2. Check if required fields are present using original song
+    if (originalSong.title.isEmpty || originalSong.artist.isEmpty) {
+      _checkLocalLyrics();
+      return;
+    }
 
-      final uri = Uri.https('lrclib.net', '/api/get', params);
-      final response = await http.get(
-        uri,
-        headers: {
-          'User-Agent': 'Adiman (https://github.com/ChaosTheChaotic/Adiman)',
-        },
-      );
+    // 3. Fetch from API using original song's metadata
+    final params = {
+      'track_name': originalSong.title,
+      'artist_name': originalSong.artist,
+      if (originalSong.album.isNotEmpty) 'album_name': originalSong.album,
+      'duration': originalSong.duration.inSeconds.toString(),
+    };
 
-      if (response.statusCode == 200) {
-        final jsonResponse = jsonDecode(response.body);
-        final syncedLyrics = jsonResponse['syncedLyrics'] as String?;
-        if (syncedLyrics != null && syncedLyrics.isNotEmpty) {
-          _lrcData = lrc_pkg.Lrc.parse(syncedLyrics);
-          if (_lrcData!.lyrics.isNotEmpty) {
-            await _saveLyricsToCache(currentSong, syncedLyrics);
-            _updateLyricsStatus();
-            setState(() {});
-            return;
-          }
+    final uri = Uri.https('lrclib.net', '/api/get', params);
+    final response = await http.get(uri, headers: {
+      'User-Agent': 'Adiman (https://github.com/ChaosTheChaotic/Adiman)',
+    });
+
+    if (response.statusCode == 200) {
+      final jsonResponse = jsonDecode(response.body);
+      final syncedLyrics = jsonResponse['syncedLyrics'] as String?;
+      if (syncedLyrics != null && syncedLyrics.isNotEmpty) {
+        // Check if song hasn't changed before processing
+        if (currentSong.path != originalSongPath) return;
+        
+        _lrcData = lrc_pkg.Lrc.parse(syncedLyrics);
+        if (_lrcData!.lyrics.isNotEmpty) {
+          await _saveLyricsToCache(originalSong, syncedLyrics);
+          _updateLyricsStatus();
+          if (mounted) setState(() {});
+          return;
         }
       }
-    } catch (e) {
-      NamidaSnackbar(
-          backgroundColor: dominantColor,
-          content: 'Error fetching lyrics from API: $e');
     }
-    // 4. Fallback to local file.
+  } catch (e) {
+    NamidaSnackbar(
+      backgroundColor: dominantColor,
+      content: 'Error fetching lyrics from API: $e',
+    );
+  }
+  
+  // 4. Fallback only if still same song
+  if (currentSong.path == originalSongPath) {
     _checkLocalLyrics();
   }
+}
 
   void _checkLocalLyrics() async {
     try {
