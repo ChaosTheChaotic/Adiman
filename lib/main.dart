@@ -1441,7 +1441,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
         metadataSongs = songs.where((song) {
           return song.title.toLowerCase().contains(query) ||
               song.artist.toLowerCase().contains(query) ||
-	      song.album.toLowerCase().contains(query) ||
+              song.album.toLowerCase().contains(query) ||
               song.genre.toLowerCase().contains(query);
         }).toList();
 
@@ -1459,7 +1459,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
             .where((song) =>
                 song.title.toLowerCase().contains(query) ||
                 song.artist.toLowerCase().contains(query) ||
-		song.album.toLowerCase().contains(query) ||
+                song.album.toLowerCase().contains(query) ||
                 song.genre.toLowerCase().contains(query))
             .toList();
       });
@@ -2252,13 +2252,18 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                             ));
                             return;
                           }
-			  if (selectedSong == currentSong){
-			    ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(backgroundColor: dominantColor, content: 'Cannot make currently playing song next, use repeat function'));
-			    return;
-			  }
+                          if (selectedSong == currentSong) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                NamidaSnackbar(
+                                    backgroundColor: dominantColor,
+                                    content:
+                                        'Cannot make currently playing song next, use repeat function'));
+                            return;
+                          }
                           // Insert into the main songs list
                           List<Song> newSongs = List.from(songs);
-			  newSongs.removeWhere((s) => s.path == selectedSong.path);
+                          newSongs
+                              .removeWhere((s) => s.path == selectedSong.path);
                           newSongs.insert(mainCurrentIndex + 1, selectedSong);
                           // Update displayedSongs if not searching
                           if (_searchController.text.isEmpty) {
@@ -5318,97 +5323,96 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     return null;
   }
 
-Future<void> _saveLyricsToCache(Song song, String lrcContent) async {
-  try {
-    final dir = await getTemporaryDirectory();
-    final cacheDir = Directory('${dir.path}/lyrics');
-    if (!await cacheDir.exists()) await cacheDir.create(recursive: true);
+  Future<void> _saveLyricsToCache(Song song, String lrcContent) async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final cacheDir = Directory('${dir.path}/lyrics');
+      if (!await cacheDir.exists()) await cacheDir.create(recursive: true);
 
-    // Generate hash from original song's path
-    final hash = md5.convert(utf8.encode(song.path)).toString();
-    final file = File('${cacheDir.path}/$hash.lrc');
-    
-    // Use original song's metadata
-    await file.writeAsString(
-      "#TITLE: ${song.title}\n"
-      "#ARTIST: ${song.artist}\n"
-      "#PATH: ${song.path}\n"
-      "#GENRE: ${song.genre}\n"
-      "#ALBUM: ${song.album}\n"
-      "$lrcContent"
-    );
-  } catch (e) {
-    NamidaSnackbar(
-      backgroundColor: dominantColor,
-      content: 'Error saving lyrics cache: $e',
-    );
+      // Generate hash from original song's path
+      final hash = md5.convert(utf8.encode(song.path)).toString();
+      final file = File('${cacheDir.path}/$hash.lrc');
+
+      // Use original song's metadata
+      await file.writeAsString("#TITLE: ${song.title}\n"
+          "#ARTIST: ${song.artist}\n"
+          "#PATH: ${song.path}\n"
+          "#GENRE: ${song.genre}\n"
+          "#ALBUM: ${song.album}\n"
+          "$lrcContent");
+    } catch (e) {
+      NamidaSnackbar(
+        backgroundColor: dominantColor,
+        content: 'Error saving lyrics cache: $e',
+      );
+    }
   }
-}
 
-Future<void> _loadLyrics() async {
-  // Capture current song details at start of process
-  final originalSong = currentSong;
-  final originalSongPath = originalSong.path;
+  Future<void> _loadLyrics() async {
+    // Capture current song details at start of process
+    final originalSong = currentSong;
+    final originalSongPath = originalSong.path;
 
-  _lrcData = null;
-  try {
-    // 1. Check cache using original song path
-    final cachedLrc = await _getCachedLyrics(originalSongPath);
-    if (cachedLrc != null) {
-      if (currentSong.path != originalSongPath) return; // Verify still same song
-      _lrcData = cachedLrc;
-      _updateLyricsStatus();
-      setState(() {});
-      return;
-    }
+    _lrcData = null;
+    try {
+      // 1. Check cache using original song path
+      final cachedLrc = await _getCachedLyrics(originalSongPath);
+      if (cachedLrc != null) {
+        if (currentSong.path != originalSongPath)
+          return; // Verify still same song
+        _lrcData = cachedLrc;
+        _updateLyricsStatus();
+        setState(() {});
+        return;
+      }
 
-    // 2. Check if required fields are present using original song
-    if (originalSong.title.isEmpty || originalSong.artist.isEmpty) {
-      _checkLocalLyrics();
-      return;
-    }
+      // 2. Check if required fields are present using original song
+      if (originalSong.title.isEmpty || originalSong.artist.isEmpty) {
+        _checkLocalLyrics();
+        return;
+      }
 
-    // 3. Fetch from API using original song's metadata
-    final params = {
-      'track_name': originalSong.title,
-      'artist_name': originalSong.artist,
-      if (originalSong.album.isNotEmpty) 'album_name': originalSong.album,
-      'duration': originalSong.duration.inSeconds.toString(),
-    };
+      // 3. Fetch from API using original song's metadata
+      final params = {
+        'track_name': originalSong.title,
+        'artist_name': originalSong.artist,
+        if (originalSong.album.isNotEmpty) 'album_name': originalSong.album,
+        'duration': originalSong.duration.inSeconds.toString(),
+      };
 
-    final uri = Uri.https('lrclib.net', '/api/get', params);
-    final response = await http.get(uri, headers: {
-      'User-Agent': 'Adiman (https://github.com/ChaosTheChaotic/Adiman)',
-    });
+      final uri = Uri.https('lrclib.net', '/api/get', params);
+      final response = await http.get(uri, headers: {
+        'User-Agent': 'Adiman (https://github.com/ChaosTheChaotic/Adiman)',
+      });
 
-    if (response.statusCode == 200) {
-      final jsonResponse = jsonDecode(response.body);
-      final syncedLyrics = jsonResponse['syncedLyrics'] as String?;
-      if (syncedLyrics != null && syncedLyrics.isNotEmpty) {
-        // Check if song hasn't changed before processing
-        if (currentSong.path != originalSongPath) return;
-        
-        _lrcData = lrc_pkg.Lrc.parse(syncedLyrics);
-        if (_lrcData!.lyrics.isNotEmpty) {
-          await _saveLyricsToCache(originalSong, syncedLyrics);
-          _updateLyricsStatus();
-          if (mounted) setState(() {});
-          return;
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        final syncedLyrics = jsonResponse['syncedLyrics'] as String?;
+        if (syncedLyrics != null && syncedLyrics.isNotEmpty) {
+          // Check if song hasn't changed before processing
+          if (currentSong.path != originalSongPath) return;
+
+          _lrcData = lrc_pkg.Lrc.parse(syncedLyrics);
+          if (_lrcData!.lyrics.isNotEmpty) {
+            await _saveLyricsToCache(originalSong, syncedLyrics);
+            _updateLyricsStatus();
+            if (mounted) setState(() {});
+            return;
+          }
         }
       }
+    } catch (e) {
+      NamidaSnackbar(
+        backgroundColor: dominantColor,
+        content: 'Error fetching lyrics from API: $e',
+      );
     }
-  } catch (e) {
-    NamidaSnackbar(
-      backgroundColor: dominantColor,
-      content: 'Error fetching lyrics from API: $e',
-    );
+
+    // 4. Fallback only if still same song
+    if (currentSong.path == originalSongPath) {
+      _checkLocalLyrics();
+    }
   }
-  
-  // 4. Fallback only if still same song
-  if (currentSong.path == originalSongPath) {
-    _checkLocalLyrics();
-  }
-}
 
   void _checkLocalLyrics() async {
     try {

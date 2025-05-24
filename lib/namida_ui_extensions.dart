@@ -768,11 +768,12 @@ class LyricsOverlay extends StatefulWidget {
     this.onLyricTap,
   });
 
-  @override 
+  @override
   State<LyricsOverlay> createState() => _LyricsOverlayState();
 }
 
-class _LyricsOverlayState extends State<LyricsOverlay> with TickerProviderStateMixin {
+class _LyricsOverlayState extends State<LyricsOverlay>
+    with TickerProviderStateMixin {
   final _scrollController = ScrollController();
   final _currentLyricNotifier = ValueNotifier<int>(-1);
   late AnimationController _breathingController;
@@ -815,7 +816,7 @@ class _LyricsOverlayState extends State<LyricsOverlay> with TickerProviderStateM
 
     // Pulse animation for active lyric
     _pulseController = AnimationController(
-      vsync: this, 
+      vsync: this,
       duration: const Duration(milliseconds: 800),
     );
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
@@ -834,7 +835,7 @@ class _LyricsOverlayState extends State<LyricsOverlay> with TickerProviderStateM
   void _handleParallaxScroll() {
     final currentPos = _scrollController.offset;
     final delta = currentPos - _lastScrollPos;
-    _lastScrollPos = currentPos;
+    _lastScrollPos = delta;
     setState(() {
       // This will trigger a rebuild with updated parallax offsets
     });
@@ -857,22 +858,24 @@ class _LyricsOverlayState extends State<LyricsOverlay> with TickerProviderStateM
 
   double _getParallaxOffset(int index) {
     if (!_scrollController.hasClients) return 0.0;
-    
+
     final scrollViewHeight = _scrollController.position.viewportDimension;
     final itemPosition = index * 65.0; // Approximate item height
     final scrollPosition = _scrollController.offset;
     final relativePosition = (itemPosition - scrollPosition) / scrollViewHeight;
-    
+
     return relativePosition * 20.0; // Parallax amount
   }
 
   @override
   Widget build(BuildContext context) {
-    final breathingValue = widget.sharedBreathingValue ?? _breathingAnimation.value;
+    final breathingValue =
+        widget.sharedBreathingValue ?? _breathingAnimation.value;
     final peakValue = _peakAnimation.value;
 
     return AnimatedBuilder(
-      animation: Listenable.merge([_breathingController, _peakController, _pulseController]),
+      animation: Listenable.merge(
+          [_breathingController, _peakController, _pulseController]),
       builder: (context, _) {
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -933,34 +936,48 @@ class _LyricsOverlayState extends State<LyricsOverlay> with TickerProviderStateM
                                   ),
                                   child: GestureDetector(
                                     key: _lyricKeys[index],
-                                    onTap: () => widget.onLyricTap?.call(lyric.timestamp),
+                                    onTap: () => widget.onLyricTap
+                                        ?.call(lyric.timestamp),
                                     child: Transform.scale(
-                                      scale: isCurrent ? _pulseAnimation.value : 1.0,
+                                      scale: isCurrent
+                                          ? _pulseAnimation.value
+                                          : 1.0,
                                       child: Container(
                                         decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(12),
-                                          boxShadow: isCurrent ? [
-                                            BoxShadow(
-                                              color: widget.dominantColor.withValues(alpha: 0.3),
-                                              blurRadius: 15,
-                                              spreadRadius: 2,
-                                            )
-                                          ] : null,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          boxShadow: isCurrent
+                                              ? [
+                                                  BoxShadow(
+                                                    color: widget.dominantColor
+                                                        .withValues(alpha: 0.3),
+                                                    blurRadius: 15,
+                                                    spreadRadius: 2,
+                                                  )
+                                                ]
+                                              : null,
                                         ),
                                         child: GlowText(
                                           lyric.lyrics,
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
                                             fontSize: isCurrent ? 28 : 20,
-                                            fontWeight: isCurrent ? FontWeight.w800 : FontWeight.normal,
+                                            fontWeight: isCurrent
+                                                ? FontWeight.w800
+                                                : FontWeight.normal,
                                             color: isCurrent
                                                 ? widget.dominantColor
-                                                : widget.dominantColor.computeLuminance() > 0.3
-                                                    ? Colors.black.withValues(alpha: 0.7)
-                                                    : Colors.white.withValues(alpha: 0.7),
+                                                : widget.dominantColor
+                                                            .computeLuminance() >
+                                                        0.3
+                                                    ? Colors.black
+                                                        .withValues(alpha: 0.7)
+                                                    : Colors.white
+                                                        .withValues(alpha: 0.7),
                                           ),
                                           glowColor: isCurrent
-                                              ? widget.dominantColor.withValues(alpha: 0.3)
+                                              ? widget.dominantColor
+                                                  .withValues(alpha: 0.3)
                                               : Colors.transparent,
                                         ),
                                       ),
@@ -987,7 +1004,7 @@ class _LyricsOverlayState extends State<LyricsOverlay> with TickerProviderStateM
   void didUpdateWidget(LyricsOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
     _updateCurrentLyric();
-    
+
     if (widget.isPlaying != oldWidget.isPlaying) {
       if (widget.isPlaying) {
         _breathingController.repeat(reverse: true);
@@ -1003,8 +1020,11 @@ class _LyricsOverlayState extends State<LyricsOverlay> with TickerProviderStateM
       _peakAnimation = Tween<double>(
         begin: _peakAnimation.value,
         end: _targetPeakScale,
-      ).animate(CurvedAnimation(parent: _peakController, curve: Curves.easeOut));
-      _peakController..value = 0.0..forward();
+      ).animate(
+          CurvedAnimation(parent: _peakController, curve: Curves.easeOut));
+      _peakController
+        ..value = 0.0
+        ..forward();
     }
   }
 
