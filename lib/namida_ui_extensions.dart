@@ -768,23 +768,34 @@ class LyricsOverlay extends StatefulWidget {
     this.onLyricTap,
   });
 
-  @override
+  @override 
   State<LyricsOverlay> createState() => _LyricsOverlayState();
 }
 
-class _LyricsOverlayState extends State<LyricsOverlay>
-    with SingleTickerProviderStateMixin {
+class _LyricsOverlayState extends State<LyricsOverlay> with TickerProviderStateMixin {
   final _scrollController = ScrollController();
   final _currentLyricNotifier = ValueNotifier<int>(-1);
   late AnimationController _breathingController;
   late AnimationController _peakController;
+  late AnimationController _pulseController;
   late Animation<double> _breathingAnimation;
   late Animation<double> _peakAnimation;
+  late Animation<double> _pulseAnimation;
   double _targetPeakScale = 1.0;
+  double _lastScrollPos = 0.0;
+  final Map<int, GlobalKey> _lyricKeys = {};
 
   @override
   void initState() {
     super.initState();
+    _initializeAnimations();
+    _currentLyricNotifier.addListener(_scrollToCurrentLyric);
+    _scrollController.addListener(_handleParallaxScroll);
+    _updateCurrentLyric();
+  }
+
+  void _initializeAnimations() {
+    // Breathing animation for overall lyric container
     _breathingController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -793,6 +804,7 @@ class _LyricsOverlayState extends State<LyricsOverlay>
       CurvedAnimation(parent: _breathingController, curve: Curves.easeInOut),
     );
 
+    // Peak animation for audio reactivity
     _peakController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -801,43 +813,188 @@ class _LyricsOverlayState extends State<LyricsOverlay>
       CurvedAnimation(parent: _peakController, curve: Curves.easeOut),
     );
 
+    // Pulse animation for active lyric
+    _pulseController = AnimationController(
+      vsync: this, 
+      duration: const Duration(milliseconds: 800),
+    );
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
     if (widget.isPlaying) {
       _breathingController.repeat(reverse: true);
+      _pulseController.repeat(reverse: true);
     }
-    _currentLyricNotifier.addListener(_scrollToCurrentLyric);
-    _updateCurrentLyric();
+  }
+
+  void _handleParallaxScroll() {
+    final currentPos = _scrollController.offset;
+    final delta = currentPos - _lastScrollPos;
+    _lastScrollPos = currentPos;
+    setState(() {
+      // This will trigger a rebuild with updated parallax offsets
+    });
   }
 
   void _scrollToCurrentLyric() {
     final index = _currentLyricNotifier.value;
-    if (index >= 0) {
-      final scrollPosition =
-          index * 45.0; // I need a better way of calculating this
-      _scrollController.animateTo(
-        scrollPosition.clamp(0.0, _scrollController.position.maxScrollExtent),
-        duration: const Duration(milliseconds: 800),
-        curve: Curves.easeOutQuint,
-      );
+    if (index >= 0 && _lyricKeys.containsKey(index)) {
+      final context = _lyricKeys[index]?.currentContext;
+      if (context != null) {
+        Scrollable.ensureVisible(
+          context,
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeOutQuint,
+          alignment: 0.5, // Center the current lyric
+        );
+      }
     }
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() {});
-    });
+  double _getParallaxOffset(int index) {
+    if (!_scrollController.hasClients) return 0.0;
+    
+    final scrollViewHeight = _scrollController.position.viewportDimension;
+    final itemPosition = index * 65.0; // Approximate item height
+    final scrollPosition = _scrollController.offset;
+    final relativePosition = (itemPosition - scrollPosition) / scrollViewHeight;
+    
+    return relativePosition * 20.0; // Parallax amount
   }
 
   @override
-  void didUpdateWidget(covariant LyricsOverlay oldWidget) {
+  Widget build(BuildContext context) {
+    final breathingValue = widget.sharedBreathingValue ?? _breathingAnimation.value;
+    final peakValue = _peakAnimation.value;
+
+    return AnimatedBuilder(
+      animation: Listenable.merge([_breathingController, _peakController, _pulseController]),
+      builder: (context, _) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return Transform.scale(
+              scale: breathingValue + (peakValue - 1.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                  child: Container(
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          widget.dominantColor.withValues(alpha: 0.2),
+                          Colors.black.withValues(alpha: 0.4),
+                        ],
+                      ),
+                    ),
+                    child: ShaderMask(
+                      shaderCallback: (Rect bounds) {
+                        return LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.white,
+                            Colors.white,
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.15, 0.85, 1.0],
+                        ).createShader(bounds);
+                      },
+                      blendMode: BlendMode.dstIn,
+                      child: ValueListenableBuilder<int>(
+                        valueListenable: _currentLyricNotifier,
+                        builder: (context, currentIndex, _) {
+                          return ListView.builder(
+                            controller: _scrollController,
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: widget.lrc.lyrics.length,
+                            itemBuilder: (context, index) {
+                              final lyric = widget.lrc.lyrics[index];
+                              final isCurrent = index == currentIndex;
+                              _lyricKeys.putIfAbsent(index, () => GlobalKey());
+
+                              return Transform.translate(
+                                offset: Offset(0, _getParallaxOffset(index)),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOutQuad,
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: isCurrent ? 20.0 : 12.0,
+                                    horizontal: 16.0,
+                                  ),
+                                  child: GestureDetector(
+                                    key: _lyricKeys[index],
+                                    onTap: () => widget.onLyricTap?.call(lyric.timestamp),
+                                    child: Transform.scale(
+                                      scale: isCurrent ? _pulseAnimation.value : 1.0,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: isCurrent ? [
+                                            BoxShadow(
+                                              color: widget.dominantColor.withValues(alpha: 0.3),
+                                              blurRadius: 15,
+                                              spreadRadius: 2,
+                                            )
+                                          ] : null,
+                                        ),
+                                        child: GlowText(
+                                          lyric.lyrics,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: isCurrent ? 28 : 20,
+                                            fontWeight: isCurrent ? FontWeight.w800 : FontWeight.normal,
+                                            color: isCurrent
+                                                ? widget.dominantColor
+                                                : widget.dominantColor.computeLuminance() > 0.3
+                                                    ? Colors.black.withValues(alpha: 0.7)
+                                                    : Colors.white.withValues(alpha: 0.7),
+                                          ),
+                                          glowColor: isCurrent
+                                              ? widget.dominantColor.withValues(alpha: 0.3)
+                                              : Colors.transparent,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  void didUpdateWidget(LyricsOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
     _updateCurrentLyric();
+    
     if (widget.isPlaying != oldWidget.isPlaying) {
       if (widget.isPlaying) {
         _breathingController.repeat(reverse: true);
+        _pulseController.repeat(reverse: true);
       } else {
         _breathingController.stop();
+        _pulseController.stop();
       }
     }
 
@@ -846,12 +1003,8 @@ class _LyricsOverlayState extends State<LyricsOverlay>
       _peakAnimation = Tween<double>(
         begin: _peakAnimation.value,
         end: _targetPeakScale,
-      ).animate(
-        CurvedAnimation(parent: _peakController, curve: Curves.easeOut),
-      );
-      _peakController
-        ..value = 0.0
-        ..forward();
+      ).animate(CurvedAnimation(parent: _peakController, curve: Curves.easeOut));
+      _peakController..value = 0.0..forward();
     }
   }
 
@@ -870,126 +1023,12 @@ class _LyricsOverlayState extends State<LyricsOverlay>
   }
 
   @override
-  Widget build(BuildContext context) {
-    final breathingValue =
-        widget.sharedBreathingValue ?? _breathingAnimation.value;
-    final peakValue = _peakAnimation.value;
-
-    return AnimatedBuilder(
-        animation: Listenable.merge([_breathingController, _peakController]),
-        builder: (context, _) {
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              return Transform.scale(
-                scale: breathingValue + (peakValue - 1.0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTapDown: (details) {
-                      if (widget.lrc.lyrics.isEmpty) return;
-                      final box = context.findRenderObject() as RenderBox;
-                      final localPosition =
-                          box.globalToLocal(details.globalPosition);
-                      final lyricIndex = (localPosition.dy ~/ 65)
-                          .clamp(0, widget.lrc.lyrics.length - 1);
-                      widget.onLyricTap
-                          ?.call(widget.lrc.lyrics[lyricIndex].timestamp);
-                    },
-                    child: BackdropFilter(
-                      filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                      child: Container(
-                        width: constraints.maxWidth,
-                        height: constraints.maxHeight,
-                        decoration:
-                            const BoxDecoration(color: Colors.transparent),
-                        child: ValueListenableBuilder<int>(
-                          valueListenable: _currentLyricNotifier,
-                          builder: (context, currentIndex, _) {
-                            return ListView.builder(
-                              controller: _scrollController,
-                              physics: const BouncingScrollPhysics(),
-                              padding: EdgeInsets.zero,
-                              itemCount: widget.lrc.lyrics.length,
-                              itemBuilder: (context, index) {
-                                final lyric = widget.lrc.lyrics[index];
-                                final isCurrent = index == currentIndex;
-                                final textColor = isCurrent
-                                    ? widget.dominantColor
-                                    : (widget.dominantColor.computeLuminance() >
-                                                0.3
-                                            ? Colors.black
-                                            : Colors.white)
-                                        .withValues(alpha: 0.6);
-                                return InkWell(
-                                  onTap: () =>
-                                      widget.onLyricTap?.call(lyric.timestamp),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 12),
-                                    child: AnimatedDefaultTextStyle(
-                                      duration:
-                                          const Duration(milliseconds: 300),
-                                      curve: Curves.easeInOut,
-                                      style: TextStyle(
-                                        fontSize: isCurrent ? 28 : 20,
-                                        color: textColor,
-                                        fontWeight: isCurrent
-                                            ? FontWeight.w800
-                                            : FontWeight.normal,
-                                        shadows: isCurrent
-                                            ? [
-                                                Shadow(
-                                                  color: Colors.black
-                                                      .withValues(alpha: 0.5),
-                                                  blurRadius: 15,
-                                                )
-                                              ]
-                                            : null,
-                                      ),
-                                      child: GlowText(
-                                        lyric.lyrics,
-                                        textAlign: TextAlign.center,
-                                        glowColor: isCurrent
-                                            ? (widget.dominantColor
-                                                        .withValues(alpha: 0.3)
-                                                        .computeLuminance() >
-                                                    0.3
-                                                ? Colors.black
-                                                : Colors.white)
-                                            : Colors.transparent,
-                                        blurRadius: 15,
-                                        style: TextStyle(
-                                          shadows: [
-                                            Shadow(
-                                              color: Colors.black
-                                                  .withValues(alpha: 0.7),
-                                              blurRadius: 0,
-                                              offset: Offset(1, 1),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        });
-  }
-
-  @override
   void dispose() {
     _currentLyricNotifier.dispose();
+    _scrollController.dispose();
+    _breathingController.dispose();
+    _peakController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 }
@@ -1318,12 +1357,12 @@ class _NamidaSnackbarContentState extends State<_NamidaSnackbarContent>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              colorScheme.primary.withOpacity(0.15),
-              Colors.black.withOpacity(0.3),
+              colorScheme.primary.withValues(alpha: 0.15),
+              Colors.black.withValues(alpha: 0.3),
             ],
           ),
           border: Border.all(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             width: 1.5,
           ),
         ),
