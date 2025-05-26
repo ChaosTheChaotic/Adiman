@@ -73,4 +73,5 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 To build you must have [flutter_rust_bridge](https://github.com/fzyzcjy/flutter_rust_bridge) installed, (obviously) the flutter sdk and rust (obviously). You should also have the repo cloned on your machine. To generate the dart to go with the rust you should run `flutter_rust_bridge_codegen generate` and to build the rust you must run `flutter build linux` inside the source directory.
 
 ## Helpful people
+- MSOB7Y (the creator of namida) for the inspiration and motivation for this and where I got the icons from
 - DuckTheCrowolf (thevietnamesecrow on discord) for making the logo

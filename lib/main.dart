@@ -18,6 +18,7 @@ import 'package:flutter/services.dart';
 import 'package:anni_mpris_service/anni_mpris_service.dart';
 import 'package:animated_background/animated_background.dart';
 import 'package:dbus/dbus.dart';
+import 'broken_icons.dart';
 
 class Song {
   final String title;
@@ -55,13 +56,32 @@ class Song {
 }
 
 ThemeData _buildDynamicTheme(Color dominantColor) {
+  final bool isDark = dominantColor.computeLuminance() < 0.4;
+  final textColor = isDark ? Colors.white : dominantColor;
   return ThemeData.dark().copyWith(
     colorScheme: ColorScheme.fromSeed(
       seedColor: dominantColor,
-      brightness: Brightness.dark,
+      brightness: isDark ? Brightness.dark : Brightness.light,
+    ),
+    textTheme: TextTheme(
+      bodyLarge: TextStyle(color: textColor),
+      bodyMedium: TextStyle(color: textColor),
+      titleLarge: TextStyle(color: textColor),
+      titleMedium: TextStyle(color: textColor),
     ),
     visualDensity: VisualDensity.adaptivePlatformDensity,
     useMaterial3: true,
+    iconTheme: IconThemeData(color: textColor),
+    navigationRailTheme: NavigationRailThemeData(
+      backgroundColor: Colors.transparent,
+      selectedIconTheme: IconThemeData(color: dominantColor),
+      unselectedIconTheme:
+          IconThemeData(color: dominantColor.withValues(alpha: 0.5)),
+    ),
+    drawerTheme: DrawerThemeData(
+      backgroundColor: Colors.transparent,
+      scrimColor: Colors.black.withValues(alpha: 0.4),
+    ),
   );
 }
 
@@ -224,7 +244,7 @@ class _MiniPlayerState extends State<MiniPlayer>
 
   @override
   Widget build(BuildContext context) {
-    final textColor = widget.dominantColor.computeLuminance() > 0.007
+    final textColor = widget.dominantColor.computeLuminance() > 0.01
         ? widget.dominantColor
         : Theme.of(context).textTheme.bodyLarge?.color;
     return GestureDetector(
@@ -336,7 +356,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                                 gaplessPlayback: true,
                               )
                             : GlowIcon(
-                                Icons.music_note,
+                                Broken.musicnote,
                                 color: Colors.white,
                                 glowColor: Colors.white,
                               ),
@@ -381,7 +401,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                     shape: const CircleBorder(),
                     child: IconButton(
                       icon: GlowIcon(
-                        Icons.skip_previous,
+                        Broken.previous,
                         color: textColor,
                         glowColor: widget.dominantColor.withValues(alpha: 0.3),
                       ),
@@ -408,10 +428,13 @@ class _MiniPlayerState extends State<MiniPlayer>
                         ],
                       ),
                       child: IconButton(
-                        icon: AnimatedIcon(
-                          icon: AnimatedIcons.play_pause,
-                          progress: _playPauseController,
+                        icon: GlowIcon(
+                          _playPauseController.isForwardOrCompleted
+                              ? Broken.pause
+                              : Broken.play,
                           color: textColor,
+                          glowColor:
+                              widget.dominantColor.withValues(alpha: 0.2),
                         ),
                         onPressed: _togglePlayPause,
                       ),
@@ -425,7 +448,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                     shape: const CircleBorder(),
                     child: IconButton(
                       icon: GlowIcon(
-                        Icons.skip_next,
+                        Broken.next,
                         color: textColor,
                         glowColor: widget.dominantColor.withValues(alpha: 0.3),
                       ),
@@ -559,11 +582,13 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   String currentMusicDirectory = '';
   String? _currentPlaylistName;
   late final AdimanService service;
-  bool _isInSelectionMode = false;
   final Set<Song> _selectedSongs = {};
   List<Song> metadataSongs = [];
   List<Song> lyricsSongs = [];
+  Map<String, bool> _visibleSongs = {};
   Map<String, bool> _deletingSongs = {};
+  DateTime? _lastGKeyPressTime;
+  late bool _vimKeybindings;
 
   final double fixedHeaderHeight = 60.0;
   final double slidingHeaderHeight = 48.0;
@@ -626,25 +651,34 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
       curve: Curves.easeInOut,
     );
 
+    _getVimBindings();
+
     _searchController.addListener(_updateSearchResults);
+  }
+
+  Future<void> _getVimBindings() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _vimKeybindings = prefs.getBool('vimKeybindings') ?? false;
+      });
+    }
   }
 
   void _toggleSongSelection(Song song, bool selected) {
     setState(() {
       if (selected) {
         _selectedSongs.add(song);
-        _isInSelectionMode = true;
         _mainFocusNode.requestFocus();
       } else {
         _selectedSongs.remove(song);
-        if (_selectedSongs.isEmpty) _isInSelectionMode = false;
       }
+      _mainFocusNode.requestFocus();
     });
   }
 
   void _exitSelectionMode() {
     setState(() {
-      _isInSelectionMode = false;
       _selectedSongs.clear();
     });
   }
@@ -695,7 +729,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     final color = isDestructive ? Colors.redAccent : dominantColor;
     final iconColor = isDestructive
         ? Colors.redAccent
-        : dominantColor.computeLuminance() > 0.007
+        : dominantColor.computeLuminance() > 0.01
             ? dominantColor
             : Theme.of(context).textTheme.bodyLarge?.color;
     return Material(
@@ -769,18 +803,17 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                         children: [
                           GlowText(
                             'Select Playlist',
-                            glowColor:
-                                (dominantColor.computeLuminance() > 0.007)
-                                    ? dominantColor
-                                    : Theme.of(context)
-                                        .textTheme
-                                        .bodyLarge
-                                        ?.color!
-                                        .withValues(alpha: 0.3),
+                            glowColor: (dominantColor.computeLuminance() > 0.01)
+                                ? dominantColor
+                                : Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.color!
+                                    .withValues(alpha: 0.3),
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
-                              color: dominantColor.computeLuminance() > 0.007
+                              color: dominantColor.computeLuminance() > 0.01
                                   ? dominantColor
                                   : Theme.of(context)
                                       .textTheme
@@ -832,10 +865,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                       child: Row(
                                         children: [
                                           GlowIcon(
-                                            Icons.queue_music_rounded,
+                                            Broken.music_playlist,
                                             color: dominantColor
                                                         .computeLuminance() >
-                                                    0.007
+                                                    0.01
                                                 ? dominantColor
                                                 : Theme.of(context)
                                                     .textTheme
@@ -859,10 +892,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                           ),
                                           IconButton(
                                             icon: GlowIcon(
-                                              Icons.edit_rounded,
+                                              Broken.edit,
                                               color: dominantColor
                                                           .computeLuminance() >
-                                                      0.007
+                                                      0.01
                                                   ? dominantColor
                                                   : Theme.of(context)
                                                       .textTheme
@@ -914,7 +947,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                           ),
                                           IconButton(
                                             icon: GlowIcon(
-                                              Icons.close_rounded,
+                                              Broken.cross,
                                               color: Colors.redAccent,
                                               blurRadius: 8,
                                               size: 20,
@@ -1026,7 +1059,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                           ),
                           const SizedBox(height: 16),
                           _buildPlaylistOptionButton(
-                            icon: Icons.merge_rounded,
+                            icon: Broken.hierarchy_3,
                             label: 'Merge Playlists',
                             onTap: () async {
                               ScaffoldMessenger.of(context)
@@ -1074,9 +1107,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 child: Row(
                                   children: [
                                     Icon(
-                                      Icons.library_music_rounded,
+                                      Broken.music_library_2,
                                       color: dominantColor.computeLuminance() >
-                                              0.007
+                                              0.01
                                           ? dominantColor
                                           : Theme.of(context)
                                               .textTheme
@@ -1150,12 +1183,14 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
-                          color: dominantColor,
+                          color: dominantColor.computeLuminance() > 0.01
+                              ? dominantColor
+                              : Theme.of(context).textTheme.bodyLarge?.color,
                         ),
                       ),
                       const SizedBox(height: 20),
                       _buildPlaylistOptionButton(
-                        icon: Icons.create_new_folder,
+                        icon: Broken.folder_add,
                         label: 'Create New Playlist',
                         onTap: () async {
                           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -1173,7 +1208,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                       ),
                       const SizedBox(height: 12),
                       _buildPlaylistOptionButton(
-                        icon: Icons.playlist_add,
+                        icon: Broken.music_playlist,
                         label: 'Add to Existing Playlist',
                         onTap: () async {
                           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -1194,7 +1229,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                       if (_currentPlaylistName != null) ...[
                         const SizedBox(height: 12),
                         _buildPlaylistOptionButton(
-                          icon: Icons.remove_circle,
+                          icon: Broken.cross,
                           label: 'Remove from Playlist',
                           onTap: () async {
                             ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -1209,7 +1244,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                       ],
                       const SizedBox(height: 12),
                       _buildPlaylistOptionButton(
-                        icon: Icons.delete_forever_rounded,
+                        icon: Broken.trash,
                         label: 'Delete Selected Songs',
                         onTap: () async {
                           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -1298,7 +1333,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                       child: TextField(
                         controller: controller,
                         style: TextStyle(color: Colors.white),
-                        cursorColor: dominantColor.computeLuminance() > 0.007
+                        cursorColor: dominantColor.computeLuminance() > 0.01
                             ? dominantColor
                             : Theme.of(context).textTheme.bodyLarge?.color,
                         decoration: InputDecoration(
@@ -1337,7 +1372,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                         ),
                         const SizedBox(width: 12),
                         DynamicIconButton(
-                          icon: Icons.check_rounded,
+                          icon: Broken.tick,
                           onPressed: () {
                             final newName = controller.text.trim();
                             if (newName.isNotEmpty && newName != currentName) {
@@ -1389,6 +1424,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
       final prefs = await SharedPreferences.getInstance();
       int currentCount = 0;
       List<Song> loadedSongs = [];
+
+      // Initialize all songs as invisible
+      _visibleSongs = {};
+
       do {
         final metadata = await rust_api.scanMusicDirectory(
           dirPath: currentMusicDirectory,
@@ -1396,33 +1435,76 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
         );
         loadedSongs = metadata.map((m) => Song.fromMetadata(m)).toList();
         currentCount = loadedSongs.length;
+
+        // Sort the songs
+        loadedSongs.sort((a, b) => a.title.compareTo(b.title));
+
         setState(() {
           songs = loadedSongs;
           if (_searchController.text.isEmpty) {
             displayedSongs = loadedSongs;
           }
+          // Initialize all new songs as invisible
+          for (var song in loadedSongs) {
+            _visibleSongs[song.path] = false;
+          }
         });
+
         if (currentCount >= expectedCount) {
           break;
         } else if (prefs.getBool('autoConvert') ?? false) {
           await Future.delayed(const Duration(seconds: 1));
         }
       } while (currentCount >= expectedCount);
-      loadedSongs.sort((a, b) => a.title.compareTo(b.title));
+
+      // Animate songs in with a stagger effect
+      Future.delayed(Duration(milliseconds: 100), () {
+        if (mounted) {
+          setState(() {
+            for (var song in loadedSongs) {
+              _visibleSongs[song.path] = true;
+            }
+          });
+        }
+      });
     } catch (e) {
-      NamidaSnackbar(
-          backgroundColor: dominantColor, content: 'Error loading songs: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+            backgroundColor: dominantColor,
+            content: 'Error loading songs: $e'));
+      }
     }
-    setState(() => isLoading = false);
+    if (mounted) {
+      setState(() => isLoading = false);
+    }
   }
 
   void _updateSearchResults() async {
     final query = _searchController.text.toLowerCase();
+
+    setState(() {
+      for (var song in displayedSongs) {
+        _visibleSongs[song.path] = false;
+      }
+    });
+
     if (query.isEmpty) {
+      await Future.delayed(Duration(milliseconds: 200));
+      if (!mounted) return;
+
       setState(() {
         metadataSongs = [];
         lyricsSongs = [];
         displayedSongs = songs;
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (mounted) {
+            setState(() {
+              for (var song in songs) {
+                _visibleSongs[song.path] = true;
+              }
+            });
+          }
+        });
       });
       return;
     }
@@ -1437,10 +1519,14 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
 
       final lyricPaths = lyricResults.map((r) => r.path).toSet();
 
+      await Future.delayed(Duration(milliseconds: 200));
+      if (!mounted) return;
+
       setState(() {
         metadataSongs = songs.where((song) {
           return song.title.toLowerCase().contains(query) ||
               song.artist.toLowerCase().contains(query) ||
+              song.album.toLowerCase().contains(query) ||
               song.genre.toLowerCase().contains(query);
         }).toList();
 
@@ -1448,18 +1534,57 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
           return lyricPaths.contains(song.path);
         }).toList();
 
-        displayedSongs = [...metadataSongs, ...lyricsSongs];
+        displayedSongs = {...metadataSongs, ...lyricsSongs}.toList();
+
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (mounted) {
+            setState(() {
+              for (var i = 0; i < displayedSongs.length; i++) {
+                final song = displayedSongs[i];
+                Future.delayed(Duration(milliseconds: i * 30), () {
+                  if (mounted) {
+                    setState(() {
+                      _visibleSongs[song.path] = true;
+                    });
+                  }
+                });
+              }
+            });
+          }
+        });
       });
     } catch (e) {
-      NamidaSnackbar(content: 'Error searching lyrics: $e');
-      // Fallback to metadata search
+      ScaffoldMessenger.of(context)
+          .showSnackBar(NamidaSnackbar(content: 'Error searching lyrics: $e'));
+
+      await Future.delayed(Duration(milliseconds: 200));
+      if (!mounted) return;
+
       setState(() {
         displayedSongs = songs
             .where((song) =>
                 song.title.toLowerCase().contains(query) ||
                 song.artist.toLowerCase().contains(query) ||
+                song.album.toLowerCase().contains(query) ||
                 song.genre.toLowerCase().contains(query))
             .toList();
+
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (mounted) {
+            setState(() {
+              for (var i = 0; i < displayedSongs.length; i++) {
+                final song = displayedSongs[i];
+                Future.delayed(Duration(milliseconds: i * 30), () {
+                  if (mounted) {
+                    setState(() {
+                      _visibleSongs[song.path] = true;
+                    });
+                  }
+                });
+              }
+            });
+          }
+        });
       });
     }
   }
@@ -1729,18 +1854,17 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                         children: [
                           GlowText(
                             'Select Playlists to Merge',
-                            glowColor:
-                                (dominantColor.computeLuminance() > 0.007)
-                                    ? dominantColor
-                                    : Theme.of(context)
-                                        .textTheme
-                                        .bodyLarge
-                                        ?.color!
-                                        .withValues(alpha: 0.3),
+                            glowColor: (dominantColor.computeLuminance() > 0.01)
+                                ? dominantColor
+                                : Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.color!
+                                    .withValues(alpha: 0.3),
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
-                              color: dominantColor.computeLuminance() > 0.007
+                              color: dominantColor.computeLuminance() > 0.01
                                   ? dominantColor
                                   : Theme.of(context)
                                       .textTheme
@@ -1829,10 +1953,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                           child: isSelected
                                               ? Center(
                                                   child: GlowIcon(
-                                                    Icons.check_rounded,
+                                                    Broken.tick,
                                                     color: dominantColor
                                                                 .computeLuminance() >
-                                                            0.007
+                                                            0.01
                                                         ? dominantColor
                                                         : Theme.of(context)
                                                             .textTheme
@@ -1841,7 +1965,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                                     size: 18,
                                                     glowColor: dominantColor
                                                                 .computeLuminance() >
-                                                            0.007
+                                                            0.01
                                                         ? dominantColor
                                                         : Theme.of(context)
                                                             .textTheme
@@ -1897,7 +2021,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                               ),
                               const SizedBox(width: 12),
                               DynamicIconButton(
-                                icon: Icons.check_rounded,
+                                icon: Broken.tick,
                                 onPressed: () {
                                   ScaffoldMessenger.of(context)
                                       .hideCurrentSnackBar();
@@ -1980,7 +2104,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                         child: TextField(
                           controller: controller,
                           style: const TextStyle(color: Colors.white),
-                          cursorColor: dominantColor.computeLuminance() > 0.007
+                          cursorColor: dominantColor.computeLuminance() > 0.01
                               ? dominantColor
                               : Theme.of(context).textTheme.bodyLarge?.color,
                           decoration: InputDecoration(
@@ -1997,7 +2121,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                               color: Colors.white.withValues(alpha: 0.6),
                             ),
                             prefixIcon: Icon(
-                              Icons.playlist_add_rounded,
+                              Broken.music_playlist,
                               color: dominantColor,
                             ),
                           ),
@@ -2025,7 +2149,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                           ),
                           const SizedBox(width: 12),
                           DynamicIconButton(
-                            icon: Icons.check_rounded,
+                            icon: Broken.tick,
                             onPressed: () {
                               ScaffoldMessenger.of(context)
                                   .hideCurrentSnackBar();
@@ -2136,7 +2260,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 child: Row(
                                   children: [
                                     Icon(
-                                      Icons.queue_music_rounded,
+                                      Broken.music_playlist,
                                       color: dominantColor.withValues(
                                         alpha: 0.8,
                                       ),
@@ -2228,14 +2352,14 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
-                          color: dominantColor.computeLuminance() > 0.007
+                          color: dominantColor.computeLuminance() > 0.01
                               ? dominantColor
                               : Theme.of(context).textTheme.bodyLarge?.color,
                         ),
                       ),
                       const SizedBox(height: 20),
                       _buildPlaylistOptionButton(
-                        icon: Icons.queue_play_next,
+                        icon: Broken.next,
                         label: 'Play Next',
                         onTap: () {
                           final selectedSong = song;
@@ -2250,8 +2374,18 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                             ));
                             return;
                           }
+                          if (selectedSong == currentSong) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                NamidaSnackbar(
+                                    backgroundColor: dominantColor,
+                                    content:
+                                        'Cannot make currently playing song next, use repeat function'));
+                            return;
+                          }
                           // Insert into the main songs list
                           List<Song> newSongs = List.from(songs);
+                          newSongs
+                              .removeWhere((s) => s.path == selectedSong.path);
                           newSongs.insert(mainCurrentIndex + 1, selectedSong);
                           // Update displayedSongs if not searching
                           if (_searchController.text.isEmpty) {
@@ -2273,7 +2407,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                       ),
                       const SizedBox(height: 12),
                       _buildPlaylistOptionButton(
-                        icon: Icons.create_new_folder,
+                        icon: Broken.folder_add,
                         label: 'Create New Playlist',
                         onTap: () {
                           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -2283,7 +2417,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                       ),
                       const SizedBox(height: 12),
                       _buildPlaylistOptionButton(
-                        icon: Icons.playlist_add,
+                        icon: Broken.music_playlist,
                         label: 'Add to Existing',
                         onTap: () {
                           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -2294,7 +2428,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                       if (_currentPlaylistName != null) ...[
                         const SizedBox(height: 12),
                         _buildPlaylistOptionButton(
-                          icon: Icons.remove_circle,
+                          icon: Broken.cross,
                           label: 'Remove from Playlist',
                           onTap: () async {
                             ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -2306,7 +2440,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                       ],
                       const SizedBox(height: 12),
                       _buildPlaylistOptionButton(
-                        icon: Icons.delete_forever_rounded,
+                        icon: Broken.trash,
                         label: 'Delete Song',
                         onTap: () async {
                           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -2482,7 +2616,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                   ),
                 ),
                 Icon(
-                  Icons.chevron_right_rounded,
+                  Broken.arrow_right_3,
                   color: textColor.withValues(alpha: 0.5),
                 ),
               ],
@@ -2495,7 +2629,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
 
   Widget _buildMetadataSectionHeader(BuildContext context) {
     final iconColor =
-        dominantColor.computeLuminance() > 0.007 ? dominantColor : Colors.white;
+        dominantColor.computeLuminance() > 0.01 ? dominantColor : Colors.white;
     final glowIntensity = dominantColor.withAlpha(60);
 
     return Padding(
@@ -2532,7 +2666,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
               child: Row(
                 children: [
                   GlowIcon(
-                    Icons.info_outline_rounded,
+                    Broken.info_circle,
                     color: iconColor,
                     glowColor: glowIntensity,
                     blurRadius: 10,
@@ -2560,7 +2694,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
 
   Widget _buildLyricsSectionHeader(BuildContext context) {
     final iconColor =
-        dominantColor.computeLuminance() > 0.007 ? dominantColor : Colors.white;
+        dominantColor.computeLuminance() > 0.01 ? dominantColor : Colors.white;
     final glowIntensity = dominantColor.withAlpha(60);
 
     return Padding(
@@ -2597,7 +2731,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
               child: Row(
                 children: [
                   GlowIcon(
-                    Icons.lyrics_rounded,
+                    Broken.document,
                     color: iconColor,
                     glowColor: glowIntensity,
                     blurRadius: 10,
@@ -2629,60 +2763,64 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
       onSecondaryTap: () {
         _showPlaylistPopup(song);
       },
-      child: AnimatedDeletionWrapper(
-        key: ValueKey(song.path),
-        isDeleting: _deletingSongs[song.path] ?? false,
-        onDeletionComplete: () => _onSongDeletionComplete(song),
-        duration: const Duration(milliseconds: 300),
-        child: EnhancedSongListTile(
-          song: song,
-          onSelectedChanged: (selected) => _toggleSongSelection(song, selected),
-          isInSelectionMode: _isInSelectionMode,
-          isSelected: _selectedSongs.contains(song),
-          dominantColor: dominantColor,
-          onTap: () async {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            final result = await Navigator.push(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (context, _, __) => MusicPlayerScreen(
-                  onReloadLibrary: _loadSongs,
-                  musicFolder: _musicFolder,
-                  service: service,
-                  song: song,
-                  songList: displayedSongs,
-                  currentPlaylistName: _currentPlaylistName,
-                  currentIndex: displayedSongs.indexOf(song),
-                ),
-                transitionsBuilder:
-                    (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: ScaleTransition(
-                      scale: Tween<double>(begin: 0.95, end: 1.0).animate(
-                        CurvedAnimation(
-                          parent: animation,
-                          curve: Curves.easeInOutQuad,
+      child: AnimatedListItem(
+        visible: _visibleSongs[song.path] ?? false,
+        child: AnimatedDeletionWrapper(
+          key: ValueKey(song.path),
+          isDeleting: _deletingSongs[song.path] ?? false,
+          onDeletionComplete: () => _onSongDeletionComplete(song),
+          duration: const Duration(milliseconds: 300),
+          child: EnhancedSongListTile(
+            song: song,
+            onSelectedChanged: (selected) =>
+                _toggleSongSelection(song, selected),
+            isInSelectionMode: _selectedSongs.isNotEmpty,
+            isSelected: _selectedSongs.contains(song),
+            dominantColor: dominantColor,
+            onTap: () async {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              final result = await Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, _, __) => MusicPlayerScreen(
+                    onReloadLibrary: _loadSongs,
+                    musicFolder: _musicFolder,
+                    service: service,
+                    song: song,
+                    songList: displayedSongs,
+                    currentPlaylistName: _currentPlaylistName,
+                    currentIndex: displayedSongs.indexOf(song),
+                  ),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(
+                        scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeInOutQuad,
+                          ),
                         ),
+                        child: child,
                       ),
-                      child: child,
-                    ),
-                  );
-                },
-              ),
-            );
-            if (result != null && result is Map<String, dynamic>) {
-              setState(() {
-                currentSong = result['song'] ?? currentSong;
-                currentIndex = result['index'] ?? currentIndex;
-                dominantColor = result['dominantColor'] ?? dominantColor;
-                showMiniPlayer = true;
-              });
-            }
-            if (mounted) {
-              FocusScope.of(context).requestFocus(_mainFocusNode);
-            }
-          },
+                    );
+                  },
+                ),
+              );
+              if (result != null && result is Map<String, dynamic>) {
+                setState(() {
+                  currentSong = result['song'] ?? currentSong;
+                  currentIndex = result['index'] ?? currentIndex;
+                  dominantColor = result['dominantColor'] ?? dominantColor;
+                  showMiniPlayer = true;
+                });
+              }
+              if (mounted) {
+                FocusScope.of(context).requestFocus(_mainFocusNode);
+              }
+            },
+          ),
         ),
       ),
     );
@@ -2691,13 +2829,13 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   @override
   Widget build(BuildContext context) {
     final textColor =
-        dominantColor.computeLuminance() > 0.007 ? dominantColor : Colors.white;
-    return RawKeyboardListener(
+        dominantColor.computeLuminance() > 0.01 ? dominantColor : Colors.white;
+    return KeyboardListener(
       focusNode: _mainFocusNode,
-      onKey: (RawKeyEvent event) {
-        if (event is RawKeyDownEvent) {
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.escape) {
-            if (_isInSelectionMode) {
+            if (_selectedSongs.isNotEmpty) {
               setState(() {
                 _exitSelectionMode();
               });
@@ -2717,6 +2855,44 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
               !isTextInputFocused()) {
             _togglePauseSong();
           }
+          if (_vimKeybindings) {
+            if (event.logicalKey == LogicalKeyboardKey.slash &&
+                !_isSearchExpanded) {
+              _toggleSearch();
+            }
+            if (event.logicalKey == LogicalKeyboardKey.keyG) {
+              final isShiftPressed = HardwareKeyboard
+                      .instance.physicalKeysPressed
+                      .contains(PhysicalKeyboardKey.shiftLeft) ||
+                  HardwareKeyboard.instance.physicalKeysPressed
+                      .contains(PhysicalKeyboardKey.shiftRight);
+
+              if (isShiftPressed) {
+                _scrollController.animateTo(
+                  _scrollController.position.maxScrollExtent,
+                  duration:
+                      const Duration(milliseconds: 100),
+                  curve: Curves.easeOut,
+                );
+              }
+              else {
+                final now = DateTime.now();
+                if (_lastGKeyPressTime != null &&
+                    now.difference(_lastGKeyPressTime!) <
+                        const Duration(milliseconds: 300)) {
+                  _scrollController.animateTo(
+                    0,
+                    duration:
+                        const Duration(milliseconds: 100),
+                    curve: Curves.easeOut,
+                  );
+                  _lastGKeyPressTime = null;
+                } else {
+                  _lastGKeyPressTime = now;
+                }
+              }
+            }
+          }
         }
       },
       child: FocusScope(
@@ -2725,10 +2901,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
           onPointerDown: (_) => _isDrawerOpen = true,
           onPointerUp: (_) => _isDrawerOpen = false,
           child: Scaffold(
-            floatingActionButton: _isInSelectionMode
+            floatingActionButton: _selectedSongs.isNotEmpty
                 ? AnimatedScale(
                     duration: const Duration(milliseconds: 200),
-                    scale: _isInSelectionMode ? 1.0 : 0.0,
+                    scale: _selectedSongs.isNotEmpty ? 1.0 : 0.0,
                     child: FloatingActionButton(
                       onPressed: _handleMultiSelectAction,
                       backgroundColor: Colors.transparent,
@@ -2778,7 +2954,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                             ),
                           ),
                           child: GlowIcon(
-                            Icons.playlist_add_rounded,
+                            Broken.music_playlist,
                             color: Colors.white,
                             size: 28,
                             glowColor: dominantColor,
@@ -2790,11 +2966,11 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                   )
                 : null,
             key: _scaffoldKey,
-            drawer: RawKeyboardListener(
+            drawer: KeyboardListener(
               focusNode: FocusNode(),
               autofocus: true,
-              onKey: (event) {
-                if (event is RawKeyDownEvent &&
+              onKeyEvent: (event) {
+                if (event is KeyDownEvent &&
                     event.logicalKey == LogicalKeyboardKey.escape) {
                   if (_isDrawerOpen) {
                     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -2850,8 +3026,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   duration: const Duration(milliseconds: 300),
                                   child: Icon(
                                     _isDrawerOpen
-                                        ? Icons.close_rounded
-                                        : Icons.menu_rounded,
+                                        ? Broken.cross
+                                        : Broken.menu_1,
                                     key: ValueKey<bool>(_isDrawerOpen),
                                     color: textColor,
                                     size: 28,
@@ -2881,7 +3057,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                             padding: const EdgeInsets.all(16),
                             children: [
                               _buildMenuTile(
-                                icon: Icons.settings_rounded,
+                                icon: Broken.setting_2,
                                 title: 'Settings',
                                 onTap: () {
                                   ScaffoldMessenger.of(context)
@@ -2922,11 +3098,11 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         },
                                       ),
                                     ),
-                                  );
+                                  ).then((_) => _getVimBindings());
                                 },
                               ),
                               _buildMenuTile(
-                                icon: Icons.queue_music,
+                                icon: Broken.music_playlist,
                                 title: 'Playlists',
                                 onTap: () async {
                                   ScaffoldMessenger.of(context)
@@ -2936,7 +3112,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 },
                               ),
                               _buildMenuTile(
-                                icon: Icons.download_rounded,
+                                icon: Broken.document_download,
                                 title: 'Download Songs (spotdl required)',
                                 onTap: () {
                                   _pauseSong();
@@ -3090,7 +3266,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                               Row(
                                 children: [
                                   IconButton(
-                                    icon: Icon(Icons.shuffle, color: textColor),
+                                    icon:
+                                        Icon(Broken.shuffle, color: textColor),
                                     onPressed: _shufflePlay,
                                   ),
                                   Text(
@@ -3103,7 +3280,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 ],
                               ),
                               PopupMenuButton<SortOption>(
-                                icon: Icon(Icons.sort, color: textColor),
+                                icon: Icon(Broken.sort, color: textColor),
                                 color: Colors.black.withValues(alpha: 0.9),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
@@ -3121,10 +3298,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         if (_selectedSortOption ==
                                             SortOption.title)
                                           Icon(
-                                            Icons.check,
+                                            Broken.tick,
                                             color: dominantColor
                                                         .computeLuminance() >
-                                                    0.007
+                                                    0.01
                                                 ? dominantColor
                                                 : Theme.of(context)
                                                     .textTheme
@@ -3146,10 +3323,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         if (_selectedSortOption ==
                                             SortOption.titleReversed)
                                           Icon(
-                                            Icons.check,
+                                            Broken.tick,
                                             color: dominantColor
                                                         .computeLuminance() >
-                                                    0.007
+                                                    0.01
                                                 ? dominantColor
                                                 : Theme.of(context)
                                                     .textTheme
@@ -3171,10 +3348,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         if (_selectedSortOption ==
                                             SortOption.artist)
                                           Icon(
-                                            Icons.check,
+                                            Broken.tick,
                                             color: dominantColor
                                                         .computeLuminance() >
-                                                    0.007
+                                                    0.01
                                                 ? dominantColor
                                                 : Theme.of(context)
                                                     .textTheme
@@ -3196,10 +3373,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         if (_selectedSortOption ==
                                             SortOption.artistReversed)
                                           Icon(
-                                            Icons.check,
+                                            Broken.tick,
                                             color: dominantColor
                                                         .computeLuminance() >
-                                                    0.007
+                                                    0.01
                                                 ? dominantColor
                                                 : Theme.of(context)
                                                     .textTheme
@@ -3221,10 +3398,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         if (_selectedSortOption ==
                                             SortOption.genre)
                                           Icon(
-                                            Icons.check,
+                                            Broken.tick,
                                             color: dominantColor
                                                         .computeLuminance() >
-                                                    0.007
+                                                    0.01
                                                 ? dominantColor
                                                 : Theme.of(context)
                                                     .textTheme
@@ -3246,10 +3423,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         if (_selectedSortOption ==
                                             SortOption.genreReversed)
                                           Icon(
-                                            Icons.check,
+                                            Broken.tick,
                                             color: dominantColor
                                                         .computeLuminance() >
-                                                    0.007
+                                                    0.01
                                                 ? dominantColor
                                                 : Theme.of(context)
                                                     .textTheme
@@ -3282,7 +3459,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                         child: Row(
                           children: [
                             IconButton(
-                              icon: Icon(Icons.menu_outlined, color: textColor),
+                              icon: Icon(Broken.menu_1, color: textColor),
                               onPressed: () {
                                 _scaffoldKey.currentState?.openDrawer();
                               },
@@ -3326,7 +3503,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         ),
                                         cursorColor:
                                             dominantColor.computeLuminance() >
-                                                    0.007
+                                                    0.01
                                                 ? dominantColor
                                                 : Theme.of(context)
                                                     .textTheme
@@ -3341,7 +3518,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                             fontWeight: FontWeight.w300,
                                           ),
                                           prefixIcon: Icon(
-                                            Icons.search,
+                                            Broken.search_normal,
                                             color: textColor.withValues(
                                               alpha: 0.8,
                                             ),
@@ -3384,7 +3561,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                             const Spacer(),
                             IconButton(
                               icon: Icon(
-                                _isSearchExpanded ? Icons.close : Icons.search,
+                                _isSearchExpanded
+                                    ? Broken.cross
+                                    : Broken.search_normal,
                                 color: textColor,
                               ),
                               onPressed: _toggleSearch,
@@ -3488,8 +3667,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isClearingCache = false;
   bool _isReloadingLibrary = false;
   final bool _isManagingSeparators = false;
-  bool _autoConvert = true;
+  bool _autoConvert = false;
   bool _clearMp3Cache = false;
+  bool _vimKeybindings = false;
+  late FocusNode _escapeNode;
 
   Song? _currentSong;
   int _currentIndex = 0;
@@ -3507,6 +3688,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _currentIndex = widget.currentIndex;
     _currentColor = widget.dominantColor;
     _musicFolderController = TextEditingController(text: widget.musicFolder);
+    _escapeNode = FocusNode();
+    _escapeNode.requestFocus();
     _loadChecks();
   }
 
@@ -3521,6 +3704,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _autoConvert = prefs.getBool('autoConvert') ?? false;
       _clearMp3Cache = prefs.getBool('clearMp3Cache') ?? false;
+      _vimKeybindings = prefs.getBool('vimKeybindings') ?? false;
     });
     final savedSeparators = prefs.getStringList('separators');
     if (savedSeparators != null) {
@@ -3540,6 +3724,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('autoConvert', value);
     setState(() => _autoConvert = value);
+  }
+
+  Future<void> _saveVimKeybindings(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('vimKeybindings', value);
+    setState(() => _vimKeybindings = value);
   }
 
   Future<void> _saveClearMp3Cache(bool value) async {
@@ -3690,7 +3880,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                     child: Icon(
-                      value ? Icons.check_rounded : Icons.close_rounded,
+                      value ? Broken.tick : Broken.cross,
                       color: Colors.white,
                       size: 16,
                     ),
@@ -3706,16 +3896,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final textColor = _currentColor.computeLuminance() > 0.007
+    final textColor = _currentColor.computeLuminance() > 0.01
         ? _currentColor
         : Theme.of(context).textTheme.bodyLarge?.color;
     final buttonTextColor = Theme.of(context).textTheme.bodyLarge?.color;
 
-    return RawKeyboardListener(
-      focusNode: FocusNode(),
+    return KeyboardListener(
+      focusNode: _escapeNode,
       autofocus: true,
-      onKey: (RawKeyEvent event) {
-        if (event is RawKeyDownEvent) {
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.escape) {
             if (ModalRoute.of(context)?.isCurrent ?? false) {
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -3730,6 +3920,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: Icon(Broken.arrow_left)),
           title: GlowText(
             'Settings',
             glowColor: _currentColor.withValues(alpha: 0.3),
@@ -3790,7 +3983,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: TextField(
                         controller: _musicFolderController,
                         style: TextStyle(color: textColor, fontSize: 16),
-                        cursorColor: _currentColor.computeLuminance() > 0.007
+                        cursorColor: _currentColor.computeLuminance() > 0.01
                             ? _currentColor
                             : Theme.of(context).textTheme.bodyLarge?.color,
                         decoration: InputDecoration(
@@ -3800,7 +3993,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             fontWeight: FontWeight.w300,
                           ),
                           prefixIcon: Icon(
-                            Icons.folder_open_rounded,
+                            Broken.folder,
                             color: textColor.withValues(alpha: 0.8),
                           ),
                           border: OutlineInputBorder(
@@ -3869,7 +4062,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ScaffoldMessenger.of(context).hideCurrentSnackBar();
                           Navigator.pop(context, expandedPath);
                         },
-                        icon: Icon(Icons.save, color: buttonTextColor),
+                        icon: Icon(Broken.save_2, color: buttonTextColor),
                         label: Text(
                           'Save Music Folder',
                           style: TextStyle(
@@ -3882,25 +4075,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 32),
                     _buildActionButton(
-                      icon: Icons.refresh,
+                      icon: Broken.refresh,
                       label: 'Reload Music Library',
                       isLoading: _isReloadingLibrary,
                       onPressed: _reloadLibrary,
                     ),
                     const SizedBox(height: 16),
                     _buildActionButton(
-                      icon: Icons.text_fields_rounded,
+                      icon: Broken.text,
                       label: 'Manage Artist Seperators',
                       isLoading: _isManagingSeparators,
                       onPressed: _showSeparatorManagementPopup,
                     ),
                     const SizedBox(height: 16),
                     _buildActionButton(
-                      icon: Icons.delete,
+                      icon: Broken.trash,
                       label: 'Clear Cache',
                       isLoading: _isClearingCache,
                       onPressed: _clearCache,
                     ),
+                    _buildSettingsSwitch(context,
+                        title: 'Vim keybindings',
+                        value: _vimKeybindings,
+                        onChanged: _saveVimKeybindings),
                     _buildSettingsSwitch(
                       context,
                       title: 'Auto-convert non-MP3 files',
@@ -4033,7 +4230,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 controller: _addController,
                                 style: TextStyle(color: Colors.white),
                                 cursorColor:
-                                    _currentColor.computeLuminance() > 0.007
+                                    _currentColor.computeLuminance() > 0.01
                                         ? _currentColor
                                         : Theme.of(context)
                                             .textTheme
@@ -4047,7 +4244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   hintText: 'Add new separator...',
                                   hintStyle: TextStyle(color: Colors.white70),
                                   prefixIcon: GlowIcon(
-                                    Icons.add_rounded,
+                                    Broken.add_circle,
                                     color: _currentColor,
                                     size: 24,
                                   ),
@@ -4058,7 +4255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   suffixIcon: Container(
                                     margin: const EdgeInsets.only(right: 8),
                                     child: DynamicIconButton(
-                                      icon: Icons.check_rounded,
+                                      icon: Broken.tick,
                                       onPressed: () async {
                                         if (_formKey.currentState!.validate()) {
                                           final newSep =
@@ -4129,7 +4326,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
-                                        Icons.auto_awesome_mosaic_rounded,
+                                        Broken.grid_9,
                                         color: _currentColor.withAlpha(80),
                                         size: 48,
                                       ),
@@ -4196,7 +4393,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           ),
                                           trailing: IconButton(
                                             icon: GlowIcon(
-                                              Icons.delete_rounded,
+                                              Broken.trash,
                                               color: Colors.redAccent,
                                               size: 20,
                                             ),
@@ -4369,8 +4566,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.restart_alt_rounded,
-                                        color: _currentColor),
+                                    Icon(Broken.refresh, color: _currentColor),
                                     const SizedBox(width: 12),
                                     Text(
                                       'Reset to Defaults',
@@ -4405,7 +4601,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required VoidCallback onPressed,
   }) {
     //final textColor =
-    //    _currentColor.computeLuminance() > 0.007 ? Colors.white : Colors.black;
+    //    _currentColor.computeLuminance() > 0.01 ? Colors.white : Colors.black;
     final textColor = Theme.of(context).textTheme.bodyLarge?.color;
 
     return Material(
@@ -4454,7 +4650,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               Icon(
-                Icons.chevron_right_rounded,
+                Broken.arrow_right,
                 color: textColor!.withValues(alpha: 0.5),
               ),
             ],
@@ -4507,12 +4703,12 @@ class SongListTile extends StatelessWidget {
                           gaplessPlayback: true,
                           errorBuilder: (context, error, stackTrace) =>
                               const GlowIcon(
-                            Icons.music_note,
+                            Broken.musicnote,
                             color: Colors.white,
                           ),
                         )
                       : const GlowIcon(
-                          Icons.music_note,
+                          Broken.musicnote,
                           color: Colors.white,
                           size: 32,
                         ),
@@ -4602,6 +4798,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   List<int>? _shuffleOrder;
   int _shuffleIndex = 0;
+
+  late AnimationController _lyricsAnimationController;
+  late Animation<double> _lyricsEntranceScale;
+  late Animation<double> _lyricsEntranceOpacity;
 
   @override
   void initState() {
@@ -4700,6 +4900,44 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     });
 
     _updateParticleOptions();
+    _initializeLyricsAnimation();
+  }
+
+  void _initializeLyricsAnimation() {
+    _lyricsAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+
+    _lyricsEntranceScale = Tween<double>(begin: 0.95, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _lyricsAnimationController,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    _lyricsEntranceOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _lyricsAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  void _toggleLyrics() {
+    if (_showLyrics) {
+      // Reverse the animation and hide lyrics after it completes
+      _lyricsAnimationController.reverse().then((_) {
+        if (mounted) {
+          setState(() => _showLyrics = false);
+        }
+      });
+    } else {
+      setState(() {
+        _showLyrics = true;
+        _lyricsAnimationController.forward();
+      });
+    }
   }
 
   void _showPlaylistPopup(BuildContext context) {
@@ -4745,7 +4983,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                       ),
                       const SizedBox(height: 20),
                       _buildPlaylistOptionButton(
-                        icon: Icons.create_new_folder,
+                        icon: Broken.folder_add,
                         label: 'Create New Playlist',
                         onTap: () {
                           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -4755,7 +4993,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                       ),
                       const SizedBox(height: 12),
                       _buildPlaylistOptionButton(
-                        icon: Icons.playlist_add,
+                        icon: Broken.music_playlist,
                         label: 'Add to Existing',
                         onTap: () {
                           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -4766,7 +5004,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                       if (widget.currentPlaylistName != null) ...[
                         const SizedBox(height: 12),
                         _buildPlaylistOptionButton(
-                          icon: Icons.remove_circle,
+                          icon: Broken.cross,
                           label: 'Remove from Playlist',
                           onTap: () async {
                             ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -4778,7 +5016,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                       ],
                       const SizedBox(height: 12),
                       _buildPlaylistOptionButton(
-                        icon: Icons.delete_forever_rounded,
+                        icon: Broken.trash,
                         label: 'Delete Song',
                         onTap: () async {
                           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -4905,7 +5143,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                         child: TextField(
                           controller: controller,
                           style: const TextStyle(color: Colors.white),
-                          cursorColor: dominantColor.computeLuminance() > 0.007
+                          cursorColor: dominantColor.computeLuminance() > 0.01
                               ? dominantColor
                               : Theme.of(context).textTheme.bodyLarge?.color,
                           decoration: InputDecoration(
@@ -4922,7 +5160,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                               color: Colors.white.withValues(alpha: 0.6),
                             ),
                             prefixIcon: Icon(
-                              Icons.playlist_add_rounded,
+                              Broken.music_playlist,
                               color: dominantColor,
                             ),
                           ),
@@ -4950,7 +5188,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                           ),
                           const SizedBox(width: 12),
                           DynamicIconButton(
-                            icon: Icons.check_rounded,
+                            icon: Broken.tick,
                             onPressed: () {
                               ScaffoldMessenger.of(context)
                                   .hideCurrentSnackBar();
@@ -5094,7 +5332,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                 child: Row(
                                   children: [
                                     Icon(
-                                      Icons.queue_music_rounded,
+                                      Broken.music_playlist,
                                       color: dominantColor.withValues(
                                         alpha: 0.8,
                                       ),
@@ -5313,74 +5551,93 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   Future<void> _saveLyricsToCache(Song song, String lrcContent) async {
     try {
-      final cacheDir = await getTemporaryDirectory();
-      final dir = Directory('${cacheDir.path}/lyrics');
-      if (!await dir.exists()) await dir.create(recursive: true);
+      final dir = await getTemporaryDirectory();
+      final cacheDir = Directory('${dir.path}/lyrics');
+      if (!await cacheDir.exists()) await cacheDir.create(recursive: true);
+
+      // Generate hash from original song's path
       final hash = md5.convert(utf8.encode(song.path)).toString();
-      final file = File('${dir.path}/$hash.lrc');
-      await file.writeAsString(
-          "#TITLE: ${song.title}\n#ARTIST: ${song.artist}\n#PATH: ${song.path}\n#GENRE: ${song.genre}\n#ALBUM: ${song.album}\n$lrcContent");
+      final file = File('${cacheDir.path}/$hash.lrc');
+
+      // Use original song's metadata
+      await file.writeAsString("#TITLE: ${song.title}\n"
+          "#ARTIST: ${song.artist}\n"
+          "#PATH: ${song.path}\n"
+          "#GENRE: ${song.genre}\n"
+          "#ALBUM: ${song.album}\n"
+          "$lrcContent");
     } catch (e) {
       NamidaSnackbar(
-          backgroundColor: dominantColor,
-          content: 'Error saving lyrics cache: $e');
+        backgroundColor: dominantColor,
+        content: 'Error saving lyrics cache: $e',
+      );
     }
   }
 
   Future<void> _loadLyrics() async {
+    // Capture current song details at start of process
+    final originalSong = currentSong;
+    final originalSongPath = originalSong.path;
+
     _lrcData = null;
     try {
-      // 1. Check cache.
-      final cachedLrc = await _getCachedLyrics(currentSong.path);
+      // 1. Check cache using original song path
+      final cachedLrc = await _getCachedLyrics(originalSongPath);
       if (cachedLrc != null) {
+        if (currentSong.path != originalSongPath)
+          return; // Verify still same song
         _lrcData = cachedLrc;
         _updateLyricsStatus();
         setState(() {});
         return;
       }
 
-      // 2. Check if required fields are present.
-      if (currentSong.title.isEmpty || currentSong.artist.isEmpty) {
+      // 2. Check if required fields are present using original song
+      if (originalSong.title.isEmpty || originalSong.artist.isEmpty) {
         _checkLocalLyrics();
         return;
       }
 
-      // 3. Fetch from LRCLIB API.
+      // 3. Fetch from API using original song's metadata
       final params = {
-        'track_name': currentSong.title,
-        'artist_name': currentSong.artist,
-        if (currentSong.album.isNotEmpty) 'album_name': currentSong.album,
-        'duration': currentSong.duration.inSeconds.toString(),
+        'track_name': originalSong.title,
+        'artist_name': originalSong.artist,
+        if (originalSong.album.isNotEmpty) 'album_name': originalSong.album,
+        'duration': originalSong.duration.inSeconds.toString(),
       };
 
       final uri = Uri.https('lrclib.net', '/api/get', params);
-      final response = await http.get(
-        uri,
-        headers: {
-          'User-Agent': 'Adiman (https://github.com/ChaosTheChaotic/Adiman)',
-        },
-      );
+      final response = await http.get(uri, headers: {
+        'User-Agent': 'Adiman (https://github.com/ChaosTheChaotic/Adiman)',
+      });
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
         final syncedLyrics = jsonResponse['syncedLyrics'] as String?;
         if (syncedLyrics != null && syncedLyrics.isNotEmpty) {
+          // Check if song hasn't changed before processing
+          if (currentSong.path != originalSongPath) return;
+
           _lrcData = lrc_pkg.Lrc.parse(syncedLyrics);
           if (_lrcData!.lyrics.isNotEmpty) {
-            await _saveLyricsToCache(currentSong, syncedLyrics);
+            await _saveLyricsToCache(originalSong, syncedLyrics);
             _updateLyricsStatus();
-            setState(() {});
+            if (mounted) setState(() {});
             return;
           }
         }
       }
     } catch (e) {
       NamidaSnackbar(
-          backgroundColor: dominantColor,
-          content: 'Error fetching lyrics from API: $e');
+        backgroundColor: dominantColor,
+        content: 'Error fetching lyrics from API: $e',
+      );
     }
-    // 4. Fallback to local file.
-    _checkLocalLyrics();
+
+    // 4. Fallback only if still same song
+    if (currentSong.path == originalSongPath) {
+      _checkLocalLyrics();
+    }
   }
 
   void _checkLocalLyrics() async {
@@ -5728,14 +5985,14 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                       child: Column(
                         children: [
                           _buildMenuOption(
-                            icon: Icons.search,
+                            icon: Broken.search_normal,
                             label: 'Find new song',
                             onTap: () {
                               _handleSearchAnother();
                             },
                           ),
                           _buildMenuOption(
-                            icon: Icons.save_rounded,
+                            icon: Broken.save_2,
                             label: 'Save to Library',
                             onTap: () {
                               ScaffoldMessenger.of(context)
@@ -5774,7 +6031,12 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              GlowIcon(icon, color: dominantColor, blurRadius: 8, size: 24),
+              GlowIcon(icon,
+                  color: dominantColor.computeLuminance() > 0.007
+                      ? dominantColor
+                      : Theme.of(context).textTheme.bodyLarge?.color,
+                  blurRadius: 8,
+                  size: 24),
               const SizedBox(width: 16),
               Text(
                 label,
@@ -5857,6 +6119,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     _trackChangeSubscription?.cancel();
     _breathingController.dispose();
     _fadeController.dispose();
+    _lyricsAnimationController.dispose();
     if (widget.isTemp && widget.tempPath != null) {
       try {
         final file = File(widget.tempPath!);
@@ -5881,11 +6144,11 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
     _updateParticleOptions();
 
-    return RawKeyboardListener(
+    return KeyboardListener(
       focusNode: _focusNode,
       autofocus: true,
-      onKey: (RawKeyEvent event) {
-        if (event is RawKeyDownEvent) {
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.escape) {
             if (_isTempFile) {
               _handleSearchAnother();
@@ -5943,7 +6206,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           DynamicIconButton(
-                            icon: Icons.arrow_downward_rounded,
+                            icon: Broken.arrow_down,
                             backgroundColor: dominantColor,
                             size: 40,
                             onPressed: () {
@@ -5961,7 +6224,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                             },
                           ),
                           DynamicIconButton(
-                            icon: Icons.more_horiz_rounded,
+                            icon: Broken.more,
                             onPressed: () => _isTempFile
                                 ? _showPlayerMenu(context)
                                 : _showPlaylistPopup(context),
@@ -5984,7 +6247,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                             GlowText(
                               currentSong.title,
                               style: TextStyle(
-                                color: dominantColor.computeLuminance() > 0.007
+                                color: dominantColor.computeLuminance() > 0.01
                                     ? dominantColor
                                     : Theme.of(context)
                                         .textTheme
@@ -6097,6 +6360,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                               ),
                               dominantColor: dominantColor,
                               currentPeak: currentPeak,
+                              entranceScale: _lyricsEntranceScale,
+                              entranceOpacity: _lyricsEntranceOpacity,
                               sharedBreathingValue: _breathingAnimation.value,
                               onLyricTap: (timestamp) {
                                 final position = timestamp.inSeconds.toDouble();
@@ -6140,14 +6405,11 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                           DynamicIconButton(
                             icon: _hasLyrics
                                 ? (_showLyrics
-                                    ? Icons.lyrics
-                                    : Icons.lyrics_outlined)
-                                : Icons.error_outline,
-                            onPressed: _hasLyrics
-                                ? () => setState(
-                                      () => _showLyrics = !_showLyrics,
-                                    )
-                                : null,
+                                    ? Broken.card_slash
+                                    : Broken.document)
+                                : Broken.danger,
+                            onPressed:
+                                _hasLyrics ? () => _toggleLyrics() : null,
                             backgroundColor: dominantColor,
                           ),
                           Row(
@@ -6156,7 +6418,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                               Hero(
                                 tag: 'controls-prev',
                                 child: DynamicIconButton(
-                                  icon: Icons.skip_previous_rounded,
+                                  icon: Broken.previous,
                                   onPressed: currentIndex > 0
                                       ? _handleSkipPrevious
                                       : null,
@@ -6176,7 +6438,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                               Hero(
                                 tag: 'controls-next',
                                 child: DynamicIconButton(
-                                  icon: Icons.skip_next_rounded,
+                                  icon: Broken.next,
                                   onPressed:
                                       currentIndex < widget.songList.length - 1
                                           ? _handleSkipNext
@@ -6188,10 +6450,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                           ),
                           DynamicIconButton(
                             icon: _repeatMode == RepeatMode.repeatOnce
-                                ? Icons.repeat_one_rounded
+                                ? Broken.repeate_one
                                 : _repeatMode == RepeatMode.repeatAll
-                                    ? Icons.repeat_rounded
-                                    : Icons.sync_alt_rounded,
+                                    ? Broken.repeat
+                                    : Broken.arrow_2,
                             onPressed: _toggleRepeatMode,
                             backgroundColor: dominantColor,
                           ),
@@ -6558,11 +6820,11 @@ class _DownloadScreenState extends State<DownloadScreen>
 
   @override
   Widget build(BuildContext context) {
-    return RawKeyboardListener(
+    return KeyboardListener(
       focusNode: _focusNode,
       autofocus: true,
-      onKey: (RawKeyEvent event) {
-        if (event is RawKeyDownEvent &&
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent &&
             event.logicalKey == LogicalKeyboardKey.escape &&
             !_isDownloading) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -6595,7 +6857,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                     child: Row(
                       children: [
                         DynamicIconButton(
-                          icon: Icons.arrow_back_rounded,
+                          icon: Broken.arrow_left,
                           onPressed: () {
                             ScaffoldMessenger.of(context).hideCurrentSnackBar();
                             Navigator.pop(context);
@@ -6609,7 +6871,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                             controller: _searchController,
                             focusNode: _searchFocus,
                             hintText: 'Search song or paste URL...',
-                            prefixIcon: Icons.search_rounded,
+                            prefixIcon: Broken.search_normal,
                             onSubmitted: (_) => _startDownload(),
                           ),
                         ),
@@ -6627,11 +6889,11 @@ class _DownloadScreenState extends State<DownloadScreen>
             ),
             if (_isDownloading)
               Positioned.fill(
-                child: RawKeyboardListener(
+                child: KeyboardListener(
                   focusNode: FocusNode(),
                   autofocus: true,
-                  onKey: (RawKeyEvent event) {
-                    if (event is RawKeyDownEvent &&
+                  onKeyEvent: (event) {
+                    if (event is KeyDownEvent &&
                         event.logicalKey == LogicalKeyboardKey.escape) {
                       setState(() => _isDownloading = false);
                       rust_api.cancelDownload();
@@ -6666,7 +6928,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                             top: 10,
                             left: 10,
                             child: DynamicIconButton(
-                              icon: Icons.close_rounded,
+                              icon: Broken.cross,
                               onPressed: () {
                                 setState(() => _isDownloading = false);
                                 rust_api.cancelDownload();
@@ -6726,7 +6988,7 @@ class _DownloadScreenState extends State<DownloadScreen>
           Transform.scale(
             scale: 1.5,
             child: Icon(
-              Icons.download_rounded,
+              Broken.document_download,
               color: _dominantColor.withAlpha(80),
               size: 64,
             ),
@@ -6852,5 +7114,106 @@ class _AnimatedDeletionWrapperState extends State<AnimatedDeletionWrapper>
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+}
+
+class AnimatedListItem extends StatefulWidget {
+  final Widget child;
+  final bool visible;
+  final Duration duration;
+  final VoidCallback? onRemove;
+
+  const AnimatedListItem({
+    super.key,
+    required this.child,
+    required this.visible,
+    this.duration = const Duration(milliseconds: 200),
+    this.onRemove,
+  });
+
+  @override
+  State<AnimatedListItem> createState() => _AnimatedListItemState();
+}
+
+class _AnimatedListItemState extends State<AnimatedListItem>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: widget.duration,
+      vsync: this,
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOutQuad,
+      ),
+    );
+
+    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOutQuad,
+      ),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0.0, 0.1),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOutQuad,
+      ),
+    );
+
+    if (widget.visible) _controller.forward();
+  }
+
+  @override
+  void didUpdateWidget(AnimatedListItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.visible != oldWidget.visible) {
+      widget.visible ? _controller.forward() : _controller.reverse();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) => Transform.translate(
+        offset: _slideAnimation.value,
+        child: Transform.scale(
+          scale: _scaleAnimation.value,
+          child: Opacity(
+            opacity: _opacityAnimation.value,
+            child: child,
+          ),
+        ),
+      ),
+      child: widget.child,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller
+      ..removeStatusListener(_handleAnimationStatus)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _handleAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.dismissed && widget.onRemove != null) {
+      widget.onRemove!();
+    }
   }
 }
