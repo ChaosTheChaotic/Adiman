@@ -304,7 +304,7 @@ class _EnhancedSongListTileState extends State<EnhancedSongListTile>
     _selectionController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
-    );
+    )..value = widget.isInSelectionMode ? 1.0 : 0.0;
 
     _selectionAnimation = CurvedAnimation(
       parent: _selectionController,
@@ -522,6 +522,10 @@ class _EnhancedSongListTileState extends State<EnhancedSongListTile>
       } else {
         _selectionController.reverse();
       }
+    }
+    // Immediately reflect selection state without animation
+    if (widget.isSelected != oldWidget.isSelected) {
+      _selectionController.value = widget.isSelected ? 1.0 : 0.0;
     }
   }
 
