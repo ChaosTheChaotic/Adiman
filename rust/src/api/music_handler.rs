@@ -84,6 +84,11 @@ unsafe impl Sync for StreamWrapper {}
 static STREAM: Lazy<Mutex<Option<StreamWrapper>>> = Lazy::new(|| Mutex::new(None));
 static PLAYER: Lazy<Mutex<Option<AudioPlayer>>> = Lazy::new(|| Mutex::new(None));
 static PLAYER_STATE: Lazy<Mutex<PlayerState>> = Lazy::new(|| Mutex::new(PlayerState::default()));
+static FADE_IN: AtomicBool = AtomicBool::new(false);
+
+pub fn set_fadein(value: bool) {
+    FADE_IN.store(value, Ordering::SeqCst);
+}
 
 struct AudioPlayer {
     sink: Mutex<Option<Arc<Sink>>>,
@@ -188,22 +193,29 @@ impl AudioPlayer {
 
     // Crossfade between the old and new sinks over a crossfade interval.
     fn crossfade(old_sink: Option<Arc<Sink>>, new_sink: Arc<Sink>) {
-        let crossfade_duration = Duration::from_secs(3);
-        let fade_step = Duration::from_millis(100);
-        let steps = (crossfade_duration.as_millis() / fade_step.as_millis()) as usize;
-        thread::spawn(move || {
-            for i in 0..=steps {
-                let volume_new = i as f32 / steps as f32;
-                new_sink.set_volume(volume_new);
-                if let Some(ref sink) = old_sink {
-                    sink.set_volume(1.0 - volume_new);
+        if FADE_IN.load(Ordering::SeqCst) {
+            let crossfade_duration = Duration::from_secs(3);
+            let fade_step = Duration::from_millis(100);
+            let steps = (crossfade_duration.as_millis() / fade_step.as_millis()) as usize;
+            thread::spawn(move || {
+                for i in 0..=steps {
+                    let volume_new = i as f32 / steps as f32;
+                    new_sink.set_volume(volume_new);
+                    if let Some(ref sink) = old_sink {
+                        sink.set_volume(1.0 - volume_new);
+                    }
+                    thread::sleep(fade_step);
                 }
-                thread::sleep(fade_step);
-            }
+                if let Some(sink) = old_sink {
+                    sink.stop();
+                }
+            });
+        } else {
+            new_sink.set_volume(1.0);
             if let Some(sink) = old_sink {
                 sink.stop();
             }
-        });
+        }
     }
 
     fn background_worker(

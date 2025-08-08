@@ -3670,6 +3670,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _autoConvert = false;
   bool _clearMp3Cache = false;
   bool _vimKeybindings = false;
+  bool _fadeIn = false;
   late FocusNode _escapeNode;
 
   Song? _currentSong;
@@ -3705,6 +3706,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _autoConvert = prefs.getBool('autoConvert') ?? false;
       _clearMp3Cache = prefs.getBool('clearMp3Cache') ?? false;
       _vimKeybindings = prefs.getBool('vimKeybindings') ?? false;
+      _fadeIn = prefs.getBool('fadeIn') ?? false;
     });
     final savedSeparators = prefs.getStringList('separators');
     if (savedSeparators != null) {
@@ -3736,6 +3738,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('clearMp3Cache', value);
     setState(() => _clearMp3Cache = value);
+  }
+
+  Future<void> _saveFadeIn(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('fadeIn', value);
+    rust_api.setFadein(value: value);
+    setState(() => _fadeIn = value);
   }
 
   Future<void> _clearCache() async {
@@ -4110,6 +4119,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: _clearMp3Cache,
                       onChanged: _saveClearMp3Cache,
                     ),
+		    _buildSettingsSwitch(
+		      context,
+		      title: 'Music fade in on seek and song start',
+		      value: _fadeIn,
+		      onChanged: _saveFadeIn,
+		    ),
                   ],
                 ),
               ),
