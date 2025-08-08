@@ -1097,6 +1097,12 @@ pub fn search_lyrics(
     query: String,
     song_dir: String,
 ) -> anyhow::Result<Vec<SongMetadata>> {
+    // Error handling cuz I just now realised the error it screams at me with is scary when no
+    // lyrics dir exist
+    let lyrics_path = Path::new(&lyrics_dir);
+    if !lyrics_path.exists() || !lyrics_path.is_dir() {
+        return Ok(Vec::new());
+    }
     let query_lower = query.to_lowercase();
 
     // Build lookup maps
@@ -1123,8 +1129,7 @@ pub fn search_lyrics(
     let title_artist_map = Arc::new(title_artist_map);
 
     // Process LRC files in parallel
-    let entries: Vec<_> =
-        std::fs::read_dir(Path::new(&lyrics_dir))?.collect::<Result<Vec<_>, _>>()?;
+    let entries: Vec<_> = std::fs::read_dir(lyrics_path)?.collect::<Result<Vec<_>, _>>()?;
 
     let results: Vec<SongMetadata> = entries
         .par_iter()
