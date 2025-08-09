@@ -125,7 +125,7 @@ class _MiniPlayerState extends State<MiniPlayer>
   late AnimationController _playPauseController;
   bool isPlaying = true;
   late Timer _progressTimer;
-  late double _volume;
+  double _volume = 1.0;
   StreamSubscription<bool>? _playbackStateSubscription;
 
   @override
@@ -276,6 +276,13 @@ class _MiniPlayerState extends State<MiniPlayer>
               const SizedBox(height: 16),
               VolumeSlider(
                 dominantColor: widget.dominantColor,
+                onVolumeChanged: (newVolume) {
+                  if (mounted) {
+                    setState(() {
+                      _volume = newVolume;
+                    });
+                  }
+                },
               ),
             ],
           ),
@@ -448,14 +455,14 @@ class _MiniPlayerState extends State<MiniPlayer>
                   ),
                 ),
                 Tooltip(
-                  message: 'Volume: ${(_volume * 100).round()}%',
+		  message: 'Volume',
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: VolumeIcon(
-                      volume: _volume,
-                      dominantColor: widget.dominantColor,
-                    ),
-                  ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: VolumeIcon(
+                        volume: _volume,
+                        dominantColor: widget.dominantColor,
+                        onTap: () => _showCompactVolumeSlider(context),
+                      )),
                 ),
                 Hero(
                   tag: 'controls-prev',
@@ -6476,9 +6483,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-			  VolumeSlider(
-                      	    dominantColor: dominantColor,
-                      	  ),
+                          VolumeSlider(
+                            dominantColor: dominantColor,
+                          ),
                           // Lyrics Button.
                           DynamicIconButton(
                             icon: _hasLyrics
@@ -7298,138 +7305,59 @@ class _AnimatedListItemState extends State<AnimatedListItem>
 
 class VolumeSlider extends StatefulWidget {
   final Color dominantColor;
-  final double initialVolume;
+  final ValueChanged<double>? onVolumeChanged;
 
   const VolumeSlider({
     super.key,
     required this.dominantColor,
-    this.initialVolume = 1.0,
+    this.onVolumeChanged,
   });
 
   @override
   State<VolumeSlider> createState() => _VolumeSliderState();
 }
 
-class _VolumeSliderState extends State<VolumeSlider>
-    with SingleTickerProviderStateMixin {
-  late double _volume;
-  late AnimationController _glowController;
-  bool _isDragging = false;
+class _VolumeSliderState extends State<VolumeSlider> {
+  late double _currentVolume;
 
   @override
   void initState() {
     super.initState();
-    rust_api.getCvol().then((volume) {
+    _loadVolume();
+  }
+
+  Future<void> _loadVolume() async {
+    try {
+      final volume = await rust_api.getCvol();
       if (mounted) {
         setState(() {
-          _volume = volume;
+          _currentVolume = volume;
         });
       }
-    });
-    _volume = widget.initialVolume;
-    _glowController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-      lowerBound: 0.0,
-      upperBound: 1.0,
-    );
-  }
-
-  @override
-  void dispose() {
-    _glowController.dispose();
-    super.dispose();
-  }
-
-  void _updateVolume(double value) {
-    setState(() {
-      _volume = value;
-    });
-    // Call the volume API
-    rust_api.setVolume(volume: value);
-  }
-
-  Widget _buildVolumeIcon() {
-    IconData icon;
-    Color iconColor = widget.dominantColor.computeLuminance() > 0.01
-        ? widget.dominantColor
-        : Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
-
-    if (_volume == 0) {
-      icon = Broken.volume_slash;
-    } else if (_volume < 0.5) {
-      icon = Broken.volume_low;
-    } else {
-      icon = Broken.volume_high;
+    } catch (e) {
+      // Optionally handle error or keep default value
     }
-
-    return GlowIcon(
-      icon,
-      color: iconColor,
-      blurRadius: _isDragging ? 12 : 8,
-      size: 24,
-      glowColor: widget.dominantColor.withAlpha(60),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final textColor = Theme.of(context).textTheme.bodyLarge?.color;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              _buildVolumeIcon(),
-              const SizedBox(width: 16),
-              Expanded(
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: widget.dominantColor,
-                    inactiveTrackColor: Colors.grey.withValues(alpha: 0.3),
-                    thumbColor: widget.dominantColor,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 10.0,
-                      disabledThumbRadius: 10.0,
-                    ),
-                    overlayColor: widget.dominantColor.withValues(alpha: 0.2),
-                    trackHeight: 4.0,
-                    activeTickMarkColor: Colors.transparent,
-                    inactiveTickMarkColor: Colors.transparent,
-                  ),
-                  child: Slider(
-                    value: _volume,
-                    min: 0.0,
-                    max: 1.0,
-                    divisions: 100,
-                    label: '${(_volume * 100).round()}%',
-                    onChanged: (value) {
-                      if (!_isDragging) {
-                        _glowController.forward(from: 0.0);
-                      }
-                      _isDragging = true;
-                      _updateVolume(value);
-                    },
-                    onChangeEnd: (_) {
-                      _isDragging = false;
-                      _glowController.reverse();
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${(_volume * 100).round()}%',
-                style: TextStyle(
-                  color: textColor?.withValues(alpha: 0.8),
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ],
+    return SliderTheme(
+      data: SliderThemeData(
+        trackHeight: 4,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+        overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+      ),
+      child: Slider(
+        value: _currentVolume,
+        min: 0.0,
+        max: 1.0,
+        activeColor: widget.dominantColor,
+        inactiveColor: Colors.grey.shade700,
+        onChanged: (value) async {
+          setState(() => _currentVolume = value);
+          await rust_api.setVolume(volume: value);
+          widget.onVolumeChanged?.call(value);
+        },
       ),
     );
   }
@@ -7438,34 +7366,37 @@ class _VolumeSliderState extends State<VolumeSlider>
 class VolumeIcon extends StatelessWidget {
   final double volume;
   final Color dominantColor;
+  final VoidCallback onTap;
 
   const VolumeIcon({
     super.key,
     required this.volume,
     required this.dominantColor,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     IconData icon;
-    Color iconColor = dominantColor.computeLuminance() > 0.01
-        ? dominantColor
-        : Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
-
-    if (volume == 0) {
+    if (volume <= 0) {
       icon = Broken.volume_slash;
-    } else if (volume < 0.5) {
+    } else if (volume < 0.3) {
       icon = Broken.volume_low;
+    } else if (volume < 0.7) {
+      icon = Broken.volume_mute;
     } else {
       icon = Broken.volume_high;
     }
 
-    return GlowIcon(
-      icon,
-      color: iconColor,
-      blurRadius: 6,
-      size: 20,
-      glowColor: dominantColor.withAlpha(60),
+    return GestureDetector(
+      onTap: onTap,
+      child: GlowIcon(
+        icon,
+        color: dominantColor.computeLuminance() > 0.01
+            ? dominantColor
+            : Theme.of(context).textTheme.bodyLarge?.color,
+        glowColor: dominantColor.withValues(alpha: 0.3),
+      ),
     );
   }
 }
