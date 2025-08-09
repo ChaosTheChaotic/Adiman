@@ -2870,20 +2870,17 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
               if (isShiftPressed) {
                 _scrollController.animateTo(
                   _scrollController.position.maxScrollExtent,
-                  duration:
-                      const Duration(milliseconds: 100),
+                  duration: const Duration(milliseconds: 100),
                   curve: Curves.easeOut,
                 );
-              }
-              else {
+              } else {
                 final now = DateTime.now();
                 if (_lastGKeyPressTime != null &&
                     now.difference(_lastGKeyPressTime!) <
                         const Duration(milliseconds: 300)) {
                   _scrollController.animateTo(
                     0,
-                    duration:
-                        const Duration(milliseconds: 100),
+                    duration: const Duration(milliseconds: 100),
                     curve: Curves.easeOut,
                   );
                   _lastGKeyPressTime = null;
@@ -4119,12 +4116,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: _clearMp3Cache,
                       onChanged: _saveClearMp3Cache,
                     ),
-		    _buildSettingsSwitch(
-		      context,
-		      title: 'Music fade in on seek and song start',
-		      value: _fadeIn,
-		      onChanged: _saveFadeIn,
-		    ),
+                    _buildSettingsSwitch(
+                      context,
+                      title: 'Music fade in on seek and song start',
+                      value: _fadeIn,
+                      onChanged: _saveFadeIn,
+                    ),
                   ],
                 ),
               ),
