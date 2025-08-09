@@ -127,6 +127,7 @@ class _MiniPlayerState extends State<MiniPlayer>
   late Timer _progressTimer;
   double _volume = 1.0;
   StreamSubscription<bool>? _playbackStateSubscription;
+  bool _isHoveringVol = false;
 
   @override
   void initState() {
@@ -242,55 +243,6 @@ class _MiniPlayerState extends State<MiniPlayer>
     }
   }
 
-  Future<void> _showCompactVolumeSlider(BuildContext context) async {
-    await showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.9),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: widget.dominantColor.withAlpha(50),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Volume',
-                style: TextStyle(
-                  color: widget.dominantColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 16),
-              VolumeSlider(
-                dominantColor: widget.dominantColor,
-                onVolumeChanged: (newVolume) {
-                  if (mounted) {
-                    setState(() {
-                      _volume = newVolume;
-                    });
-                  }
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   @override
   void dispose() {
     _progressTimer.cancel();
@@ -346,9 +298,6 @@ class _MiniPlayerState extends State<MiniPlayer>
           );
         }
         _checkPlayingState();
-      },
-      onLongPress: () {
-        _showCompactVolumeSlider(context);
       },
       child: Material(
         elevation: 4,
@@ -454,16 +403,48 @@ class _MiniPlayerState extends State<MiniPlayer>
                     ],
                   ),
                 ),
-                Tooltip(
-		  message: 'Volume',
-                  child: Padding(
+                  Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: VolumeIcon(
-                        volume: _volume,
-                        dominantColor: widget.dominantColor,
-                        onTap: () => _showCompactVolumeSlider(context),
-                      )),
-                ),
+		      child: MouseRegion(
+		        onEnter: (_) => setState(() => _isHoveringVol = true),
+		        onExit: (_) => setState(() => _isHoveringVol = false),
+		        child: AnimatedContainer(
+		          duration: const Duration(milliseconds: 300),
+		          curve: Curves.easeOut,
+		          width: _isHoveringVol ? 150 : 40, // Expand when hovering
+		          child: Row(
+		            children: [
+		              // Volume icon
+		                VolumeIcon(
+		                  volume: _volume,
+		                  dominantColor: widget.dominantColor,
+		              ),
+		              // Volume slider (appears on hover)
+		              if (_isHoveringVol) ...[
+		                const SizedBox(width: 8),
+		                Expanded(
+		                  child: SliderTheme(
+		                    data: SliderThemeData(
+		                      trackHeight: 3,
+		                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+		                    ),
+		                    child: Slider(
+		                      value: _volume,
+		                      activeColor: widget.dominantColor,
+		                      inactiveColor: widget.dominantColor.withValues(alpha: 0.3),
+		                      onChanged: (newVolume) {
+		                        setState(() => _volume = newVolume);
+		                        rust_api.setVolume(volume: newVolume);
+		                      },
+		                    ),
+		                  ),
+		                ),
+		              ],
+		            ],
+		          ),
+		        ),
+		      ),
+		  ),
                 Hero(
                   tag: 'controls-prev',
                   child: Material(
@@ -7366,13 +7347,11 @@ class _VolumeSliderState extends State<VolumeSlider> {
 class VolumeIcon extends StatelessWidget {
   final double volume;
   final Color dominantColor;
-  final VoidCallback onTap;
 
   const VolumeIcon({
     super.key,
     required this.volume,
     required this.dominantColor,
-    required this.onTap,
   });
 
   @override
@@ -7389,7 +7368,6 @@ class VolumeIcon extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: onTap,
       child: GlowIcon(
         icon,
         color: dominantColor.computeLuminance() > 0.01
