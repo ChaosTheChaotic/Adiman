@@ -70,7 +70,6 @@ ThemeData _buildDynamicTheme(Color dominantColor) {
       titleMedium: TextStyle(color: textColor),
     ),
     visualDensity: VisualDensity.adaptivePlatformDensity,
-    useMaterial3: true,
     iconTheme: IconThemeData(color: textColor),
     navigationRailTheme: NavigationRailThemeData(
       backgroundColor: Colors.transparent,
@@ -403,48 +402,49 @@ class _MiniPlayerState extends State<MiniPlayer>
                     ],
                   ),
                 ),
-                  Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-		      child: MouseRegion(
-		        onEnter: (_) => setState(() => _isHoveringVol = true),
-		        onExit: (_) => setState(() => _isHoveringVol = false),
-		        child: AnimatedContainer(
-		          duration: const Duration(milliseconds: 300),
-		          curve: Curves.easeOut,
-		          width: _isHoveringVol ? 150 : 40, // Expand when hovering
-		          child: Row(
-		            children: [
-		              // Volume icon
-		                VolumeIcon(
-		                  volume: _volume,
-		                  dominantColor: widget.dominantColor,
-		              ),
-		              // Volume slider (appears on hover)
-		              if (_isHoveringVol) ...[
-		                const SizedBox(width: 8),
-		                Expanded(
-		                  child: SliderTheme(
-		                    data: SliderThemeData(
-		                      trackHeight: 3,
-		                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-		                    ),
-		                    child: Slider(
-		                      value: _volume,
-		                      activeColor: widget.dominantColor,
-		                      inactiveColor: widget.dominantColor.withValues(alpha: 0.3),
-		                      onChanged: (newVolume) {
-		                        setState(() => _volume = newVolume);
-		                        rust_api.setVolume(volume: newVolume);
-		                      },
-		                    ),
-		                  ),
-		                ),
-		              ],
-		            ],
-		          ),
-		        ),
-		      ),
-		  ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: MouseRegion(
+                    onEnter: (_) => setState(() => _isHoveringVol = true),
+                    onExit: (_) => setState(() => _isHoveringVol = false),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                      width: _isHoveringVol ? 150 : 40,
+                      child: Row(
+                        children: [
+                          // Volume icon
+                          VolumeIcon(
+                            volume: _volume,
+                            dominantColor: widget.dominantColor,
+                          ),
+                          if (_isHoveringVol) ...[
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: SliderTheme(
+                                data: SliderThemeData(
+                                  trackHeight: 3,
+                                  thumbShape: const RoundSliderThumbShape(
+                                      enabledThumbRadius: 6),
+                                ),
+                                child: Slider(
+                                  value: _volume,
+                                  activeColor: widget.dominantColor,
+                                  inactiveColor: widget.dominantColor
+                                      .withValues(alpha: 0.3),
+                                  onChanged: (newVolume) {
+                                    setState(() => _volume = newVolume);
+                                    rust_api.setVolume(volume: newVolume);
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
                 Hero(
                   tag: 'controls-prev',
                   child: Material(
@@ -637,7 +637,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   List<Song> metadataSongs = [];
   List<Song> lyricsSongs = [];
   Map<String, bool> _visibleSongs = {};
-  Map<String, bool> _deletingSongs = {};
+  final Map<String, bool> _deletingSongs = {};
   DateTime? _lastGKeyPressTime;
   late bool _vimKeybindings;
 
@@ -1102,7 +1102,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   ),
                                 ),
                               )
-                              .toList(),
+                              ,
                           const SizedBox(height: 16),
                           Divider(
                             color: dominantColor.withValues(alpha: 0.2),
@@ -4104,7 +4104,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         onPressed: () async {
-                          final expandedPath = await expandTilde(
+                          final expandedPath = expandTilde(
                             _musicFolderController.text,
                           );
 
@@ -4219,8 +4219,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _showSeparatorManagementPopup() async {
     List<String> currentSeparators = await rust_api.getCurrentSeparators();
-    final TextEditingController _addController = TextEditingController();
-    final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+    final TextEditingController addController = TextEditingController();
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
     await showDialog(
       context: context,
@@ -4276,7 +4276,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           const SizedBox(height: 16),
                           Form(
-                            key: _formKey,
+                            key: formKey,
                             child: Container(
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
@@ -4290,7 +4290,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ),
                               child: TextFormField(
-                                controller: _addController,
+                                controller: addController,
                                 style: TextStyle(color: Colors.white),
                                 cursorColor:
                                     _currentColor.computeLuminance() > 0.01
@@ -4320,9 +4320,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     child: DynamicIconButton(
                                       icon: Broken.tick,
                                       onPressed: () async {
-                                        if (_formKey.currentState!.validate()) {
+                                        if (formKey.currentState!.validate()) {
                                           final newSep =
-                                              _addController.text.trim();
+                                              addController.text.trim();
                                           if (newSep.isEmpty) return;
 
                                           if (currentSeparators
@@ -4352,7 +4352,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             setStateDialog(() {
                                               currentSeparators =
                                                   updatedSeparators;
-                                              _addController.clear();
+                                              addController.clear();
                                             });
 
                                             ScaffoldMessenger.of(context)
@@ -5647,8 +5647,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
       // 1. Check cache using original song path
       final cachedLrc = await _getCachedLyrics(originalSongPath);
       if (cachedLrc != null) {
-        if (currentSong.path != originalSongPath)
+        if (currentSong.path != originalSongPath) {
           return; // Verify still same song
+        }
         _lrcData = cachedLrc;
         _updateLyricsStatus();
         setState(() {});
