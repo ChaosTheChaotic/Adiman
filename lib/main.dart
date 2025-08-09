@@ -873,236 +873,230 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                             ),
                           ),
                           const SizedBox(height: 20),
-                          ...localPlaylists
-                              .map(
-                                (playlist) => Material(
-                                  color: Colors.transparent,
-                                  borderRadius: BorderRadius.circular(15),
-                                  child: InkWell(
-                                    onTap: () {
-                                      ScaffoldMessenger.of(context)
-                                          .hideCurrentSnackBar();
-                                      Navigator.pop(context);
-                                      setState(() {
-                                        _currentPlaylistName = playlist;
-                                        currentMusicDirectory =
-                                            '$_musicFolder/.adilists/$playlist';
-                                      });
-                                      _playPlaylistTransition();
-                                      _loadSongs();
-                                    },
+                          ...localPlaylists.map(
+                            (playlist) => Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(15),
+                              child: InkWell(
+                                onTap: () {
+                                  ScaffoldMessenger.of(context)
+                                      .hideCurrentSnackBar();
+                                  Navigator.pop(context);
+                                  setState(() {
+                                    _currentPlaylistName = playlist;
+                                    currentMusicDirectory =
+                                        '$_musicFolder/.adilists/$playlist';
+                                  });
+                                  _playPlaylistTransition();
+                                  _loadSongs();
+                                },
+                                borderRadius: BorderRadius.circular(15),
+                                splashColor: dominantColor.withValues(
+                                  alpha: 0.1,
+                                ),
+                                highlightColor: dominantColor.withValues(
+                                  alpha: 0.05,
+                                ),
+                                child: Container(
+                                  decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(15),
-                                    splashColor: dominantColor.withValues(
-                                      alpha: 0.1,
-                                    ),
-                                    highlightColor: dominantColor.withValues(
-                                      alpha: 0.05,
-                                    ),
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(15),
-                                        border: Border.all(
-                                          color: dominantColor.withValues(
-                                            alpha: 0.2,
-                                          ),
-                                          width: 0.8,
-                                        ),
+                                    border: Border.all(
+                                      color: dominantColor.withValues(
+                                        alpha: 0.2,
                                       ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 12,
-                                      ),
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      child: Row(
-                                        children: [
-                                          GlowIcon(
-                                            Broken.music_playlist,
-                                            color: dominantColor
-                                                        .computeLuminance() >
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    children: [
+                                      GlowIcon(
+                                        Broken.music_playlist,
+                                        color:
+                                            dominantColor.computeLuminance() >
                                                     0.01
                                                 ? dominantColor
                                                 : Theme.of(context)
                                                     .textTheme
                                                     .bodyLarge
                                                     ?.color,
-                                            blurRadius: 8,
-                                            size: 24,
+                                        blurRadius: 8,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Text(
+                                          playlist,
+                                          style: TextStyle(
+                                            color: Theme.of(context)
+                                                .textTheme
+                                                .bodyLarge
+                                                ?.color,
+                                            fontSize: 16,
                                           ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: Text(
-                                              playlist,
-                                              style: TextStyle(
-                                                color: Theme.of(context)
-                                                    .textTheme
-                                                    .bodyLarge
-                                                    ?.color,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            icon: GlowIcon(
-                                              Broken.edit,
-                                              color: dominantColor
-                                                          .computeLuminance() >
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: GlowIcon(
+                                          Broken.edit,
+                                          color:
+                                              dominantColor.computeLuminance() >
                                                       0.01
                                                   ? dominantColor
                                                   : Theme.of(context)
                                                       .textTheme
                                                       .bodyLarge
                                                       ?.color,
-                                              blurRadius: 8,
-                                              size: 20,
-                                            ),
-                                            onPressed: () async {
-                                              final newName =
-                                                  await _showRenamePlaylistDialog(
-                                                playlist,
-                                              );
-                                              if (newName != null &&
-                                                  newName.isNotEmpty) {
-                                                final oldPath =
-                                                    '$_musicFolder/.adilists/$playlist';
-                                                final newPath =
-                                                    '$_musicFolder/.adilists/$newName';
-                                                try {
-                                                  await Directory(
-                                                    oldPath,
-                                                  ).rename(newPath);
-                                                  setStateDialog(() {
-                                                    localPlaylists.remove(
-                                                      playlist,
-                                                    );
-                                                    localPlaylists.add(newName);
-                                                    localPlaylists.sort();
-                                                  });
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(NamidaSnackbar(
-                                                      backgroundColor:
-                                                          dominantColor,
-                                                      content:
-                                                          'Playlist renamed to "$newName"'));
-                                                } catch (e) {
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(NamidaSnackbar(
-                                                      backgroundColor:
-                                                          dominantColor,
-                                                      content:
-                                                          'Error renaming playlist: $e'));
-                                                }
-                                              }
-                                            },
-                                          ),
-                                          IconButton(
-                                            icon: GlowIcon(
-                                              Broken.cross,
-                                              color: Colors.redAccent,
-                                              blurRadius: 8,
-                                              size: 20,
-                                            ),
-                                            onPressed: () async {
-                                              final confirmed =
-                                                  await showDialog<bool>(
-                                                context: context,
-                                                builder: (context) =>
-                                                    AlertDialog(
-                                                  backgroundColor:
-                                                      dominantColor.withValues(
-                                                    alpha: 0.1,
-                                                  ),
-                                                  title: Text(
-                                                    'Delete Playlist?',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                                  content: Text(
-                                                    'Are you sure you want to delete "$playlist"?',
-                                                    style: TextStyle(
-                                                      color: Colors.white70,
-                                                    ),
-                                                  ),
-                                                  actions: [
-                                                    TextButton(
-                                                        child: Text(
-                                                          'Cancel',
-                                                          style: TextStyle(
-                                                            color:
-                                                                Colors.white70,
-                                                          ),
-                                                        ),
-                                                        onPressed: () {
-                                                          ScaffoldMessenger.of(
-                                                                  context)
-                                                              .hideCurrentSnackBar();
-                                                          Navigator.pop(
-                                                            context,
-                                                            false,
-                                                          );
-                                                        }),
-                                                    TextButton(
-                                                        child: Text(
-                                                          'Delete',
-                                                          style: TextStyle(
-                                                            color: Colors
-                                                                .redAccent,
-                                                          ),
-                                                        ),
-                                                        onPressed: () {
-                                                          ScaffoldMessenger.of(
-                                                                  context)
-                                                              .hideCurrentSnackBar();
-                                                          Navigator.pop(
-                                                            context,
-                                                            true,
-                                                          );
-                                                        }),
-                                                  ],
-                                                ),
-                                              );
-                                              if (confirmed ?? false) {
-                                                final dir = Directory(
-                                                  '$_musicFolder/.adilists/$playlist',
+                                          blurRadius: 8,
+                                          size: 20,
+                                        ),
+                                        onPressed: () async {
+                                          final newName =
+                                              await _showRenamePlaylistDialog(
+                                            playlist,
+                                          );
+                                          if (newName != null &&
+                                              newName.isNotEmpty) {
+                                            final oldPath =
+                                                '$_musicFolder/.adilists/$playlist';
+                                            final newPath =
+                                                '$_musicFolder/.adilists/$newName';
+                                            try {
+                                              await Directory(
+                                                oldPath,
+                                              ).rename(newPath);
+                                              setStateDialog(() {
+                                                localPlaylists.remove(
+                                                  playlist,
                                                 );
-                                                try {
-                                                  await dir.delete(
-                                                    recursive: true,
-                                                  );
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(NamidaSnackbar(
-                                                      backgroundColor:
-                                                          dominantColor,
-                                                      content:
-                                                          'Playlist deleted'));
-                                                  // Remove the deleted playlist from the list.
-                                                  setStateDialog(() {
-                                                    localPlaylists.remove(
-                                                      playlist,
-                                                    );
-                                                  });
-                                                } catch (e) {
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(NamidaSnackbar(
-                                                      backgroundColor:
-                                                          dominantColor,
-                                                      content:
-                                                          'Error deleting playlist: $e'));
-                                                }
-                                              }
-                                            },
-                                          ),
-                                        ],
+                                                localPlaylists.add(newName);
+                                                localPlaylists.sort();
+                                              });
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(NamidaSnackbar(
+                                                  backgroundColor:
+                                                      dominantColor,
+                                                  content:
+                                                      'Playlist renamed to "$newName"'));
+                                            } catch (e) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(NamidaSnackbar(
+                                                  backgroundColor:
+                                                      dominantColor,
+                                                  content:
+                                                      'Error renaming playlist: $e'));
+                                            }
+                                          }
+                                        },
                                       ),
-                                    ),
+                                      IconButton(
+                                        icon: GlowIcon(
+                                          Broken.cross,
+                                          color: Colors.redAccent,
+                                          blurRadius: 8,
+                                          size: 20,
+                                        ),
+                                        onPressed: () async {
+                                          final confirmed =
+                                              await showDialog<bool>(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              backgroundColor:
+                                                  dominantColor.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                              title: Text(
+                                                'Delete Playlist?',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                              content: Text(
+                                                'Are you sure you want to delete "$playlist"?',
+                                                style: TextStyle(
+                                                  color: Colors.white70,
+                                                ),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                    child: Text(
+                                                      'Cancel',
+                                                      style: TextStyle(
+                                                        color: Colors.white70,
+                                                      ),
+                                                    ),
+                                                    onPressed: () {
+                                                      ScaffoldMessenger.of(
+                                                              context)
+                                                          .hideCurrentSnackBar();
+                                                      Navigator.pop(
+                                                        context,
+                                                        false,
+                                                      );
+                                                    }),
+                                                TextButton(
+                                                    child: Text(
+                                                      'Delete',
+                                                      style: TextStyle(
+                                                        color: Colors.redAccent,
+                                                      ),
+                                                    ),
+                                                    onPressed: () {
+                                                      ScaffoldMessenger.of(
+                                                              context)
+                                                          .hideCurrentSnackBar();
+                                                      Navigator.pop(
+                                                        context,
+                                                        true,
+                                                      );
+                                                    }),
+                                              ],
+                                            ),
+                                          );
+                                          if (confirmed ?? false) {
+                                            final dir = Directory(
+                                              '$_musicFolder/.adilists/$playlist',
+                                            );
+                                            try {
+                                              await dir.delete(
+                                                recursive: true,
+                                              );
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(NamidaSnackbar(
+                                                  backgroundColor:
+                                                      dominantColor,
+                                                  content: 'Playlist deleted'));
+                                              // Remove the deleted playlist from the list.
+                                              setStateDialog(() {
+                                                localPlaylists.remove(
+                                                  playlist,
+                                                );
+                                              });
+                                            } catch (e) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(NamidaSnackbar(
+                                                  backgroundColor:
+                                                      dominantColor,
+                                                  content:
+                                                      'Error deleting playlist: $e'));
+                                            }
+                                          }
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              )
-                              ,
+                              ),
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           Divider(
                             color: dominantColor.withValues(alpha: 0.2),
@@ -7300,7 +7294,7 @@ class VolumeSlider extends StatefulWidget {
 }
 
 class _VolumeSliderState extends State<VolumeSlider> {
-  late double _currentVolume;
+  double _currentVolume = 1.0;
 
   @override
   void initState() {
@@ -7317,7 +7311,7 @@ class _VolumeSliderState extends State<VolumeSlider> {
         });
       }
     } catch (e) {
-      // Optionally handle error or keep default value
+      //
     }
   }
 
