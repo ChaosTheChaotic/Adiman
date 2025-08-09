@@ -1,3 +1,4 @@
+use atomic_float::AtomicF32;
 use audiotags::Tag;
 use flutter_rust_bridge::frb;
 use once_cell::sync::Lazy;
@@ -85,9 +86,14 @@ static STREAM: Lazy<Mutex<Option<StreamWrapper>>> = Lazy::new(|| Mutex::new(None
 static PLAYER: Lazy<Mutex<Option<AudioPlayer>>> = Lazy::new(|| Mutex::new(None));
 static PLAYER_STATE: Lazy<Mutex<PlayerState>> = Lazy::new(|| Mutex::new(PlayerState::default()));
 static FADE_IN: AtomicBool = AtomicBool::new(false);
+static CUR_VOL: AtomicF32 = AtomicF32::new(1.0);
 
 pub fn set_fadein(value: bool) {
     FADE_IN.store(value, Ordering::SeqCst);
+}
+
+pub fn get_cvol() -> f32 {
+    return  CUR_VOL.load(Ordering::SeqCst);
 }
 
 struct AudioPlayer {
@@ -202,7 +208,7 @@ impl AudioPlayer {
                     let volume_new = i as f32 / steps as f32;
                     new_sink.set_volume(volume_new);
                     if let Some(ref sink) = old_sink {
-                        sink.set_volume(1.0 - volume_new);
+                        sink.set_volume(CUR_VOL.load(Ordering::SeqCst) - volume_new);
                     }
                     thread::sleep(fade_step);
                 }
@@ -211,7 +217,7 @@ impl AudioPlayer {
                 }
             });
         } else {
-            new_sink.set_volume(1.0);
+            new_sink.set_volume(CUR_VOL.load(Ordering::SeqCst));
             if let Some(sink) = old_sink {
                 sink.stop();
             }
@@ -419,6 +425,14 @@ impl AudioPlayer {
         }
         if let Ok(sender) = self.sender.lock() {
             sender.send(PlayerMessage::Seek(position)).is_ok()
+        } else {
+            false
+        }
+    }
+    fn set_volume(&self, volume: f32) -> bool {
+        if let Some(sink) = self.sink.lock().unwrap().as_ref() {
+            sink.set_volume(volume);
+            true
         } else {
             false
         }
@@ -712,6 +726,15 @@ pub fn resume_song() -> bool {
 pub fn stop_song() -> bool {
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.stop()
+    } else {
+        false
+    }
+}
+
+pub fn set_volume(volume: f32) -> bool {
+    CUR_VOL.store(volume, Ordering::SeqCst);
+    if let Some(player) = PLAYER.lock().unwrap().as_ref() {
+        player.set_volume(volume.clamp(0.0, 1.0))
     } else {
         false
     }
