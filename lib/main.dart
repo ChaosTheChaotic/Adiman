@@ -6384,11 +6384,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                   ? MemoryImage(
                                       currentSong.albumArt!,
                                     )
-                                  : Opacity(
-                                      opacity: 0.5,
-                                      child: Image.asset(
-                                        'assets/default_album.png',
-                                      )) as ImageProvider,
+                                  : AssetImage(
+                                      "assets/default_album.png",
+                                    ) as ImageProvider,
                               isPlaying: isPlaying,
                               currentPeak: currentPeak,
                               showBreathingEffect: true,

@@ -412,10 +412,8 @@ class _EnhancedSongListTileState extends State<EnhancedSongListTile>
                                         heroTag: 'albumArt-${widget.song.path}',
                                         image: widget.song.albumArt != null
                                             ? MemoryImage(widget.song.albumArt!)
-                                            : Opacity(
-                                                opacity: 0.5,
-                                                child: Image.asset(
-                                                    "assets/default_album.png"),
+                                            : AssetImage(
+                                                "assets/default_album.png",
                                               ) as ImageProvider,
                                       ),
                                       const SizedBox(width: 16),
