@@ -152,11 +152,14 @@ jobs:
     name: Create Release
     needs: [build_x86_64, build_arm64]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
 
       - name: Get next version
         id: version
