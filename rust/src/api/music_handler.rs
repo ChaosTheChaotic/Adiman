@@ -1,10 +1,11 @@
+use atomic_float::AtomicF32;
 use audiotags::Tag;
 use flutter_rust_bridge::frb;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use regex::Regex;
-use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
+use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::cmp::max;
@@ -85,9 +86,14 @@ static STREAM: Lazy<Mutex<Option<StreamWrapper>>> = Lazy::new(|| Mutex::new(None
 static PLAYER: Lazy<Mutex<Option<AudioPlayer>>> = Lazy::new(|| Mutex::new(None));
 static PLAYER_STATE: Lazy<Mutex<PlayerState>> = Lazy::new(|| Mutex::new(PlayerState::default()));
 static FADE_IN: AtomicBool = AtomicBool::new(false);
+static CUR_VOL: AtomicF32 = AtomicF32::new(1.0);
 
 pub fn set_fadein(value: bool) {
     FADE_IN.store(value, Ordering::SeqCst);
+}
+
+pub fn get_cvol() -> f32 {
+    return  CUR_VOL.load(Ordering::SeqCst);
 }
 
 struct AudioPlayer {
@@ -112,14 +118,14 @@ impl std::fmt::Debug for AudioPlayer {
 
 impl AudioPlayer {
     fn new() -> Option<Self> {
-        if let Ok((stream, handle)) = OutputStream::try_default() {
+        if let Ok(stream) = OutputStreamBuilder::open_default_stream() {
             // Create a channel for commands
             let (tx, rx) = mpsc::channel();
             let buffer = Arc::new(Mutex::new(None));
             let buffer_clone = Arc::clone(&buffer);
-            let handle_clone = handle.clone();
-            // Spawn the background worker with a cloned stream handle and buffer.
-            thread::spawn(move || Self::background_worker(rx, handle_clone, buffer_clone));
+            let mixer = stream.mixer().clone();
+            // Spawn the background worker with a cloned mixer and buffer.
+            thread::spawn(move || Self::background_worker(rx, mixer, buffer_clone));
             if let Ok(mut stream_guard) = STREAM.lock() {
                 *stream_guard = Some(StreamWrapper(stream));
                 return Some(Self {
@@ -202,7 +208,7 @@ impl AudioPlayer {
                     let volume_new = i as f32 / steps as f32;
                     new_sink.set_volume(volume_new);
                     if let Some(ref sink) = old_sink {
-                        sink.set_volume(1.0 - volume_new);
+                        sink.set_volume(CUR_VOL.load(Ordering::SeqCst) - volume_new);
                     }
                     thread::sleep(fade_step);
                 }
@@ -211,7 +217,7 @@ impl AudioPlayer {
                 }
             });
         } else {
-            new_sink.set_volume(1.0);
+            new_sink.set_volume(CUR_VOL.load(Ordering::SeqCst));
             if let Some(sink) = old_sink {
                 sink.stop();
             }
@@ -220,7 +226,7 @@ impl AudioPlayer {
 
     fn background_worker(
         receiver: Receiver<PlayerMessage>,
-        stream_handle: OutputStreamHandle,
+        mixer: rodio::mixer::Mixer,
         buffer: Arc<Mutex<Option<StreamingBuffer>>>,
     ) {
         while let Ok(message) = receiver.recv() {
@@ -241,14 +247,11 @@ impl AudioPlayer {
                         if reader.read_to_end(&mut initial_data).is_ok() && !initial_data.is_empty()
                         {
                             let cursor = Cursor::new(initial_data.clone());
-                            if let Ok(dec) = Decoder::new(cursor) {
+                            if let Ok(dec) = Decoder::try_from(cursor) {
                                 sample_rate = dec.sample_rate();
                                 channels = dec.channels();
+                                total_duration = dec.total_duration().unwrap_or(Duration::from_secs(0));
                                 decoder = Some(dec);
-                                let samples_count = initial_data.len() / (channels as usize * 2);
-                                total_duration = Duration::from_secs_f64(
-                                    samples_count as f64 / sample_rate as f64,
-                                );
                             }
                         }
                         let _ = reader.seek(SeekFrom::Start(0));
@@ -257,7 +260,7 @@ impl AudioPlayer {
                             let mut guard = chunks.lock().unwrap();
                             if let Some(ref mut dec) = decoder {
                                 let samples: Vec<f32> =
-                                    dec.take(0).map(|s| s as f32 / i16::MAX as f32).collect();
+                                    dec.take(0).map(|s| s).collect();
                                 guard.push(AudioChunk { samples });
                             }
                         }
@@ -272,63 +275,61 @@ impl AudioPlayer {
                             *buf = Some(streaming_buffer.clone());
                         }
                         // Create sink and append a streaming source.
-                        if let Ok(raw_sink) = Sink::try_new(&stream_handle) {
-                            raw_sink.set_volume(0.0);
-                            let new_sink = Arc::new(raw_sink);
-                            let source = StreamingSource {
-                                buffer: Arc::new(Mutex::new(Some(streaming_buffer))),
-                                current_chunk: 0,
-                                position: 0,
-                                chunks_processed: 0,
-                            };
-                            new_sink.append(source);
-                            new_sink.play();
-                            if let Ok(player_lock) = PLAYER.lock() {
-                                if let Some(player) = player_lock.as_ref() {
-                                    let old_sink = player.sink.lock().unwrap().take();
-                                    AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
-                                    *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
-                                    *player.current_file.lock().unwrap() = path.clone();
-                                    *player.start_time.lock().unwrap() = Instant::now();
-                                    *player.playing.lock().unwrap() = true;
-                                    *player.is_paused.lock().unwrap() = false;
-                                }
+                        let new_sink = Arc::new(Sink::connect_new(&mixer));
+                        new_sink.set_volume(0.0);
+                        let source = StreamingSource {
+                            buffer: Arc::new(Mutex::new(Some(streaming_buffer))),
+                            current_chunk: 0,
+                            position: 0,
+                            chunks_processed: 0,
+                        };
+                        new_sink.append(source);
+                        new_sink.play();
+                        if let Ok(player_lock) = PLAYER.lock() {
+                            if let Some(player) = player_lock.as_ref() {
+                                let old_sink = player.sink.lock().unwrap().take();
+                                AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
+                                *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
+                                *player.current_file.lock().unwrap() = path.clone();
+                                *player.start_time.lock().unwrap() = Instant::now();
+                                *player.playing.lock().unwrap() = true;
+                                *player.is_paused.lock().unwrap() = false;
                             }
-                            // Spawn thread to buffer the rest of the audio in chunks.
-                            let chunks_clone = Arc::clone(&chunks);
-                            let file_path = path.clone();
-                            thread::spawn(move || {
-                                if let Ok(file) = fs::File::open(&file_path) {
-                                    let mut reader = BufReader::new(file);
-                                    let mut file_data = Vec::new();
-                                    if reader.read_to_end(&mut file_data).is_ok() {
-                                        let cursor = Cursor::new(file_data);
-                                        if let Ok(decoder) = Decoder::new(cursor) {
-                                            let mut samples =
-                                                Vec::with_capacity(sample_rate as usize);
-                                            for sample in decoder {
-                                                samples.push(sample as f32 / i16::MAX as f32);
-                                                if samples.len()
-                                                    >= (sample_rate as usize * channels as usize)
-                                                {
-                                                    if let Ok(mut guard) = chunks_clone.lock() {
-                                                        guard.push(AudioChunk {
-                                                            samples: samples.clone(),
-                                                        });
-                                                    }
-                                                    samples.clear();
-                                                }
-                                            }
-                                            if !samples.is_empty() {
+                        }
+                        // Spawn thread to buffer the rest of the audio in chunks.
+                        let chunks_clone = Arc::clone(&chunks);
+                        let file_path = path.clone();
+                        thread::spawn(move || {
+                            if let Ok(file) = fs::File::open(&file_path) {
+                                let mut reader = BufReader::new(file);
+                                let mut file_data = Vec::new();
+                                if reader.read_to_end(&mut file_data).is_ok() {
+                                    let cursor = Cursor::new(file_data);
+                                    if let Ok(decoder) = Decoder::try_from(cursor) {
+                                        let mut samples =
+                                            Vec::with_capacity(sample_rate as usize);
+                                        for sample in decoder {
+                                            samples.push(sample);
+                                            if samples.len()
+                                                >= (sample_rate as usize * channels as usize)
+                                            {
                                                 if let Ok(mut guard) = chunks_clone.lock() {
-                                                    guard.push(AudioChunk { samples });
+                                                    guard.push(AudioChunk {
+                                                        samples: samples.clone(),
+                                                    });
                                                 }
+                                                samples.clear();
+                                            }
+                                        }
+                                        if !samples.is_empty() {
+                                            if let Ok(mut guard) = chunks_clone.lock() {
+                                                guard.push(AudioChunk { samples });
                                             }
                                         }
                                     }
                                 }
-                            });
-                        }
+                            }
+                        });
                     } else {
                         println!("Failed to open file: {}", &path);
                     }
@@ -351,27 +352,25 @@ impl AudioPlayer {
                                 }
                                 found
                             };
-                            if let Ok(raw_sink) = Sink::try_new(&stream_handle) {
-                                let new_sink = Arc::new(raw_sink);
-                                let source = StreamingSource {
-                                    buffer: Arc::new(Mutex::new(Some(buf.clone()))),
-                                    current_chunk,
-                                    position: position_in_chunk,
-                                    chunks_processed: current_chunk,
-                                };
-                                new_sink.append(source);
-                                new_sink.play();
-                                if let Ok(player_lock) = PLAYER.lock() {
-                                    if let Some(player) = player_lock.as_ref() {
-                                        let old_sink = player.sink.lock().unwrap().take();
-                                        AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
-                                        *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
-                                        let now = Instant::now();
-                                        let new_start = now
-                                            .checked_sub(Duration::from_secs_f32(position))
-                                            .unwrap_or(now);
-                                        *player.start_time.lock().unwrap() = new_start;
-                                    }
+                            let new_sink = Arc::new(Sink::connect_new(&mixer));
+                            let source = StreamingSource {
+                                buffer: Arc::new(Mutex::new(Some(buf.clone()))),
+                                current_chunk,
+                                position: position_in_chunk,
+                                chunks_processed: current_chunk,
+                            };
+                            new_sink.append(source);
+                            new_sink.play();
+                            if let Ok(player_lock) = PLAYER.lock() {
+                                if let Some(player) = player_lock.as_ref() {
+                                    let old_sink = player.sink.lock().unwrap().take();
+                                    AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
+                                    *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
+                                    let now = Instant::now();
+                                    let new_start = now
+                                        .checked_sub(Duration::from_secs_f32(position))
+                                        .unwrap_or(now);
+                                    *player.start_time.lock().unwrap() = new_start;
                                 }
                             }
                         }
@@ -423,6 +422,14 @@ impl AudioPlayer {
             false
         }
     }
+    fn set_volume(&self, volume: f32) -> bool {
+        if let Some(sink) = self.sink.lock().unwrap().as_ref() {
+            sink.set_volume(volume);
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl Drop for AudioPlayer {
@@ -439,7 +446,7 @@ struct StreamingSource {
 }
 
 impl Source for StreamingSource {
-    fn current_frame_len(&self) -> Option<usize> {
+    fn current_span_len(&self) -> Option<usize> {
         None
     }
 
@@ -666,12 +673,9 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
     // Extract duration using rodio's decoder
     let duration = {
         let file = std::fs::File::open(path).ok()?;
-        let reader = BufReader::new(file);
-        Decoder::new(reader)
-            .ok()
-            .and_then(|source| source.total_duration())
-            .map(|d| d.as_secs())
-            .unwrap_or(0)
+        let source = Decoder::try_from(file)
+            .ok()?;
+        source.total_duration().map(|d| d.as_secs()).unwrap_or(0)
     };
 
     Some(SongMetadata {
@@ -712,6 +716,15 @@ pub fn resume_song() -> bool {
 pub fn stop_song() -> bool {
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.stop()
+    } else {
+        false
+    }
+}
+
+pub fn set_volume(volume: f32) -> bool {
+    CUR_VOL.store(volume, Ordering::SeqCst);
+    if let Some(player) = PLAYER.lock().unwrap().as_ref() {
+        player.set_volume(volume.clamp(0.0, 1.0))
     } else {
         false
     }

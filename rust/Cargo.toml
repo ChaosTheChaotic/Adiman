@@ -8,7 +8,6 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 flutter_rust_bridge = "=2.11.1"
-rodio = { version = "0.20.1", features = ["symphonia-all"] } # Too lazy to update this
 serde = { version = "1.0", features = ["derive"] }
 walkdir = "2.3.3"
 base64 = "0.22.1"
@@ -19,6 +18,8 @@ sha2 = "0.10.8"
 audiotags = "0.5.0"
 anyhow = "1.0.98"
 image = "0.25.6"
+atomic_float = "1.1.0"
+rodio = "0.21.1"
 
 [build-dependencies]
 flutter_rust_bridge_codegen = "=2.11.1"

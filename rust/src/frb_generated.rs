@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 144449308;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1686699472;
 
 // Section: executor
 
@@ -346,6 +346,38 @@ fn wire__crate__api__music_handler__get_current_song_path_impl(
                 transform_result_sse::<_, ()>((move || {
                     let output_ok =
                         Result::<_, ()>::Ok(crate::api::music_handler::get_current_song_path())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__music_handler__get_cvol_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_cvol",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(crate::api::music_handler::get_cvol())?;
                     Ok(output_ok)
                 })())
             }
@@ -900,6 +932,40 @@ fn wire__crate__api__music_handler__set_separators_impl(
         },
     )
 }
+fn wire__crate__api__music_handler__set_volume_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "set_volume",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_volume = <f32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::music_handler::set_volume(api_volume))?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__music_handler__skip_to_next_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1264,79 +1330,81 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        10 => wire__crate__api__color_extractor__get_dominant_color_impl(
+        10 => wire__crate__api__music_handler__get_cvol_impl(port, ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__color_extractor__get_dominant_color_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        11 => wire__crate__api__music_handler__get_playback_position_impl(
+        12 => wire__crate__api__music_handler__get_playback_position_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        12 => wire__crate__api__music_handler__get_realtime_peaks_impl(
+        13 => wire__crate__api__music_handler__get_realtime_peaks_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        13 => wire__crate__api__music_handler__initialize_player_impl(
+        14 => wire__crate__api__music_handler__initialize_player_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        14 => wire__crate__api__music_handler__is_playing_impl(port, ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__music_handler__pause_song_impl(port, ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__music_handler__play_song_impl(port, ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__music_handler__player_state_default_impl(
+        15 => wire__crate__api__music_handler__is_playing_impl(port, ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__music_handler__pause_song_impl(port, ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__music_handler__play_song_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__music_handler__player_state_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        18 => wire__crate__api__music_handler__remove_separator_impl(
+        19 => wire__crate__api__music_handler__remove_separator_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        19 => wire__crate__api__music_handler__reset_separators_impl(
+        20 => wire__crate__api__music_handler__reset_separators_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => wire__crate__api__music_handler__resume_song_impl(port, ptr, rust_vec_len, data_len),
-        21 => wire__crate__api__music_handler__scan_music_directory_impl(
+        21 => wire__crate__api__music_handler__resume_song_impl(port, ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__music_handler__scan_music_directory_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        22 => {
+        23 => {
             wire__crate__api__music_handler__search_lyrics_impl(port, ptr, rust_vec_len, data_len)
         }
-        23 => wire__crate__api__music_handler__seek_to_position_impl(
+        24 => wire__crate__api__music_handler__seek_to_position_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        24 => wire__crate__api__music_handler__set_fadein_impl(port, ptr, rust_vec_len, data_len),
-        25 => {
+        25 => wire__crate__api__music_handler__set_fadein_impl(port, ptr, rust_vec_len, data_len),
+        26 => {
             wire__crate__api__music_handler__set_separators_impl(port, ptr, rust_vec_len, data_len)
         }
-        26 => wire__crate__api__music_handler__skip_to_next_impl(port, ptr, rust_vec_len, data_len),
-        27 => wire__crate__api__music_handler__skip_to_previous_impl(
+        27 => wire__crate__api__music_handler__set_volume_impl(port, ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__music_handler__skip_to_next_impl(port, ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__music_handler__skip_to_previous_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        28 => wire__crate__api__music_handler__stop_song_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__music_handler__stop_song_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }

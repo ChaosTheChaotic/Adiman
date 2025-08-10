@@ -70,7 +70,6 @@ ThemeData _buildDynamicTheme(Color dominantColor) {
       titleMedium: TextStyle(color: textColor),
     ),
     visualDensity: VisualDensity.adaptivePlatformDensity,
-    useMaterial3: true,
     iconTheme: IconThemeData(color: textColor),
     navigationRailTheme: NavigationRailThemeData(
       backgroundColor: Colors.transparent,
@@ -125,11 +124,20 @@ class _MiniPlayerState extends State<MiniPlayer>
   late AnimationController _playPauseController;
   bool isPlaying = true;
   late Timer _progressTimer;
+  double _volume = 1.0;
   StreamSubscription<bool>? _playbackStateSubscription;
+  bool _isHoveringVol = false;
 
   @override
   void initState() {
     super.initState();
+    rust_api.getCvol().then((volume) {
+      if (mounted) {
+        setState(() {
+          _volume = volume;
+        });
+      }
+    });
     _playbackStateSubscription = widget.service.playbackStateStream.listen((
       isPlaying,
     ) {
@@ -394,6 +402,55 @@ class _MiniPlayerState extends State<MiniPlayer>
                     ],
                   ),
                 ),
+                ValueListenableBuilder<double>(
+                    valueListenable: VolumeController().volume,
+                    builder: (context, volume, _) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: MouseRegion(
+                          onEnter: (_) => setState(() => _isHoveringVol = true),
+                          onExit: (_) => setState(() => _isHoveringVol = false),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOut,
+                            width: _isHoveringVol ? 150 : 40,
+                            child: Row(
+                              children: [
+                                VolumeIcon(
+                                  volume: _volume,
+                                  dominantColor: widget.dominantColor,
+                                ),
+                                if (_isHoveringVol) ...[
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: SliderTheme(
+                                      data: SliderThemeData(
+                                        trackHeight: 3,
+                                        thumbShape: const RoundSliderThumbShape(
+                                            enabledThumbRadius: 6),
+                                      ),
+                                      child: Slider(
+                                        value: _volume,
+                                        activeColor: widget.dominantColor,
+                                        inactiveColor: widget.dominantColor
+                                            .withValues(alpha: 0.3),
+                                        onChanged: (newVolume) async {
+                                          await VolumeController()
+                                              .setVolume(newVolume);
+                                          setState(() => _volume = newVolume);
+                                          await rust_api.setVolume(
+                                              volume: newVolume);
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
                 Hero(
                   tag: 'controls-prev',
                   child: Material(
@@ -484,6 +541,7 @@ Future<void> main() async {
   await RustLib.init();
   await rust_api.initializePlayer();
   globalService = AdimanService();
+  VolumeController();
   runApp(const MyApp());
 }
 
@@ -586,7 +644,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   List<Song> metadataSongs = [];
   List<Song> lyricsSongs = [];
   Map<String, bool> _visibleSongs = {};
-  Map<String, bool> _deletingSongs = {};
+  final Map<String, bool> _deletingSongs = {};
   DateTime? _lastGKeyPressTime;
   late bool _vimKeybindings;
 
@@ -822,236 +880,230 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                             ),
                           ),
                           const SizedBox(height: 20),
-                          ...localPlaylists
-                              .map(
-                                (playlist) => Material(
-                                  color: Colors.transparent,
-                                  borderRadius: BorderRadius.circular(15),
-                                  child: InkWell(
-                                    onTap: () {
-                                      ScaffoldMessenger.of(context)
-                                          .hideCurrentSnackBar();
-                                      Navigator.pop(context);
-                                      setState(() {
-                                        _currentPlaylistName = playlist;
-                                        currentMusicDirectory =
-                                            '$_musicFolder/.adilists/$playlist';
-                                      });
-                                      _playPlaylistTransition();
-                                      _loadSongs();
-                                    },
+                          ...localPlaylists.map(
+                            (playlist) => Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(15),
+                              child: InkWell(
+                                onTap: () {
+                                  ScaffoldMessenger.of(context)
+                                      .hideCurrentSnackBar();
+                                  Navigator.pop(context);
+                                  setState(() {
+                                    _currentPlaylistName = playlist;
+                                    currentMusicDirectory =
+                                        '$_musicFolder/.adilists/$playlist';
+                                  });
+                                  _playPlaylistTransition();
+                                  _loadSongs();
+                                },
+                                borderRadius: BorderRadius.circular(15),
+                                splashColor: dominantColor.withValues(
+                                  alpha: 0.1,
+                                ),
+                                highlightColor: dominantColor.withValues(
+                                  alpha: 0.05,
+                                ),
+                                child: Container(
+                                  decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(15),
-                                    splashColor: dominantColor.withValues(
-                                      alpha: 0.1,
-                                    ),
-                                    highlightColor: dominantColor.withValues(
-                                      alpha: 0.05,
-                                    ),
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(15),
-                                        border: Border.all(
-                                          color: dominantColor.withValues(
-                                            alpha: 0.2,
-                                          ),
-                                          width: 0.8,
-                                        ),
+                                    border: Border.all(
+                                      color: dominantColor.withValues(
+                                        alpha: 0.2,
                                       ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 12,
-                                      ),
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      child: Row(
-                                        children: [
-                                          GlowIcon(
-                                            Broken.music_playlist,
-                                            color: dominantColor
-                                                        .computeLuminance() >
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    children: [
+                                      GlowIcon(
+                                        Broken.music_playlist,
+                                        color:
+                                            dominantColor.computeLuminance() >
                                                     0.01
                                                 ? dominantColor
                                                 : Theme.of(context)
                                                     .textTheme
                                                     .bodyLarge
                                                     ?.color,
-                                            blurRadius: 8,
-                                            size: 24,
+                                        blurRadius: 8,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Text(
+                                          playlist,
+                                          style: TextStyle(
+                                            color: Theme.of(context)
+                                                .textTheme
+                                                .bodyLarge
+                                                ?.color,
+                                            fontSize: 16,
                                           ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: Text(
-                                              playlist,
-                                              style: TextStyle(
-                                                color: Theme.of(context)
-                                                    .textTheme
-                                                    .bodyLarge
-                                                    ?.color,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            icon: GlowIcon(
-                                              Broken.edit,
-                                              color: dominantColor
-                                                          .computeLuminance() >
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: GlowIcon(
+                                          Broken.edit,
+                                          color:
+                                              dominantColor.computeLuminance() >
                                                       0.01
                                                   ? dominantColor
                                                   : Theme.of(context)
                                                       .textTheme
                                                       .bodyLarge
                                                       ?.color,
-                                              blurRadius: 8,
-                                              size: 20,
-                                            ),
-                                            onPressed: () async {
-                                              final newName =
-                                                  await _showRenamePlaylistDialog(
-                                                playlist,
-                                              );
-                                              if (newName != null &&
-                                                  newName.isNotEmpty) {
-                                                final oldPath =
-                                                    '$_musicFolder/.adilists/$playlist';
-                                                final newPath =
-                                                    '$_musicFolder/.adilists/$newName';
-                                                try {
-                                                  await Directory(
-                                                    oldPath,
-                                                  ).rename(newPath);
-                                                  setStateDialog(() {
-                                                    localPlaylists.remove(
-                                                      playlist,
-                                                    );
-                                                    localPlaylists.add(newName);
-                                                    localPlaylists.sort();
-                                                  });
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(NamidaSnackbar(
-                                                      backgroundColor:
-                                                          dominantColor,
-                                                      content:
-                                                          'Playlist renamed to "$newName"'));
-                                                } catch (e) {
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(NamidaSnackbar(
-                                                      backgroundColor:
-                                                          dominantColor,
-                                                      content:
-                                                          'Error renaming playlist: $e'));
-                                                }
-                                              }
-                                            },
-                                          ),
-                                          IconButton(
-                                            icon: GlowIcon(
-                                              Broken.cross,
-                                              color: Colors.redAccent,
-                                              blurRadius: 8,
-                                              size: 20,
-                                            ),
-                                            onPressed: () async {
-                                              final confirmed =
-                                                  await showDialog<bool>(
-                                                context: context,
-                                                builder: (context) =>
-                                                    AlertDialog(
-                                                  backgroundColor:
-                                                      dominantColor.withValues(
-                                                    alpha: 0.1,
-                                                  ),
-                                                  title: Text(
-                                                    'Delete Playlist?',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                                  content: Text(
-                                                    'Are you sure you want to delete "$playlist"?',
-                                                    style: TextStyle(
-                                                      color: Colors.white70,
-                                                    ),
-                                                  ),
-                                                  actions: [
-                                                    TextButton(
-                                                        child: Text(
-                                                          'Cancel',
-                                                          style: TextStyle(
-                                                            color:
-                                                                Colors.white70,
-                                                          ),
-                                                        ),
-                                                        onPressed: () {
-                                                          ScaffoldMessenger.of(
-                                                                  context)
-                                                              .hideCurrentSnackBar();
-                                                          Navigator.pop(
-                                                            context,
-                                                            false,
-                                                          );
-                                                        }),
-                                                    TextButton(
-                                                        child: Text(
-                                                          'Delete',
-                                                          style: TextStyle(
-                                                            color: Colors
-                                                                .redAccent,
-                                                          ),
-                                                        ),
-                                                        onPressed: () {
-                                                          ScaffoldMessenger.of(
-                                                                  context)
-                                                              .hideCurrentSnackBar();
-                                                          Navigator.pop(
-                                                            context,
-                                                            true,
-                                                          );
-                                                        }),
-                                                  ],
-                                                ),
-                                              );
-                                              if (confirmed ?? false) {
-                                                final dir = Directory(
-                                                  '$_musicFolder/.adilists/$playlist',
+                                          blurRadius: 8,
+                                          size: 20,
+                                        ),
+                                        onPressed: () async {
+                                          final newName =
+                                              await _showRenamePlaylistDialog(
+                                            playlist,
+                                          );
+                                          if (newName != null &&
+                                              newName.isNotEmpty) {
+                                            final oldPath =
+                                                '$_musicFolder/.adilists/$playlist';
+                                            final newPath =
+                                                '$_musicFolder/.adilists/$newName';
+                                            try {
+                                              await Directory(
+                                                oldPath,
+                                              ).rename(newPath);
+                                              setStateDialog(() {
+                                                localPlaylists.remove(
+                                                  playlist,
                                                 );
-                                                try {
-                                                  await dir.delete(
-                                                    recursive: true,
-                                                  );
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(NamidaSnackbar(
-                                                      backgroundColor:
-                                                          dominantColor,
-                                                      content:
-                                                          'Playlist deleted'));
-                                                  // Remove the deleted playlist from the list.
-                                                  setStateDialog(() {
-                                                    localPlaylists.remove(
-                                                      playlist,
-                                                    );
-                                                  });
-                                                } catch (e) {
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(NamidaSnackbar(
-                                                      backgroundColor:
-                                                          dominantColor,
-                                                      content:
-                                                          'Error deleting playlist: $e'));
-                                                }
-                                              }
-                                            },
-                                          ),
-                                        ],
+                                                localPlaylists.add(newName);
+                                                localPlaylists.sort();
+                                              });
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(NamidaSnackbar(
+                                                  backgroundColor:
+                                                      dominantColor,
+                                                  content:
+                                                      'Playlist renamed to "$newName"'));
+                                            } catch (e) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(NamidaSnackbar(
+                                                  backgroundColor:
+                                                      dominantColor,
+                                                  content:
+                                                      'Error renaming playlist: $e'));
+                                            }
+                                          }
+                                        },
                                       ),
-                                    ),
+                                      IconButton(
+                                        icon: GlowIcon(
+                                          Broken.cross,
+                                          color: Colors.redAccent,
+                                          blurRadius: 8,
+                                          size: 20,
+                                        ),
+                                        onPressed: () async {
+                                          final confirmed =
+                                              await showDialog<bool>(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              backgroundColor:
+                                                  dominantColor.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                              title: Text(
+                                                'Delete Playlist?',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                              content: Text(
+                                                'Are you sure you want to delete "$playlist"?',
+                                                style: TextStyle(
+                                                  color: Colors.white70,
+                                                ),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                    child: Text(
+                                                      'Cancel',
+                                                      style: TextStyle(
+                                                        color: Colors.white70,
+                                                      ),
+                                                    ),
+                                                    onPressed: () {
+                                                      ScaffoldMessenger.of(
+                                                              context)
+                                                          .hideCurrentSnackBar();
+                                                      Navigator.pop(
+                                                        context,
+                                                        false,
+                                                      );
+                                                    }),
+                                                TextButton(
+                                                    child: Text(
+                                                      'Delete',
+                                                      style: TextStyle(
+                                                        color: Colors.redAccent,
+                                                      ),
+                                                    ),
+                                                    onPressed: () {
+                                                      ScaffoldMessenger.of(
+                                                              context)
+                                                          .hideCurrentSnackBar();
+                                                      Navigator.pop(
+                                                        context,
+                                                        true,
+                                                      );
+                                                    }),
+                                              ],
+                                            ),
+                                          );
+                                          if (confirmed ?? false) {
+                                            final dir = Directory(
+                                              '$_musicFolder/.adilists/$playlist',
+                                            );
+                                            try {
+                                              await dir.delete(
+                                                recursive: true,
+                                              );
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(NamidaSnackbar(
+                                                  backgroundColor:
+                                                      dominantColor,
+                                                  content: 'Playlist deleted'));
+                                              // Remove the deleted playlist from the list.
+                                              setStateDialog(() {
+                                                localPlaylists.remove(
+                                                  playlist,
+                                                );
+                                              });
+                                            } catch (e) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(NamidaSnackbar(
+                                                  backgroundColor:
+                                                      dominantColor,
+                                                  content:
+                                                      'Error deleting playlist: $e'));
+                                            }
+                                          }
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              )
-                              .toList(),
+                              ),
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           Divider(
                             color: dominantColor.withValues(alpha: 0.2),
@@ -2870,20 +2922,17 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
               if (isShiftPressed) {
                 _scrollController.animateTo(
                   _scrollController.position.maxScrollExtent,
-                  duration:
-                      const Duration(milliseconds: 100),
+                  duration: const Duration(milliseconds: 100),
                   curve: Curves.easeOut,
                 );
-              }
-              else {
+              } else {
                 final now = DateTime.now();
                 if (_lastGKeyPressTime != null &&
                     now.difference(_lastGKeyPressTime!) <
                         const Duration(milliseconds: 300)) {
                   _scrollController.animateTo(
                     0,
-                    duration:
-                        const Duration(milliseconds: 100),
+                    duration: const Duration(milliseconds: 100),
                     curve: Curves.easeOut,
                   );
                   _lastGKeyPressTime = null;
@@ -4056,7 +4105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         onPressed: () async {
-                          final expandedPath = await expandTilde(
+                          final expandedPath = expandTilde(
                             _musicFolderController.text,
                           );
 
@@ -4119,12 +4168,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: _clearMp3Cache,
                       onChanged: _saveClearMp3Cache,
                     ),
-		    _buildSettingsSwitch(
-		      context,
-		      title: 'Music fade in on seek and song start',
-		      value: _fadeIn,
-		      onChanged: _saveFadeIn,
-		    ),
+                    _buildSettingsSwitch(
+                      context,
+                      title: 'Music fade in on seek and song start',
+                      value: _fadeIn,
+                      onChanged: _saveFadeIn,
+                    ),
                   ],
                 ),
               ),
@@ -4171,8 +4220,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _showSeparatorManagementPopup() async {
     List<String> currentSeparators = await rust_api.getCurrentSeparators();
-    final TextEditingController _addController = TextEditingController();
-    final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+    final TextEditingController addController = TextEditingController();
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
     await showDialog(
       context: context,
@@ -4228,7 +4277,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           const SizedBox(height: 16),
                           Form(
-                            key: _formKey,
+                            key: formKey,
                             child: Container(
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
@@ -4242,7 +4291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ),
                               child: TextFormField(
-                                controller: _addController,
+                                controller: addController,
                                 style: TextStyle(color: Colors.white),
                                 cursorColor:
                                     _currentColor.computeLuminance() > 0.01
@@ -4272,9 +4321,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     child: DynamicIconButton(
                                       icon: Broken.tick,
                                       onPressed: () async {
-                                        if (_formKey.currentState!.validate()) {
+                                        if (formKey.currentState!.validate()) {
                                           final newSep =
-                                              _addController.text.trim();
+                                              addController.text.trim();
                                           if (newSep.isEmpty) return;
 
                                           if (currentSeparators
@@ -4304,7 +4353,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             setStateDialog(() {
                                               currentSeparators =
                                                   updatedSeparators;
-                                              _addController.clear();
+                                              addController.clear();
                                             });
 
                                             ScaffoldMessenger.of(context)
@@ -4810,6 +4859,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   RepeatMode _repeatMode = RepeatMode.normal;
   bool _hasRepeated = false;
+  double _volume = 1.0;
+  bool _isHoveringVol = false;
 
   List<int>? _shuffleOrder;
   int _shuffleIndex = 0;
@@ -4821,6 +4872,13 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   @override
   void initState() {
     super.initState();
+    rust_api.getCvol().then((volume) {
+      if (mounted) {
+        setState(() {
+          _volume = volume;
+        });
+      }
+    });
     _isTempFile = widget.isTemp;
     _isTempFile ? _togglePlayPause : null;
     _breathingController = AnimationController(
@@ -5599,8 +5657,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
       // 1. Check cache using original song path
       final cachedLrc = await _getCachedLyrics(originalSongPath);
       if (cachedLrc != null) {
-        if (currentSong.path != originalSongPath)
+        if (currentSong.path != originalSongPath) {
           return; // Verify still same song
+        }
         _lrcData = cachedLrc;
         _updateLyricsStatus();
         setState(() {});
@@ -6238,6 +6297,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                               }
                             },
                           ),
+                          const SizedBox(width: 12),
                           DynamicIconButton(
                             icon: Broken.more,
                             onPressed: () => _isTempFile
@@ -6252,7 +6312,6 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                   ),
                   FadeTransition(
                     opacity: _fadeAnimation,
-                    // Song title and artist.
                     child: Transform.translate(
                       offset: const Offset(0, -20),
                       child: Padding(
@@ -6351,7 +6410,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                       currentSong.albumArt!,
                                     )
                                   : const AssetImage(
-                                      'assets/default_album.png', // do this sometime soon (cuz i will and wont procastinate)
+                                      'assets/default_album.png',
                                     ) as ImageProvider,
                               isPlaying: isPlaying,
                               currentPeak: currentPeak,
@@ -6414,68 +6473,140 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                         vertical: 16,
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Lyrics Button.
-                          DynamicIconButton(
-                            icon: _hasLyrics
-                                ? (_showLyrics
-                                    ? Broken.card_slash
-                                    : Broken.document)
-                                : Broken.danger,
-                            onPressed:
-                                _hasLyrics ? () => _toggleLyrics() : null,
-                            backgroundColor: dominantColor,
+                          // Left-aligned lyrics button
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: DynamicIconButton(
+                                icon: _hasLyrics
+                                    ? (_showLyrics
+                                        ? Broken.card_slash
+                                        : Broken.document)
+                                    : Broken.danger,
+                                onPressed:
+                                    _hasLyrics ? () => _toggleLyrics() : null,
+                                backgroundColor: dominantColor,
+                              ),
+                            ),
                           ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Hero(
-                                tag: 'controls-prev',
-                                child: DynamicIconButton(
-                                  icon: Broken.previous,
-                                  onPressed: currentIndex > 0
-                                      ? _handleSkipPrevious
-                                      : null,
-                                  backgroundColor: dominantColor,
-                                ),
-                              ),
-                              const SizedBox(width: 24),
-                              Hero(
-                                tag: 'controls-playPause',
-                                child: ParticlePlayButton(
-                                  isPlaying: isPlaying,
-                                  color: dominantColor,
-                                  onPressed: _togglePlayPause,
-                                ),
-                              ),
-                              const SizedBox(width: 24),
-                              Hero(
-                                tag: 'controls-next',
-                                child: DynamicIconButton(
-                                  icon: Broken.next,
-                                  onPressed:
-                                      currentIndex < widget.songList.length - 1
+
+                          // Centered playback controls
+                          Expanded(
+                            flex: 2,
+                            child: Center(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Hero(
+                                    tag: 'controls-prev',
+                                    child: DynamicIconButton(
+                                      icon: Broken.previous,
+                                      onPressed: currentIndex > 0
+                                          ? _handleSkipPrevious
+                                          : null,
+                                      backgroundColor: dominantColor,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 24),
+                                  Hero(
+                                    tag: 'controls-playPause',
+                                    child: ParticlePlayButton(
+                                      isPlaying: isPlaying,
+                                      color: dominantColor,
+                                      onPressed: _togglePlayPause,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 24),
+                                  Hero(
+                                    tag: 'controls-next',
+                                    child: DynamicIconButton(
+                                      icon: Broken.next,
+                                      onPressed: currentIndex <
+                                              widget.songList.length - 1
                                           ? _handleSkipNext
                                           : null,
-                                  backgroundColor: dominantColor,
-                                ),
+                                      backgroundColor: dominantColor,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
-                          DynamicIconButton(
-                            icon: _repeatMode == RepeatMode.repeatOnce
-                                ? Broken.repeate_one
-                                : _repeatMode == RepeatMode.repeatAll
-                                    ? Broken.repeat
-                                    : Broken.arrow_2,
-                            onPressed: _toggleRepeatMode,
-                            backgroundColor: dominantColor,
+
+                          // Right-aligned volume/repeat controls
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  MouseRegion(
+                                    onEnter: (_) =>
+                                        setState(() => _isHoveringVol = true),
+                                    onExit: (_) =>
+                                        setState(() => _isHoveringVol = false),
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 300),
+                                      curve: Curves.easeOut,
+                                      width: _isHoveringVol ? 150 : 40,
+                                      child: Row(
+                                        children: [
+                                          VolumeIcon(
+                                            volume: _volume,
+                                            dominantColor: dominantColor,
+                                          ),
+                                          if (_isHoveringVol) ...[
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: SliderTheme(
+                                                data: SliderThemeData(
+                                                  trackHeight: 3,
+                                                  thumbShape:
+                                                      const RoundSliderThumbShape(
+                                                          enabledThumbRadius:
+                                                              6),
+                                                ),
+                                                child: Slider(
+                                                  value: _volume,
+                                                  activeColor: dominantColor,
+                                                  inactiveColor: dominantColor
+                                                      .withValues(alpha: 0.3),
+                                                  onChanged: (newVolume) async {
+                                                    await VolumeController()
+                                                        .setVolume(newVolume);
+                                                    setState(() =>
+                                                        _volume = newVolume);
+                                                    await rust_api.setVolume(
+                                                        volume: newVolume);
+                                                  },
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  DynamicIconButton(
+                                    icon: _repeatMode == RepeatMode.repeatOnce
+                                        ? Broken.repeate_one
+                                        : _repeatMode == RepeatMode.repeatAll
+                                            ? Broken.repeat
+                                            : Broken.arrow_2,
+                                    onPressed: _toggleRepeatMode,
+                                    backgroundColor: dominantColor,
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ),
+                  )
                 ],
               ),
             ),
@@ -7230,5 +7361,59 @@ class _AnimatedListItemState extends State<AnimatedListItem>
     if (status == AnimationStatus.dismissed && widget.onRemove != null) {
       widget.onRemove!();
     }
+  }
+}
+
+class VolumeIcon extends StatelessWidget {
+  final double volume;
+  final Color dominantColor;
+
+  const VolumeIcon({
+    super.key,
+    required this.volume,
+    required this.dominantColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    IconData icon;
+    if (volume <= 0) {
+      icon = Broken.volume_slash;
+    } else if (volume < 0.3) {
+      icon = Broken.volume_low;
+    } else if (volume < 0.7) {
+      icon = Broken.volume_mute;
+    } else {
+      icon = Broken.volume_high;
+    }
+
+    return GestureDetector(
+      child: GlowIcon(
+        icon,
+        color: dominantColor.computeLuminance() > 0.01
+            ? dominantColor
+            : Theme.of(context).textTheme.bodyLarge?.color,
+        glowColor: dominantColor.withValues(alpha: 0.3),
+      ),
+    );
+  }
+}
+
+class VolumeController {
+  static final VolumeController _instance = VolumeController._internal();
+  factory VolumeController() => _instance;
+  VolumeController._internal() {
+    _init();
+  }
+
+  final ValueNotifier<double> volume = ValueNotifier(1.0);
+
+  Future<void> _init() async {
+    volume.value = await rust_api.getCvol();
+  }
+
+  Future<void> setVolume(double value) async {
+    await rust_api.setVolume(volume: value);
+    volume.value = value;
   }
 }
