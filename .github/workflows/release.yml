@@ -45,7 +45,7 @@ jobs:
           components: rustfmt, clippy
           override: true
 
-      - name: Install rust deps
+      - name: Install Rust deps
         run: |
           cargo install cargo-expand flutter_rust_bridge_codegen
 
@@ -73,8 +73,8 @@ jobs:
       - name: upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: adiman-x86_64.AppImage
-          path: adiman-x86_64.AppImage
+          name: Adiman-x86_64.AppImage
+          path: Adiman-x86_64.AppImage
 
   build_aarch64:
     name: Build ARM64 AppImage
@@ -104,7 +104,7 @@ jobs:
           git clone "https://github.com/flutter/flutter.git";
           cd flutter;
           git checkout tags/3.29.3;
-          echo "$pwd/bin" >> $GITHUB_PATH;
+          echo "$PWD/bin" >> $GITHUB_PATH;
           ./bin/flutter --version;
 
       - name: Setup Rust
@@ -116,7 +116,7 @@ jobs:
           override: true
           target: aarch64-unknown-linux-gnu
 
-      - name: Install rust deps
+      - name: Install Rust deps
         run: |
           cargo install cargo-expand flutter_rust_bridge_codegen
 
@@ -135,7 +135,7 @@ jobs:
           mkdir -p Adiman.AppDir
           cp -r build/linux/arm64/release/bundle/* Adiman.AppDir/
           cp appimagestuff/{AppRun,Adiman.desktop,Adiman.png} Adiman.AppDir/
-          chmod +x adiman.appdir/apprun
+          chmod +x Adiman.AppDir/AppRun
 
       - name: Build AppImage
         run: |
