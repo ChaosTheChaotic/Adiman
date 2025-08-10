@@ -1,3 +1,4 @@
+use crate::api::utils::fpre;
 use atomic_float::AtomicF32;
 use audiotags::Tag;
 use flutter_rust_bridge::frb;
@@ -22,7 +23,6 @@ use std::sync::{
 use std::thread;
 use std::time::{Duration, Instant};
 use walkdir::WalkDir;
-use crate::api::utils::fpre;
 
 fn get_mp3_cache_dir() -> PathBuf {
     let mut cache_dir = std::env::temp_dir();
@@ -625,13 +625,25 @@ pub fn scan_music_directory(dir_path: String, auto_convert: bool) -> Vec<SongMet
 }
 
 fn extract_metadata(path: &Path) -> Option<SongMetadata> {
-    let tag = Tag::default().read_from_path(path).ok()?;
+    let tag = Tag::default().read_from_path(path).ok();
 
     let title = tag
-        .title()
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| format!("Unknown Title - {}", fpre(path).unwrap_or_else(|| path.as_os_str()).to_string_lossy().to_string()));
-    let artist_str = tag.artist().map(|s| s.to_string()).unwrap_or_default();
+        .as_ref()
+        .and_then(|t| t.title().map(|s| s.to_string()))
+        .unwrap_or_else(|| {
+            format!(
+                "Unknown Title - {}",
+                fpre(path)
+                    .unwrap_or_else(|| path.as_os_str())
+                    .to_string_lossy()
+                    .to_string()
+            )
+        });
+    let artist_str = tag
+        .as_ref()
+        .and_then(|t| t.artist().map(|s| s.to_string()))
+        .unwrap_or_default();
+
     let separators = SEPARATORS.read().unwrap();
     let pattern = separators
         .iter()
@@ -644,22 +656,27 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect();
+
     let artist = if artists.is_empty() {
-        "Unknown Artist".to_string()
+        match get_artist_via_ffprobe(path.to_string_lossy().to_string()) {
+            Ok(artists) if !artists.is_empty() => artists.join(", "),
+            _ => "Unknown Artist".to_string(),
+        }
     } else {
         artists.join(", ")
     };
+
     let album = tag
-        .album()
-        .map(|a| a.title.to_string())
+        .as_ref()
+        .and_then(|t| t.album().map(|a| a.title.to_string()))
         .unwrap_or_else(|| "Unknown Album".to_string());
+
     let genre = tag
-        .genre()
-        .map(|s| s.to_string())
+        .as_ref()
+        .and_then(|t| t.genre().map(|s| s.to_string()))
         .unwrap_or_else(|| "Unknown Genre".to_string());
 
-    // Extract album art
-    let album_art = tag.album_cover().map(|pic| {
+    let album_art = tag.as_ref().and_then(|t| t.album_cover()).map(|pic| {
         let art_bytes = pic.data.to_vec();
         if let Ok(player) = PLAYER.lock() {
             if let Some(p) = player.as_ref() {
@@ -670,11 +687,16 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
         art_bytes
     });
 
-    // Extract duration using rodio's decoder
+    // Extract duration (fallback to 0 if decoding fails)
     let duration = {
-        let file = std::fs::File::open(path).ok()?;
-        let source = Decoder::try_from(file).ok()?;
-        source.total_duration().map(|d| d.as_secs()).unwrap_or(0)
+        if let Ok(file) = std::fs::File::open(path) {
+            Decoder::try_from(file)
+                .ok()
+                .and_then(|source| source.total_duration().map(|d| d.as_secs()))
+                .unwrap_or(0)
+        } else {
+            0
+        }
     };
 
     Some(SongMetadata {
