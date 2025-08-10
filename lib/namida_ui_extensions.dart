@@ -106,7 +106,7 @@ class _WaveformPainter extends CustomPainter {
     // Calculate luminance to determine if we need enhancements
     final luminance = activeColor.computeLuminance();
     final needsEnhancement = luminance < 0.01;
-    
+
     // Slightly lighten active color if too dark
     final enhancedActiveColor = needsEnhancement
         ? HSLColor.fromColor(activeColor).withLightness(0.4).toColor()
@@ -140,14 +140,13 @@ class _WaveformPainter extends CustomPainter {
       );
 
       if (i < progressIndex) {
-        // Apply enhancements for active bars
         paint.color = enhancedActiveColor;
-        
+
         // Draw stroke first (if needed)
         if (needsEnhancement) {
           canvas.drawRRect(barRect, strokePaint!);
         }
-        
+
         // Draw filled bar
         canvas.drawRRect(barRect, paint);
       } else {

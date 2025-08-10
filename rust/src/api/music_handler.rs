@@ -93,7 +93,7 @@ pub fn set_fadein(value: bool) {
 }
 
 pub fn get_cvol() -> f32 {
-    return  CUR_VOL.load(Ordering::SeqCst);
+    return CUR_VOL.load(Ordering::SeqCst);
 }
 
 struct AudioPlayer {
@@ -250,7 +250,8 @@ impl AudioPlayer {
                             if let Ok(dec) = Decoder::try_from(cursor) {
                                 sample_rate = dec.sample_rate();
                                 channels = dec.channels();
-                                total_duration = dec.total_duration().unwrap_or(Duration::from_secs(0));
+                                total_duration =
+                                    dec.total_duration().unwrap_or(Duration::from_secs(0));
                                 decoder = Some(dec);
                             }
                         }
@@ -259,8 +260,7 @@ impl AudioPlayer {
                             // Preload a (possibly empty) initial chunk
                             let mut guard = chunks.lock().unwrap();
                             if let Some(ref mut dec) = decoder {
-                                let samples: Vec<f32> =
-                                    dec.take(0).map(|s| s).collect();
+                                let samples: Vec<f32> = dec.take(0).map(|s| s).collect();
                                 guard.push(AudioChunk { samples });
                             }
                         }
@@ -306,8 +306,7 @@ impl AudioPlayer {
                                 if reader.read_to_end(&mut file_data).is_ok() {
                                     let cursor = Cursor::new(file_data);
                                     if let Ok(decoder) = Decoder::try_from(cursor) {
-                                        let mut samples =
-                                            Vec::with_capacity(sample_rate as usize);
+                                        let mut samples = Vec::with_capacity(sample_rate as usize);
                                         for sample in decoder {
                                             samples.push(sample);
                                             if samples.len()
@@ -673,8 +672,7 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
     // Extract duration using rodio's decoder
     let duration = {
         let file = std::fs::File::open(path).ok()?;
-        let source = Decoder::try_from(file)
-            .ok()?;
+        let source = Decoder::try_from(file).ok()?;
         source.total_duration().map(|d| d.as_secs()).unwrap_or(0)
     };
 
