@@ -22,6 +22,7 @@ use std::sync::{
 use std::thread;
 use std::time::{Duration, Instant};
 use walkdir::WalkDir;
+use crate::api::utils::fpre;
 
 fn get_mp3_cache_dir() -> PathBuf {
     let mut cache_dir = std::env::temp_dir();
@@ -629,7 +630,7 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
     let title = tag
         .title()
         .map(|s| s.to_string())
-        .unwrap_or_else(|| "Unknown Title".to_string());
+        .unwrap_or_else(|| format!("Unknown Title - {}", fpre(path).unwrap_or_else(|| path.as_os_str()).to_string_lossy().to_string()));
     let artist_str = tag.artist().map(|s| s.to_string()).unwrap_or_default();
     let separators = SEPARATORS.read().unwrap();
     let pattern = separators
