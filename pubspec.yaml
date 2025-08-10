@@ -76,6 +76,7 @@ flutter:
 
   assets:
     - assets/fonts/
+    - assets/default_album.png
 
   fonts:
     - family: broken

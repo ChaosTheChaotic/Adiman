@@ -1,8 +1,10 @@
+use flutter_rust_bridge::frb;
 use std::{
     ffi::OsStr,
     path::Path,
 };
 
+#[frb(ignore)]
 // Stolen from rust path source code and slightly refactored since (as of writing this) its a nightly only feature and im not bothered.
 pub fn fpre(fpath: &Path) -> Option<&OsStr> {
     fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
