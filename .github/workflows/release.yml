@@ -106,7 +106,7 @@ jobs:
           git checkout tags/3.29.3;
           echo "$PWD/bin/flutter" >> $GITHUB_PATH;
           echo "$PWD/bin/dart" >> $GITHUB_PATH;
-          flutter --version;
+          ./bin/flutter --version;
 
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
