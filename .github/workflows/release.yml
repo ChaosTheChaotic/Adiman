@@ -13,7 +13,7 @@ on:
 
 jobs:
   build_x86_64:
-    name: build x86_64 appimage
+    name: Build x86_64 AppImage
     runs-on: ubuntu-latest
     steps:
       - name: checkout code
@@ -32,12 +32,12 @@ jobs:
             cmake ninja-build clang
           sudo modprobe fuse
 
-      - name: setup flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
-      - name: setup rust
+      - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -45,36 +45,36 @@ jobs:
           components: rustfmt, clippy
           override: true
 
-      - name: install rust deps
+      - name: Install rust deps
         run: |
           cargo install cargo-expand flutter_rust_bridge_codegen
 
-      - name: install appimagetool
+      - name: Install appimagetool
         run: |
-          wget https://github.com/appimage/appimagekit/releases/download/continuous/appimagetool-x86_64.appimage
-          chmod +x appimagetool-x86_64.appimage
+          wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage 
 
-      - name: build project
+      - name: Build Project
         run: |
           flutter_rust_bridge_codegen generate
           flutter build linux --release
 
-      - name: prepare appdir
+      - name: Prepare AppDir
         run: |
-          mkdir -p adiman.appdir
-          cp -r build/linux/x64/release/bundle/* adiman.appdir/
-          cp appimagestuff/{apprun,adiman.desktop,adiman.png} adiman.appdir/
-          chmod +x adiman.appdir/apprun
+          mkdir -p Adiman.AppDir
+          cp -r build/linux/x64/release/bundle/* Adiman.AppDir/
+          cp appimagestuff/{AppRun,Adiman.desktop,Adiman.png} Adiman.AppDir/
+          chmod +x Adiman.AppDir/AppRun
 
-      - name: build appimage
+      - name: Build AppImage
         run: |
-          arch=x86_64 ./appimagetool-x86_64.appimage adiman.appdir
+          arch=x86_64 ./appimagetool-x86_64.AppImage  Adiman.AppDir
 
-      - name: upload artifact
+      - name: upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: adiman-x86_64.appimage
-          path: adiman-x86_64.appimage
+          name: adiman-x86_64.AppImage
+          path: adiman-x86_64.AppImage
 
   build_aarch64:
     name: Build ARM64 AppImage
@@ -85,7 +85,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
-      - name: install system dependencies
+      - name: Install System Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -98,7 +98,7 @@ jobs:
           sudo modprobe fuse
           sudo ln -s /usr/lib/aarch64-linux-gnu/libgirepository-1.0.so /usr/lib/libgirepository-1.0.so
 
-      - name: setup flutter
+      - name: Setup Flutter
         shell: bash
         run: |
           git clone "https://github.com/flutter/flutter.git";
@@ -107,7 +107,7 @@ jobs:
           echo "$pwd/bin" >> $GITHUB_PATH;
           ./bin/flutter --version;
 
-      - name: setup rust
+      - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -116,36 +116,36 @@ jobs:
           override: true
           target: aarch64-unknown-linux-gnu
 
-      - name: install rust deps
+      - name: Install rust deps
         run: |
           cargo install cargo-expand flutter_rust_bridge_codegen
 
-      - name: install appimagetool
+      - name: Install appimagetool
         run: |
-          wget https://github.com/appimage/appimagekit/releases/download/continuous/appimagetool-aarch64.appimage
-          chmod +x appimagetool-aarch64.appimage
+          wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-aarch64.AppImage
+          chmod +x appimagetool-aarch64.AppImage
 
-      - name: build project
+      - name: Build Project
         run: |
           flutter_rust_bridge_codegen generate
           flutter build linux --release --target-platform=linux-arm64
 
-      - name: prepare appdir
+      - name: Prepare AppDir
         run: |
-          mkdir -p adiman.appdir
-          cp -r build/linux/arm64/release/bundle/* adiman.appdir/
-          cp appimagestuff/{apprun,adiman.desktop,adiman.png} adiman.appdir/
+          mkdir -p Adiman.AppDir
+          cp -r build/linux/arm64/release/bundle/* Adiman.AppDir/
+          cp appimagestuff/{AppRun,Adiman.desktop,Adiman.png} Adiman.AppDir/
           chmod +x adiman.appdir/apprun
 
-      - name: build appimage
+      - name: Build AppImage
         run: |
-          arch=aarch64 ./appimagetool-aarch64.appimage adiman.appdir
+          arch=aarch64 ./appimagetool-aarch64.AppImage Adiman.AppDir
 
       - name: upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: adiman-aarch64.appimage
-          path: adiman-aarch64.appimage
+          name: Adiman-aarch64.AppImage
+          path: Adiman-aarch64.AppImage
 
   create_release:
     name: Create Release
@@ -154,20 +154,20 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           fetch-tags: true
           ref: ${{ github.event.inputs.branch || github.ref }}
 
-      - name: download artifacts
+      - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
 
-      - name: get next version
+      - name: Get Next Version
         id: version
         run: |
           # Fetch all tags from remote
@@ -189,19 +189,19 @@ jobs:
           echo "new version: $new_version"
           echo "new_version=$new_version" >> $github_output
 
-      - name: create release body
+      - name: Create Release Body
         id: release_body
         run: |
           echo "${{ steps.version.outputs.new_version }}" > release_body.md
           echo "commit: ${{ github.sha }}" >> release_body.md
           echo "message: ${{ github.event.head_commit.message }}" >> release_body.md
 
-      - name: create release
+      - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.new_version }}
           name: ${{ steps.version.outputs.new_version }}
           body_path: release_body.md
           files: |
-            artifacts/adiman-x86_64.appimage
-            artifacts/adiman-aarch64.appimage
+            artifacts/Adiman-x86_64.AppImage
+            artifacts/Adiman-aarch64.AppImage
