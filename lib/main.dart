@@ -3062,28 +3062,11 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              IconButton(
-                                icon: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 300),
-                                  child: Icon(
-                                    _isDrawerOpen
-                                        ? Broken.cross
-                                        : Broken.menu_1,
-                                    key: ValueKey<bool>(_isDrawerOpen),
-                                    color: textColor,
-                                    size: 28,
-                                  ),
-                                ),
-                                onPressed: () {
-                                  if (_isDrawerOpen) {
-                                    _scaffoldKey.currentState?.closeDrawer();
-                                    Navigator.of(context).pop();
-                                    _isDrawerOpen = false;
-                                  } else {
-                                    _scaffoldKey.currentState?.openDrawer();
-                                    _isDrawerOpen = true;
-                                  }
-                                },
+                              Icon(
+                                Broken.menu_1,
+                                key: ValueKey<bool>(_isDrawerOpen),
+                                color: textColor,
+                                size: 28,
                               ),
                             ],
                           ),
