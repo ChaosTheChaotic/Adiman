@@ -103,6 +103,24 @@ class _WaveformPainter extends CustomPainter {
       ..style = PaintingStyle.fill
       ..strokeCap = StrokeCap.round;
 
+    // Calculate luminance to determine if we need enhancements
+    final luminance = activeColor.computeLuminance();
+    final needsEnhancement = luminance < 0.01;
+    
+    // Slightly lighten active color if too dark
+    final enhancedActiveColor = needsEnhancement
+        ? HSLColor.fromColor(activeColor).withLightness(0.4).toColor()
+        : activeColor;
+
+    // Create stroke paint if needed
+    final strokePaint = needsEnhancement
+        ? (Paint()
+          ..style = PaintingStyle.stroke
+          ..color = Colors.white.withValues(alpha: 0.7)
+          ..strokeWidth = 1.0
+          ..strokeCap = StrokeCap.round)
+        : null;
+
     final barWidth = size.width / waveformData.length;
     final progressIndex = (waveformData.length * progress).round();
 
@@ -111,20 +129,31 @@ class _WaveformPainter extends CustomPainter {
           size.height * (waveformData[i] * 0.8 + 0.2) * animationValue;
       final yPos = (size.height - height) / 2;
 
-      paint.color = i < progressIndex ? activeColor : inactiveColor;
-
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(
-            i * barWidth,
-            yPos,
-            barWidth * 0.6,
-            height,
-          ),
-          Radius.circular(barWidth * 0.3),
+      final barRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          i * barWidth,
+          yPos,
+          barWidth * 0.6,
+          height,
         ),
-        paint,
+        Radius.circular(barWidth * 0.3),
       );
+
+      if (i < progressIndex) {
+        // Apply enhancements for active bars
+        paint.color = enhancedActiveColor;
+        
+        // Draw stroke first (if needed)
+        if (needsEnhancement) {
+          canvas.drawRRect(barRect, strokePaint!);
+        }
+        
+        // Draw filled bar
+        canvas.drawRRect(barRect, paint);
+      } else {
+        paint.color = inactiveColor;
+        canvas.drawRRect(barRect, paint);
+      }
     }
   }
 
