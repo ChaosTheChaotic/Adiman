@@ -101,7 +101,7 @@ jobs:
       - name: Setup Flutter
         shell: bash
         run: |
-          git clone "https://github.com/flutter/flutter.git" -b ea121f8859e4b13e47a8f845e4586164519588bc;
+          git clone "https://github.com/flutter/flutter.git" -b tags/3.29.3;
           cd flutter;
           echo "$PWD/bin/flutter" >> $GITHUB_PATH;
           echo "$PWD/bin/dart" >> $GITHUB_PATH;
