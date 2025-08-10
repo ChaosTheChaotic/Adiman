@@ -403,54 +403,46 @@ class _MiniPlayerState extends State<MiniPlayer>
                   ),
                 ),
                 ValueListenableBuilder<double>(
-                    valueListenable: VolumeController().volume,
-                    builder: (context, volume, _) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: MouseRegion(
-                          onEnter: (_) => setState(() => _isHoveringVol = true),
-                          onExit: (_) => setState(() => _isHoveringVol = false),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOut,
-                            width: _isHoveringVol ? 150 : 40,
-                            child: Row(
-                              children: [
-                                VolumeIcon(
-                                  volume: _volume,
-                                  dominantColor: widget.dominantColor,
-                                ),
-                                if (_isHoveringVol) ...[
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: SliderTheme(
-                                      data: SliderThemeData(
-                                        trackHeight: 3,
-                                        thumbShape: const RoundSliderThumbShape(
-                                            enabledThumbRadius: 6),
-                                      ),
-                                      child: Slider(
-                                        value: _volume,
-                                        activeColor: widget.dominantColor,
-                                        inactiveColor: widget.dominantColor
-                                            .withValues(alpha: 0.3),
-                                        onChanged: (newVolume) async {
-                                          await VolumeController()
-                                              .setVolume(newVolume);
-                                          setState(() => _volume = newVolume);
-                                          await rust_api.setVolume(
-                                              volume: newVolume);
-                                        },
-                                      ),
-                                    ),
+                  valueListenable: VolumeController().volume,
+                  builder: (context, volume, _) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: MouseRegion(
+                        onEnter: (_) => setState(() => _isHoveringVol = true),
+                        onExit: (_) => setState(() => _isHoveringVol = false),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                          width: _isHoveringVol ? 150 : 40,
+                          child: Row(
+                            children: [
+                              VolumeIcon(
+                                volume: _volume,
+                                dominantColor: widget.dominantColor,
+                              ),
+                              if (_isHoveringVol) ...[
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: AdaptiveSlider(
+                                    dominantColor: widget.dominantColor,
+                                    value: _volume,
+                                    onChanged: (newVolume) async {
+                                      await VolumeController()
+                                          .setVolume(newVolume);
+                                      setState(() => _volume = newVolume);
+                                      await rust_api.setVolume(
+                                          volume: newVolume);
+                                    },
                                   ),
-                                ],
+                                ),
                               ],
-                            ),
+                            ],
                           ),
                         ),
-                      );
-                    }),
+                      ),
+                    );
+                  },
+                ),
                 Hero(
                   tag: 'controls-prev',
                   child: Material(
@@ -6474,7 +6466,6 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                       ),
                       child: Row(
                         children: [
-                          // Left-aligned lyrics button
                           Expanded(
                             child: Align(
                               alignment: Alignment.centerLeft,
@@ -6490,8 +6481,6 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                               ),
                             ),
                           ),
-
-                          // Centered playback controls
                           Expanded(
                             flex: 2,
                             child: Center(
@@ -6533,8 +6522,6 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                               ),
                             ),
                           ),
-
-                          // Right-aligned volume/repeat controls
                           Expanded(
                             child: Align(
                               alignment: Alignment.centerRight,
@@ -6560,28 +6547,17 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                           if (_isHoveringVol) ...[
                                             const SizedBox(width: 8),
                                             Expanded(
-                                              child: SliderTheme(
-                                                data: SliderThemeData(
-                                                  trackHeight: 3,
-                                                  thumbShape:
-                                                      const RoundSliderThumbShape(
-                                                          enabledThumbRadius:
-                                                              6),
-                                                ),
-                                                child: Slider(
-                                                  value: _volume,
-                                                  activeColor: dominantColor,
-                                                  inactiveColor: dominantColor
-                                                      .withValues(alpha: 0.3),
-                                                  onChanged: (newVolume) async {
-                                                    await VolumeController()
-                                                        .setVolume(newVolume);
-                                                    setState(() =>
-                                                        _volume = newVolume);
-                                                    await rust_api.setVolume(
-                                                        volume: newVolume);
-                                                  },
-                                                ),
+                                              child: AdaptiveSlider(
+                                                dominantColor: dominantColor,
+                                                value: _volume,
+                                                onChanged: (newVolume) async {
+                                                  await VolumeController()
+                                                      .setVolume(newVolume);
+                                                  setState(() =>
+                                                      _volume = newVolume);
+                                                  await rust_api.setVolume(
+                                                      volume: newVolume);
+                                                },
                                               ),
                                             ),
                                           ],
@@ -7415,5 +7391,41 @@ class VolumeController {
   Future<void> setVolume(double value) async {
     await rust_api.setVolume(volume: value);
     volume.value = value;
+  }
+}
+
+class AdaptiveSlider extends StatelessWidget {
+  final double value;
+  final ValueChanged<double> onChanged;
+  final Color dominantColor;
+
+  const AdaptiveSlider({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    required this.dominantColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final luminance = dominantColor.computeLuminance();
+    final isDark = luminance < 0.01;
+    final activeColor = isDark ? Colors.white : dominantColor;
+    final inactiveColor = activeColor.withValues(alpha: 0.3);
+
+    return SliderTheme(
+      data: SliderThemeData(
+        trackHeight: 3,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+        overlayShape: SliderComponentShape.noOverlay,
+        activeTrackColor: activeColor,
+        inactiveTrackColor: inactiveColor,
+        thumbColor: activeColor,
+      ),
+      child: Slider(
+        value: value,
+        onChanged: onChanged,
+      ),
+    );
   }
 }
