@@ -103,7 +103,6 @@ jobs:
         with:
           flutter-version: '3.29.3'
           channel: stable
-          architecture: arm64
 
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
