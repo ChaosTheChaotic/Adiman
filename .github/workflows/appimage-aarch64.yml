@@ -8,8 +8,6 @@ on:
         required: true
         default: 'master'
         type: string
-  push:
-    branches: [ master ]
 
 jobs:
   build:
@@ -77,5 +75,5 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Adiman-arm64.AppImage
+        name: Adiman-aarch64.AppImage
         path: Adiman-aarch64.AppImage

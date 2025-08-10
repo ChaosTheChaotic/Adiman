@@ -8,8 +8,6 @@ on:
         required: true
         default: 'master'
         type: string
-  push:
-    branches: [ master ]
 
 jobs:
   build:
