@@ -99,10 +99,13 @@ jobs:
           sudo ln -s /usr/lib/aarch64-linux-gnu/libgirepository-1.0.so /usr/lib/libgirepository-1.0.so
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.29.3'
-          channel: stable
+        shell: bash
+        run: |
+          git clone "https://github.com/flutter/flutter.git" -b ea121f8859e4b13e47a8f845e4586164519588bc;
+          cd flutter;
+          echo "$PWD/bin/flutter" >> $GITHUB_PATH;
+          echo "$PWD/bin/dart" >> $GITHUB_PATH;
+          flutter --version;
 
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
