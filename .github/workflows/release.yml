@@ -76,8 +76,8 @@ jobs:
           name: adiman-x86_64.appimage
           path: adiman-x86_64.appimage
 
-  build_arm64:
-    name: build arm64 appimage
+  build_aarch64:
+    name: Build ARM64 AppImage
     runs-on: ubuntu-24.04-arm
     steps:
       - name: checkout code
@@ -148,8 +148,8 @@ jobs:
           path: adiman-aarch64.appimage
 
   create_release:
-    name: create release
-    needs: [build_x86_64, build_arm64]
+    name: Create Release
+    needs: [build_x86_64, build_aarch64]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -170,20 +170,20 @@ jobs:
       - name: get next version
         id: version
         run: |
-          # fetch all tags from remote
+          # Fetch all tags from remote
           git fetch --tags
           
-          # get latest tag with proper version sorting
-          latest_tag=$(git tag --list "v*" --sort=-v:refname | grep -e '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
+          # Get latest tag with proper version sorting
+          LATEST_TAG=$(git tag --list "v*" --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
           
-          # fallback if no tags exist
-          if [ -z "$latest_tag" ]; then
-            latest_tag="v0.0.0"
+          # Fallback if no tags exist
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="v0.0.0"
           fi
           
-          echo "latest detected tag: $latest_tag"
-          latest_tag=${latest_tag#v}
-          ifs='.' read -r major minor patch <<< "$latest_tag"
+          echo "Latest detected tag: $LATEST_TAG"
+          LATEST_TAG=${LATEST_TAG#v}
+          IFS='.' read -r major minor patch <<< "$LATEST_TAG"
           new_patch=$((patch + 1))
           new_version="v$major.$minor.$new_patch"
           echo "new version: $new_version"
