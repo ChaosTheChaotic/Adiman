@@ -412,7 +412,11 @@ class _EnhancedSongListTileState extends State<EnhancedSongListTile>
                                         heroTag: 'albumArt-${widget.song.path}',
                                         image: widget.song.albumArt != null
                                             ? MemoryImage(widget.song.albumArt!)
-                                            : null,
+                                            : Opacity(
+                                                opacity: 0.5,
+                                                child: Image.asset(
+                                                    "assets/default_album.png"),
+                                              ) as ImageProvider,
                                       ),
                                       const SizedBox(width: 16),
                                       Expanded(
@@ -565,7 +569,7 @@ class _EnhancedSongListTileState extends State<EnhancedSongListTile>
 }
 
 class _AlbumArt extends StatelessWidget {
-  final ImageProvider? image;
+  final ImageProvider image;
   final String heroTag;
 
   const _AlbumArt({
@@ -582,17 +586,11 @@ class _AlbumArt extends StatelessWidget {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            image: image != null
-                ? DecorationImage(
-                    image: image!,
-                    fit: BoxFit.cover,
-                  )
-                : null,
-          ),
-          child: image == null
-              ? const Icon(Broken.musicnote, color: Colors.white, size: 32)
-              : null,
+              borderRadius: BorderRadius.circular(12),
+              image: DecorationImage(
+                image: image,
+                fit: BoxFit.cover,
+              )),
         ),
         Positioned.fill(
           child: Hero(
@@ -611,18 +609,12 @@ class _AlbumArt extends StatelessWidget {
                       width: 56,
                       height: 56,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        image: image != null
-                            ? DecorationImage(
-                                image: image!,
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                      ),
-                      child: image == null
-                          ? const Icon(Broken.musicnote,
-                              color: Colors.white, size: 32)
-                          : null,
+                          borderRadius: BorderRadius.circular(12),
+                          image: DecorationImage(
+                            image: image,
+                            fit: BoxFit.cover,
+                          )),
+                      child: null,
                     ),
                   AnimatedBuilder(
                     animation: animation,
@@ -637,21 +629,15 @@ class _AlbumArt extends StatelessWidget {
                           end: MediaQuery.of(context).size.width * 0.8,
                         ).evaluate(animation),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(
-                            Tween<double>(begin: 12.0, end: 20.0)
-                                .evaluate(animation),
-                          ),
-                          image: image != null
-                              ? DecorationImage(
-                                  image: image!,
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
-                        child: image == null
-                            ? const Icon(Broken.musicnote,
-                                color: Colors.white, size: 32)
-                            : null,
+                            borderRadius: BorderRadius.circular(
+                              Tween<double>(begin: 12.0, end: 20.0)
+                                  .evaluate(animation),
+                            ),
+                            image: DecorationImage(
+                              image: image,
+                              fit: BoxFit.cover,
+                            )),
+                        child: null,
                       );
                     },
                   ),
