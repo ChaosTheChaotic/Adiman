@@ -7167,7 +7167,9 @@ class _DownloadScreenState extends State<DownloadScreen>
 
   @override
   Widget build(BuildContext context) {
-    return KeyboardListener(
+    return Theme(
+      data: ThemeData.dark(),
+      child: KeyboardListener(
       focusNode: _focusNode,
       autofocus: true,
       onKeyEvent: (event) {
@@ -7324,7 +7326,7 @@ class _DownloadScreenState extends State<DownloadScreen>
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildEmptyState() {
