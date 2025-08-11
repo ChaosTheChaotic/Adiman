@@ -3951,10 +3951,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 DynamicIconButton(
                                   icon: Broken.refresh,
                                   onPressed: () {
-                                    setState(() {
-                                      _defaultThemeColor =
-                                          const Color(0xFF383770);
-                                    });
+                                    final defaultColor =
+                                        const Color(0xFF383770);
+                                    SharedPreferencesService.instance.setInt(
+                                        'defaultThemeColor',
+                                        defaultColor.toARGB32());
+                                    setStateDialog(
+                                        () => tempColor = defaultColor);
+                                    if (widget.updateThemeColor != null) {
+                                      widget.updateThemeColor!(defaultColor);
+                                    }
                                   },
                                   backgroundColor: widget.dominantColor,
                                   size: 40,
