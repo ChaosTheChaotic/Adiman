@@ -467,9 +467,7 @@ class _EnhancedSongListTileState extends State<EnhancedSongListTile>
                                         heroTag: 'albumArt-${widget.song.path}',
                                         image: widget.song.albumArt != null
                                             ? MemoryImage(widget.song.albumArt!)
-                                            : AssetImage(
-                                                "assets/default_album.png",
-                                              ) as ImageProvider,
+                                            : null,
                                       ),
                                       const SizedBox(width: 16),
                                       Expanded(
@@ -622,11 +620,11 @@ class _EnhancedSongListTileState extends State<EnhancedSongListTile>
 }
 
 class _AlbumArt extends StatelessWidget {
-  final ImageProvider image;
+  final ImageProvider? image;
   final String heroTag;
 
   const _AlbumArt({
-    required this.image,
+    this.image,
     required this.heroTag,
   });
 
@@ -639,11 +637,25 @@ class _AlbumArt extends StatelessWidget {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              image: DecorationImage(
-                image: image,
-                fit: BoxFit.cover,
-              )),
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.transparent,
+            image: image != null 
+                ? DecorationImage(
+                    image: image!,
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: image == null
+              ? Center(
+                  child: GlowIcon(
+                    Broken.adiman,
+                    color: Colors.white,
+                    glowColor: Colors.white.withValues(alpha: 0.5),
+                    size: 28,
+                  ),
+                )
+              : null,
         ),
         Positioned.fill(
           child: Hero(
@@ -662,12 +674,24 @@ class _AlbumArt extends StatelessWidget {
                       width: 56,
                       height: 56,
                       decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          image: DecorationImage(
-                            image: image,
-                            fit: BoxFit.cover,
-                          )),
-                      child: null,
+                        borderRadius: BorderRadius.circular(12),
+                        image: image != null
+                            ? DecorationImage(
+                                image: image!,
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      child: image == null
+                          ? Center(
+                              child: GlowIcon(
+                                Broken.adiman,
+                                color: Colors.white,
+				glowColor: Colors.white,
+                                size: 28,
+                              ),
+                            )
+                          : null,
                     ),
                   AnimatedBuilder(
                     animation: animation,
@@ -682,15 +706,30 @@ class _AlbumArt extends StatelessWidget {
                           end: MediaQuery.of(context).size.width * 0.8,
                         ).evaluate(animation),
                         decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              Tween<double>(begin: 12.0, end: 20.0)
-                                  .evaluate(animation),
-                            ),
-                            image: DecorationImage(
-                              image: image,
-                              fit: BoxFit.cover,
-                            )),
-                        child: null,
+                          borderRadius: BorderRadius.circular(
+                            Tween<double>(begin: 12.0, end: 20.0)
+                                .evaluate(animation),
+                          ),
+                          image: image != null
+                              ? DecorationImage(
+                                  image: image!,
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: image == null
+                            ? Center(
+                                child: GlowIcon(
+                                  Broken.adiman,
+                                  color: Colors.white,
+				  glowColor: Colors.white,
+                                  size: Tween<double>(
+                                          begin: 28,
+                                          end: 80)
+                                      .evaluate(animation),
+                                ),
+                              )
+                            : null,
                       );
                     },
                   ),
