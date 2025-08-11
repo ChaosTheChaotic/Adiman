@@ -18,7 +18,10 @@ import 'package:flutter/services.dart';
 import 'package:anni_mpris_service/anni_mpris_service.dart';
 import 'package:animated_background/animated_background.dart';
 import 'package:dbus/dbus.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'broken_icons.dart';
+
+Color _defaultThemeColor = const Color(0xFF383770);
 
 class Song {
   final String title;
@@ -231,14 +234,14 @@ class _MiniPlayerState extends State<MiniPlayer>
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    if (song.albumArt == null) return const Color(0xFF383770);
+    if (song.albumArt == null) return _defaultThemeColor;
 
     try {
       final colorValue =
           await color_extractor.getDominantColor(data: song.albumArt!);
       return Color(colorValue ?? 0xFF383770);
     } catch (e) {
-      return const Color(0xFF383770);
+      return _defaultThemeColor;
     }
   }
 
@@ -538,8 +541,38 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  Color _themeColor = _defaultThemeColor;
+
+  void updateThemeColor(Color newColor) {
+    setState(() {
+      _themeColor = newColor;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadThemeColor();
+  }
+
+  Future<void> _loadThemeColor() async {
+    final savedColorValue =
+        SharedPreferencesService.instance.getInt('defaultThemeColor');
+    if (savedColorValue != null) {
+      setState(() {
+        _themeColor = Color(savedColorValue);
+        _defaultThemeColor = Color(savedColorValue); // Update static variable
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -549,14 +582,15 @@ class MyApp extends StatelessWidget {
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         scrollbars: false,
       ),
-      theme: _buildDynamicTheme(Color(0xFF383770)),
-      home: const SongSelectionScreen(),
+      theme: _buildDynamicTheme(_themeColor), // Use state color
+      home: SongSelectionScreen(updateThemeColor: updateThemeColor),
     );
   }
 }
 
 class SongSelectionScreen extends StatefulWidget {
-  const SongSelectionScreen({super.key});
+  final Function(Color)? updateThemeColor;
+  const SongSelectionScreen({super.key, this.updateThemeColor});
 
   @override
   State<SongSelectionScreen> createState() => _SongSelectionScreenState();
@@ -624,7 +658,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   Song? currentSong;
   int currentIndex = 0;
   bool showMiniPlayer = false;
-  Color dominantColor = Color(0xFF383770);
+  Color dominantColor = _defaultThemeColor;
   final ScrollController _scrollController = ScrollController();
   double _lastOffset = 0;
   late AnimationController _extraHeaderController;
@@ -1637,7 +1671,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    if (song.albumArt == null) return const Color(0xFF383770);
+    if (song.albumArt == null) return _defaultThemeColor;
 
     try {
       final colorValue =
@@ -1645,7 +1679,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
       return Color(colorValue ?? 0xFF383770);
     } catch (e) {
       NamidaSnackbar(content: 'Failed to get dominant color $e');
-      return Color(0xFF383770);
+      return _defaultThemeColor;
     }
   }
 
@@ -3123,6 +3157,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                             showMiniPlayer = true;
                                           });
                                         },
+                                        updateThemeColor:
+                                            widget.updateThemeColor,
                                       ),
                                     ),
                                   ).then((_) => _getVimBindings());
@@ -3201,7 +3237,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                               child: Center(
                                 child: CircularProgressIndicator(
                                   valueColor: AlwaysStoppedAnimation<Color>(
-                                    Color(0xFF383770),
+                                    _defaultThemeColor,
                                   ),
                                 ),
                               ),
@@ -3671,6 +3707,7 @@ class SettingsScreen extends StatefulWidget {
   final String? currentPlaylistName;
   final void Function(Song newSong, int newIndex, Color newColor)?
       onUpdateMiniPlayer;
+  final Function(Color)? updateThemeColor;
 
   const SettingsScreen({
     super.key,
@@ -3679,11 +3716,12 @@ class SettingsScreen extends StatefulWidget {
     required this.onReloadLibrary,
     this.currentSong,
     this.currentIndex = 0,
-    this.dominantColor = const Color(0xFF383770),
+    required this.dominantColor,
     required this.songs,
     required this.musicFolder,
     this.onUpdateMiniPlayer,
     this.currentPlaylistName,
+    this.updateThemeColor,
   });
 
   @override
@@ -3693,6 +3731,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isClearingCache = false;
   bool _isReloadingLibrary = false;
+  final bool _isChangingColor = false;
   final bool _isManagingSeparators = false;
   bool _autoConvert = false;
   bool _clearMp3Cache = false;
@@ -3843,6 +3882,110 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _togglePauseSong() {
     if (_currentSong == null) return;
     _miniPlayerKey.currentState?.togglePause();
+  }
+
+  Future<void> _showColorPicker() async {
+    Color tempColor = _defaultThemeColor;
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return Dialog(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                child: _AnimatedPopupWrapper(
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(28),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            widget.dominantColor.withAlpha(30),
+                            Colors.black.withAlpha(200),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: widget.dominantColor.withAlpha(100),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GlowText(
+                              'Default Theme Color',
+                              glowColor: widget.dominantColor.withAlpha(80),
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.color,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            ColorPicker(
+                              pickerColor: tempColor,
+                              onColorChanged: (color) {
+                                setState(() => tempColor = color);
+                              },
+                              displayThumbColor: true,
+                              enableAlpha: false,
+                              labelTypes: const [],
+                              pickerAreaHeightPercent: 0.7,
+                              hexInputBar: true,
+                              portraitOnly: true,
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                DynamicIconButton(
+                                  icon: Broken.refresh,
+                                  onPressed: () {
+                                    setState(() {
+                                      _defaultThemeColor =
+                                          const Color(0xFF383770);
+                                    });
+                                  },
+                                  backgroundColor: widget.dominantColor,
+                                  size: 40,
+                                ),
+                                DynamicIconButton(
+                                  icon: Broken.tick,
+                                  onPressed: () async {
+                                    await SharedPreferencesService.instance
+                                        .setInt('defaultThemeColor',
+                                            tempColor.toARGB32());
+                                    if (widget.updateThemeColor != null) {
+                                      widget.updateThemeColor!(tempColor);
+                                    }
+                                    if (mounted)
+                                      Navigator.pop(context, tempColor);
+                                  },
+                                  backgroundColor: widget.dominantColor,
+                                  size: 40,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        });
   }
 
   Widget _buildSettingsSwitch(
@@ -4136,6 +4279,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       label: 'Manage Artist Seperators',
                       isLoading: _isManagingSeparators,
                       onPressed: _showSeparatorManagementPopup,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildActionButton(
+                      icon: Broken.colorfilter,
+                      label: 'Default Theme Color',
+                      isLoading: _isChangingColor,
+                      onPressed: _showColorPicker,
                     ),
                     const SizedBox(height: 16),
                     _buildActionButton(
@@ -4752,7 +4902,7 @@ class SongListTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0xFF383770).withValues(alpha: 0.2),
+                      color: _defaultThemeColor.withValues(alpha: 0.2),
                       blurRadius: 5,
                       spreadRadius: 1,
                     ),
@@ -4920,7 +5070,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
     _focusNode = FocusNode();
     _focusNode.requestFocus();
-    dominantColor = Color(0xFF383770);
+    dominantColor = _defaultThemeColor;
     currentSong = widget.song;
     currentIndex = widget.currentIndex;
     _playPauseController = AnimationController(
@@ -5863,7 +6013,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         content: 'Error generating dominant color: $e',
       );
       if (mounted) {
-        setState(() => dominantColor = const Color(0xFF383770));
+        setState(() => dominantColor = _defaultThemeColor);
       }
     }
   }
@@ -6871,7 +7021,7 @@ class _DownloadScreenState extends State<DownloadScreen>
   final FocusNode _searchFocus = FocusNode();
   Track? _currentTrack;
   late AnimationController _breathingController;
-  Color _dominantColor = Color(0xFF383770);
+  Color _dominantColor = _defaultThemeColor;
   late FocusNode _focusNode;
   bool _isDownloading = false;
   Song? _tempSong;
@@ -6914,9 +7064,9 @@ class _DownloadScreenState extends State<DownloadScreen>
             });
           } catch (e) {
             NamidaSnackbar(
-                backgroundColor: Color(0xFF383770),
+                backgroundColor: _defaultThemeColor,
                 content: 'Error generating dominant color: $e');
-            setState(() => _dominantColor = Color(0xFF383770));
+            setState(() => _dominantColor = _defaultThemeColor);
           }
         }
 
@@ -7090,7 +7240,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                   onClose: () {
                     setState(() {
                       _tempSong = null;
-                      _dominantColor = Color(0xFF383770);
+                      _dominantColor = _defaultThemeColor;
                     });
                     rust_api.stopSong();
                   },
