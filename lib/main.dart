@@ -64,6 +64,7 @@ ThemeData _buildDynamicTheme(BuildContext context, Color dominantColor) {
   final bool isDark = dominantColor.computeLuminance() < 0.4;
   final textColor = isDark ? Colors.white : dominantColor;
   return theme.copyWith(
+    brightness: Brightness.dark,
     colorScheme: ColorScheme.fromSeed(
       seedColor: dominantColor,
       brightness: isDark ? Brightness.dark : Brightness.light,
@@ -4112,280 +4113,288 @@ class _SettingsScreenState extends State<SettingsScreen> {
         : Theme.of(context).textTheme.bodyLarge?.color;
     final buttonTextColor = Theme.of(context).textTheme.bodyLarge?.color;
 
-    return KeyboardListener(
-      focusNode: _escapeNode,
-      autofocus: true,
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.escape) {
-            if (ModalRoute.of(context)?.isCurrent ?? false) {
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              Navigator.pop(context);
+    return Theme(
+        data: ThemeData(brightness: Brightness.dark),
+        child: KeyboardListener(
+          focusNode: _escapeNode,
+          autofocus: true,
+          onKeyEvent: (event) {
+            if (event is KeyDownEvent) {
+              if (event.logicalKey == LogicalKeyboardKey.escape) {
+                if (ModalRoute.of(context)?.isCurrent ?? false) {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  Navigator.pop(context);
+                }
+              } else if (event.logicalKey == LogicalKeyboardKey.space &&
+                  FocusScope.of(context).hasFocus &&
+                  FocusScope.of(context).focusedChild is EditableText) {
+                _togglePauseSong();
+              }
             }
-          } else if (event.logicalKey == LogicalKeyboardKey.space &&
-              FocusScope.of(context).hasFocus &&
-              FocusScope.of(context).focusedChild is EditableText) {
-            _togglePauseSong();
-          }
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: Icon(Broken.arrow_left)),
-          title: GlowText(
-            'Settings',
-            glowColor: _currentColor.withValues(alpha: 0.3),
-            style: TextStyle(
-              fontSize: 24,
-              color: textColor,
-              fontWeight: FontWeight.w600,
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: Icon(Broken.arrow_left)),
+              title: GlowText(
+                'Settings',
+                glowColor: _currentColor.withValues(alpha: 0.3),
+                style: TextStyle(
+                  fontSize: 24,
+                  color: textColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              backgroundColor: Colors.black,
+              surfaceTintColor: _currentColor,
             ),
-          ),
-          backgroundColor: Colors.black,
-          surfaceTintColor: _currentColor,
-        ),
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment.topCenter,
-              radius: 1.5,
-              colors: [_currentColor.withValues(alpha: 0.15), Colors.black],
-            ),
-          ),
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 80.0),
-                child: ListView(
-                  children: [
-                    GlowText(
-                      'Music Folder',
-                      glowColor: _currentColor.withValues(alpha: 0.2),
-                      style: TextStyle(
-                        fontSize: 28,
-                        color: textColor,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            _currentColor.withValues(alpha: 0.1),
-                            Colors.black.withValues(alpha: 0.3),
-                          ],
+            body: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.topCenter,
+                  radius: 1.5,
+                  colors: [_currentColor.withValues(alpha: 0.15), Colors.black],
+                ),
+              ),
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 80.0),
+                    child: ListView(
+                      children: [
+                        GlowText(
+                          'Music Folder',
+                          glowColor: _currentColor.withValues(alpha: 0.2),
+                          style: TextStyle(
+                            fontSize: 28,
+                            color: textColor,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _currentColor.withValues(alpha: 0.2),
-                            blurRadius: 15,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: TextField(
-                        controller: _musicFolderController,
-                        style: TextStyle(color: textColor, fontSize: 16),
-                        cursorColor: _currentColor.computeLuminance() > 0.01
-                            ? _currentColor
-                            : Theme.of(context).textTheme.bodyLarge?.color,
-                        decoration: InputDecoration(
-                          hintText: 'Enter music folder path...',
-                          hintStyle: TextStyle(
-                            color: textColor!.withValues(alpha: 0.6),
-                            fontWeight: FontWeight.w300,
-                          ),
-                          prefixIcon: Icon(
-                            Broken.folder,
-                            color: textColor.withValues(alpha: 0.8),
-                          ),
-                          border: OutlineInputBorder(
+                        const SizedBox(height: 16),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                _currentColor.withValues(alpha: 0.1),
+                                Colors.black.withValues(alpha: 0.3),
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _currentColor.withValues(alpha: 0.2),
+                                blurRadius: 15,
+                                spreadRadius: 2,
+                              ),
+                            ],
                           ),
-                          filled: true,
-                          fillColor: Colors.transparent,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: _currentColor.withValues(alpha: 0.4),
-                              width: 1.5,
+                          child: TextField(
+                            controller: _musicFolderController,
+                            style: TextStyle(color: textColor, fontSize: 16),
+                            cursorColor: _currentColor.computeLuminance() > 0.01
+                                ? _currentColor
+                                : Theme.of(context).textTheme.bodyLarge?.color,
+                            decoration: InputDecoration(
+                              hintText: 'Enter music folder path...',
+                              hintStyle: TextStyle(
+                                color: textColor!.withValues(alpha: 0.6),
+                                fontWeight: FontWeight.w300,
+                              ),
+                              prefixIcon: Icon(
+                                Broken.folder,
+                                color: textColor.withValues(alpha: 0.8),
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              filled: true,
+                              fillColor: Colors.transparent,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 18,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: _currentColor.withValues(alpha: 0.4),
+                                  width: 1.5,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [_currentColor.withAlpha(220), _currentColor],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _currentColor.withAlpha(100),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 16,
-                            horizontal: 24,
-                          ),
-                          shape: RoundedRectangleBorder(
+                        const SizedBox(height: 20),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                _currentColor.withAlpha(220),
+                                _currentColor
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _currentColor.withAlpha(100),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 16,
+                                horizontal: 24,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            onPressed: () async {
+                              final expandedPath = expandTilde(
+                                _musicFolderController.text,
+                              );
+
+                              await SharedPreferencesService.instance
+                                  .setString('musicFolder', expandedPath);
+
+                              if (widget.onMusicFolderChanged != null) {
+                                await widget
+                                    .onMusicFolderChanged!(expandedPath);
+                              }
+
+                              ScaffoldMessenger.of(context)
+                                  .hideCurrentSnackBar();
+                              Navigator.pop(context, expandedPath);
+                            },
+                            icon: Icon(Broken.save_2, color: buttonTextColor),
+                            label: Text(
+                              'Save Music Folder',
+                              style: TextStyle(
+                                color: buttonTextColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                           ),
                         ),
-                        onPressed: () async {
-                          final expandedPath = expandTilde(
-                            _musicFolderController.text,
+                        const SizedBox(height: 32),
+                        _buildActionButton(
+                          icon: Broken.refresh,
+                          label: 'Reload Music Library',
+                          isLoading: _isReloadingLibrary,
+                          onPressed: _reloadLibrary,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildActionButton(
+                          icon: Broken.text,
+                          label: 'Manage Artist Seperators',
+                          isLoading: _isManagingSeparators,
+                          onPressed: _showSeparatorManagementPopup,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildActionButton(
+                          icon: Broken.colorfilter,
+                          label: 'Default Theme Color',
+                          isLoading: _isChangingColor,
+                          onPressed: _showColorPicker,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildActionButton(
+                          icon: Broken.trash,
+                          label: 'Clear Cache',
+                          isLoading: _isClearingCache,
+                          onPressed: _clearCache,
+                        ),
+                        _buildSettingsSwitch(context,
+                            title: 'Vim keybindings',
+                            value: _vimKeybindings,
+                            onChanged: _saveVimKeybindings),
+                        _buildSettingsSwitch(
+                          context,
+                          title: 'Auto-convert non-MP3 files',
+                          value: _autoConvert,
+                          onChanged: _saveAutoConvert,
+                        ),
+                        _buildSettingsSwitch(
+                          context,
+                          title: 'Clear MP3 cache with app cache',
+                          value: _clearMp3Cache,
+                          onChanged: _saveClearMp3Cache,
+                        ),
+                        _buildSettingsSwitch(
+                          context,
+                          title: 'Music fade in on seek and song start',
+                          value: _fadeIn,
+                          onChanged: _saveFadeIn,
+                        ),
+                        _buildSettingsSwitch(
+                          context,
+                          title: 'Breathing animation on the album art',
+                          value: _breathe,
+                          onChanged: _saveBreathe,
+                        ),
+                        _buildSettingsSwitch(
+                          context,
+                          title: 'Alternate default for no album art',
+                          value: _mSn,
+                          onChanged: _saveMSn,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_currentSong != null)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: MiniPlayer(
+                        onReloadLibrary: widget.onReloadLibrary,
+                        musicFolder: widget.musicFolder,
+                        key: _miniPlayerKey,
+                        song: _currentSong!,
+                        songList: widget.songs,
+                        service: widget.service,
+                        currentPlaylistName: widget.currentPlaylistName,
+                        currentIndex: _currentIndex,
+                        onClose: () => widget.onUpdateMiniPlayer?.call(
+                          _currentSong!,
+                          _currentIndex,
+                          _currentColor,
+                        ),
+                        onUpdate: (newSong, newIndex, newColor) {
+                          setState(() {
+                            _currentSong = newSong;
+                            _currentIndex = newIndex;
+                            _currentColor = newColor;
+                          });
+                          widget.onUpdateMiniPlayer?.call(
+                            newSong,
+                            newIndex,
+                            newColor,
                           );
-
-                          await SharedPreferencesService.instance
-                              .setString('musicFolder', expandedPath);
-
-                          if (widget.onMusicFolderChanged != null) {
-                            await widget.onMusicFolderChanged!(expandedPath);
-                          }
-
-                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                          Navigator.pop(context, expandedPath);
                         },
-                        icon: Icon(Broken.save_2, color: buttonTextColor),
-                        label: Text(
-                          'Save Music Folder',
-                          style: TextStyle(
-                            color: buttonTextColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
+                        dominantColor: _currentColor,
                       ),
                     ),
-                    const SizedBox(height: 32),
-                    _buildActionButton(
-                      icon: Broken.refresh,
-                      label: 'Reload Music Library',
-                      isLoading: _isReloadingLibrary,
-                      onPressed: _reloadLibrary,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildActionButton(
-                      icon: Broken.text,
-                      label: 'Manage Artist Seperators',
-                      isLoading: _isManagingSeparators,
-                      onPressed: _showSeparatorManagementPopup,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildActionButton(
-                      icon: Broken.colorfilter,
-                      label: 'Default Theme Color',
-                      isLoading: _isChangingColor,
-                      onPressed: _showColorPicker,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildActionButton(
-                      icon: Broken.trash,
-                      label: 'Clear Cache',
-                      isLoading: _isClearingCache,
-                      onPressed: _clearCache,
-                    ),
-                    _buildSettingsSwitch(context,
-                        title: 'Vim keybindings',
-                        value: _vimKeybindings,
-                        onChanged: _saveVimKeybindings),
-                    _buildSettingsSwitch(
-                      context,
-                      title: 'Auto-convert non-MP3 files',
-                      value: _autoConvert,
-                      onChanged: _saveAutoConvert,
-                    ),
-                    _buildSettingsSwitch(
-                      context,
-                      title: 'Clear MP3 cache with app cache',
-                      value: _clearMp3Cache,
-                      onChanged: _saveClearMp3Cache,
-                    ),
-                    _buildSettingsSwitch(
-                      context,
-                      title: 'Music fade in on seek and song start',
-                      value: _fadeIn,
-                      onChanged: _saveFadeIn,
-                    ),
-                    _buildSettingsSwitch(
-                      context,
-                      title: 'Breathing animation on the album art',
-                      value: _breathe,
-                      onChanged: _saveBreathe,
-                    ),
-                    _buildSettingsSwitch(
-                      context,
-                      title: 'Alternate default for no album art',
-                      value: _mSn,
-                      onChanged: _saveMSn,
-                    ),
-                  ],
-                ),
+                ],
               ),
-              if (_currentSong != null)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: MiniPlayer(
-                    onReloadLibrary: widget.onReloadLibrary,
-                    musicFolder: widget.musicFolder,
-                    key: _miniPlayerKey,
-                    song: _currentSong!,
-                    songList: widget.songs,
-                    service: widget.service,
-                    currentPlaylistName: widget.currentPlaylistName,
-                    currentIndex: _currentIndex,
-                    onClose: () => widget.onUpdateMiniPlayer?.call(
-                      _currentSong!,
-                      _currentIndex,
-                      _currentColor,
-                    ),
-                    onUpdate: (newSong, newIndex, newColor) {
-                      setState(() {
-                        _currentSong = newSong;
-                        _currentIndex = newIndex;
-                        _currentColor = newColor;
-                      });
-                      widget.onUpdateMiniPlayer?.call(
-                        newSong,
-                        newIndex,
-                        newColor,
-                      );
-                    },
-                    dominantColor: _currentColor,
-                  ),
-                ),
-            ],
+            ),
           ),
-        ),
-      ),
+        )
     );
   }
 
@@ -6388,7 +6397,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
     _updateParticleOptions();
 
-    return KeyboardListener(
+    //return KeyboardListener(
+    return Theme(
+      data: ThemeData.dark(),
+      child: KeyboardListener(
       focusNode: _focusNode,
       autofocus: true,
       onKeyEvent: (event) {
@@ -6765,7 +6777,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           ],
         ),
       ),
-    );
+    ));
   }
 
   List<double> _generateDummyWaveformData() {
