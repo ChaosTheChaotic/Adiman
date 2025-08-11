@@ -237,7 +237,8 @@ class _MiniPlayerState extends State<MiniPlayer>
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    if (song.albumArt == null) return defaultThemeColorNotifier.value;
+    final bool useDom = SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
+    if (song.albumArt == null || !useDom) return defaultThemeColorNotifier.value;
 
     try {
       final colorValue =
@@ -1681,7 +1682,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    if (song.albumArt == null) return defaultThemeColorNotifier.value;
+    final bool useDom = SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
+    if (song.albumArt == null || !useDom) return defaultThemeColorNotifier.value;
 
     try {
       final colorValue =
@@ -3750,6 +3752,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _fadeIn = false;
   bool _mSn = false;
   bool _breathe = true;
+  bool _useDominantColors = false;
   late FocusNode _escapeNode;
 
   Song? _currentSong;
@@ -3782,7 +3785,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _handleThemeColorChange() {
-    if (_currentSong?.albumArt == null && mounted) {
+    final bool useDom = SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
+    if ((_currentSong?.albumArt == null || !useDom) && mounted) {
       setState(() {
         _currentColor = defaultThemeColorNotifier.value;
       });
@@ -3800,6 +3804,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _fadeIn = SharedPreferencesService.instance.getBool('fadeIn') ?? false;
       _mSn = SharedPreferencesService.instance.getBool('mSn') ?? false;
       _breathe = SharedPreferencesService.instance.getBool('breathe') ?? true;
+      _useDominantColors = SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
     });
     final savedSeparators =
         SharedPreferencesService.instance.getStringList('separators');
@@ -3847,6 +3852,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await SharedPreferencesService.instance.setBool('breathe', value);
     rust_api.setFadein(value: value);
     setState(() => _breathe = value);
+  }
+
+  Future<void> _saveUseDominantColors(bool value) async {
+    await SharedPreferencesService.instance.setBool('useDominantColors', value);
+    setState(() => _useDominantColors = value);
   }
 
   Future<void> _clearCache() async {
@@ -4363,6 +4373,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           value: _mSn,
                           onChanged: _saveMSn,
                         ),
+			_buildSettingsSwitch(
+			  context,
+			  title: 'Use dominant colors from album art',
+			  value: _useDominantColors,
+			  onChanged: _saveUseDominantColors,
+			),
                       ],
                     ),
                   ),
@@ -5164,10 +5180,13 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   }
 
   void _handleThemeColorChange() {
-    if (currentSong.albumArt == null && mounted) {
-      setState(() {
-        dominantColor = defaultThemeColorNotifier.value;
-      });
+    final useDominant = SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
+    if (!useDominant || currentSong.albumArt == null) {
+      if (mounted) {
+        setState(() {
+          dominantColor = defaultThemeColorNotifier.value;
+        });
+      }
     }
   }
 
@@ -6042,7 +6061,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   Future<void> _updateDominantColor() async {
     try {
-      if (currentSong.albumArt == null) {
+	final bool useDom = SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
+    	if (currentSong.albumArt == null || !useDom) {
         if (mounted) {
           setState(() {
             dominantColor = defaultThemeColorNotifier.value;
