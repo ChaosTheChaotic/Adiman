@@ -4394,8 +4394,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
-        )
-    );
+        ));
   }
 
   Future<void> _showSeparatorManagementPopup() async {
@@ -6399,385 +6398,395 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
     //return KeyboardListener(
     return Theme(
-      data: ThemeData.dark(),
-      child: KeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.escape) {
-            if (_isTempFile) {
-              _handleSearchAnother();
-            } else if (!_isTempFile) {
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              Navigator.pop(context, {
-                'song': currentSong,
-                'index': currentIndex,
-                'dominantColor': dominantColor,
-              });
+        data: ThemeData.dark(),
+        child: KeyboardListener(
+          focusNode: _focusNode,
+          autofocus: true,
+          onKeyEvent: (event) {
+            if (event is KeyDownEvent) {
+              if (event.logicalKey == LogicalKeyboardKey.escape) {
+                if (_isTempFile) {
+                  _handleSearchAnother();
+                } else if (!_isTempFile) {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  Navigator.pop(context, {
+                    'song': currentSong,
+                    'index': currentIndex,
+                    'dominantColor': dominantColor,
+                  });
+                }
+              } else if (event.logicalKey == LogicalKeyboardKey.space &&
+                  (FocusScope.of(context).focusedChild is! EditableText)) {
+                _togglePlayPause();
+              }
             }
-          } else if (event.logicalKey == LogicalKeyboardKey.space &&
-              (FocusScope.of(context).focusedChild is! EditableText)) {
-            _togglePlayPause();
-          }
-        }
-      },
-      child: Scaffold(
-        body: Stack(
-          children: [
-            AnimatedOpacity(
-              duration: const Duration(milliseconds: 500),
-              opacity: isPlaying ? 1.0 : 0.0,
-              child: AnimatedBackground(
-                behaviour: RandomParticleBehaviour(
-                  options: _particleOptions,
-                  paint: _particlePaint,
-                ),
-                vsync: this,
-                child: Container(),
-              ),
-            ),
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment.topCenter,
-                    radius: 1.8,
-                    colors: [
-                      dominantColor.withValues(alpha: 0.25),
-                      Colors.black,
-                    ],
+          },
+          child: Scaffold(
+            body: Stack(
+              children: [
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 500),
+                  opacity: isPlaying ? 1.0 : 0.0,
+                  child: AnimatedBackground(
+                    behaviour: RandomParticleBehaviour(
+                      options: _particleOptions,
+                      paint: _particlePaint,
+                    ),
+                    vsync: this,
+                    child: Container(),
                   ),
                 ),
-              ),
-            ),
-            SafeArea(
-              child: Column(
-                children: [
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          DynamicIconButton(
-                            icon: Broken.arrow_down,
-                            backgroundColor: dominantColor,
-                            size: 40,
-                            onPressed: () {
-                              if (_isTempFile) {
-                                _handleSearchAnother();
-                              } else {
-                                ScaffoldMessenger.of(context)
-                                    .hideCurrentSnackBar();
-                                Navigator.pop(context, {
-                                  'song': currentSong,
-                                  'index': currentIndex,
-                                  'dominantColor': dominantColor,
-                                });
-                              }
-                            },
-                          ),
-                          const SizedBox(width: 12),
-                          DynamicIconButton(
-                            icon: Broken.more,
-                            onPressed: () => _isTempFile
-                                ? _showPlayerMenu(context)
-                                : _showPlaylistPopup(context),
-                            backgroundColor: dominantColor,
-                            size: 40,
-                          ),
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: Alignment.topCenter,
+                        radius: 1.8,
+                        colors: [
+                          dominantColor.withValues(alpha: 0.25),
+                          Colors.black,
                         ],
                       ),
                     ),
                   ),
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Transform.translate(
-                      offset: const Offset(0, -20),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                        child: Column(
+                ),
+                SafeArea(
+                  child: Column(
+                    children: [
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              DynamicIconButton(
+                                icon: Broken.arrow_down,
+                                backgroundColor: dominantColor,
+                                size: 40,
+                                onPressed: () {
+                                  if (_isTempFile) {
+                                    _handleSearchAnother();
+                                  } else {
+                                    ScaffoldMessenger.of(context)
+                                        .hideCurrentSnackBar();
+                                    Navigator.pop(context, {
+                                      'song': currentSong,
+                                      'index': currentIndex,
+                                      'dominantColor': dominantColor,
+                                    });
+                                  }
+                                },
+                              ),
+                              const SizedBox(width: 12),
+                              DynamicIconButton(
+                                icon: Broken.more,
+                                onPressed: () => _isTempFile
+                                    ? _showPlayerMenu(context)
+                                    : _showPlaylistPopup(context),
+                                backgroundColor: dominantColor,
+                                size: 40,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Transform.translate(
+                          offset: const Offset(0, -20),
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 32.0),
+                            child: Column(
+                              children: [
+                                GlowText(
+                                  currentSong.title,
+                                  style: TextStyle(
+                                    color:
+                                        dominantColor.computeLuminance() > 0.01
+                                            ? dominantColor
+                                            : Theme.of(context)
+                                                .textTheme
+                                                .bodyLarge
+                                                ?.color,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  currentSong.artist,
+                                  style: TextStyle(
+                                    color: textColor.withValues(alpha: 0.8),
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Stack(
+                          alignment: Alignment.center,
                           children: [
-                            GlowText(
-                              currentSong.title,
-                              style: TextStyle(
-                                color: dominantColor.computeLuminance() > 0.01
-                                    ? dominantColor
-                                    : Theme.of(context)
-                                        .textTheme
-                                        .bodyLarge
-                                        ?.color,
-                                fontSize: 28,
-                                fontWeight: FontWeight.w700,
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 600),
+                              transitionBuilder:
+                                  (Widget child, Animation<double> animation) {
+                                return SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.5, 0.0),
+                                    end: Offset.zero,
+                                  ).animate(CurvedAnimation(
+                                    parent: animation,
+                                    curve: Curves.easeOutCubic,
+                                  )),
+                                  child: FadeTransition(
+                                    opacity: animation,
+                                    child: ScaleTransition(
+                                      scale: Tween<double>(
+                                        begin: 0.8,
+                                        end: 1.0,
+                                      ).animate(CurvedAnimation(
+                                        parent: animation,
+                                        curve: Curves.easeOutBack,
+                                      )),
+                                      child: child,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Hero(
+                                key: ValueKey<String>(
+                                    'albumArt-${currentSong.path}'),
+                                tag: 'albumArt-${currentSong.path}',
+                                flightShuttleBuilder: (
+                                  flightContext,
+                                  animation,
+                                  direction,
+                                  fromHeroContext,
+                                  toHeroContext,
+                                ) {
+                                  return AnimatedBuilder(
+                                    animation: animation,
+                                    builder: (context, child) {
+                                      final scale = Tween<double>(
+                                        begin: 0.5,
+                                        end: 1.0,
+                                      ).evaluate(animation);
+                                      return Transform.scale(
+                                        scale: scale,
+                                        child: child,
+                                      );
+                                    },
+                                    child: toHeroContext.widget,
+                                  );
+                                },
+                                child: NamidaThumbnail(
+                                  image: currentSong.albumArt != null
+                                      ? MemoryImage(
+                                          currentSong.albumArt!,
+                                        )
+                                      : null,
+                                  isPlaying: isPlaying,
+                                  currentPeak: currentPeak,
+                                  showBreathingEffect: true,
+                                  sharedBreathingValue:
+                                      _breathingAnimation.value,
+                                ),
                               ),
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              currentSong.artist,
-                              style: TextStyle(
-                                color: textColor.withValues(alpha: 0.8),
-                                fontSize: 16,
+                            if (_showLyrics &&
+                                _lrcData != null &&
+                                _rupdateLyricsStatus())
+                              Positioned.fill(
+                                child: LyricsOverlay(
+                                  isPlaying: isPlaying,
+                                  key: ValueKey(currentSong.path),
+                                  lrc: _lrcData!,
+                                  currentPosition: Duration(
+                                    seconds: (_currentSliderValue *
+                                            currentSong.duration.inSeconds)
+                                        .toInt(),
+                                  ),
+                                  dominantColor: dominantColor,
+                                  currentPeak: currentPeak,
+                                  entranceScale: _lyricsEntranceScale,
+                                  entranceOpacity: _lyricsEntranceOpacity,
+                                  sharedBreathingValue:
+                                      _breathingAnimation.value,
+                                  onLyricTap: (timestamp) {
+                                    final position =
+                                        timestamp.inSeconds.toDouble();
+                                    final progress = position /
+                                        currentSong.duration.inSeconds;
+                                    _handleSeek(progress.clamp(0.0, 1.0));
+                                  },
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 600),
-                          transitionBuilder:
-                              (Widget child, Animation<double> animation) {
-                            return SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0.5, 0.0),
-                                end: Offset.zero,
-                              ).animate(CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOutCubic,
-                              )),
-                              child: FadeTransition(
-                                opacity: animation,
-                                child: ScaleTransition(
-                                  scale: Tween<double>(
-                                    begin: 0.8,
-                                    end: 1.0,
-                                  ).animate(CurvedAnimation(
-                                    parent: animation,
-                                    curve: Curves.easeOutBack,
-                                  )),
-                                  child: child,
-                                ),
-                              ),
-                            );
-                          },
-                          child: Hero(
-                            key: ValueKey<String>(
-                                'albumArt-${currentSong.path}'),
-                            tag: 'albumArt-${currentSong.path}',
-                            flightShuttleBuilder: (
-                              flightContext,
-                              animation,
-                              direction,
-                              fromHeroContext,
-                              toHeroContext,
-                            ) {
-                              return AnimatedBuilder(
-                                animation: animation,
-                                builder: (context, child) {
-                                  final scale = Tween<double>(
-                                    begin: 0.5,
-                                    end: 1.0,
-                                  ).evaluate(animation);
-                                  return Transform.scale(
-                                    scale: scale,
-                                    child: child,
-                                  );
-                                },
-                                child: toHeroContext.widget,
-                              );
-                            },
-                            child: NamidaThumbnail(
-                              image: currentSong.albumArt != null
-                                  ? MemoryImage(
-                                      currentSong.albumArt!,
-                                    )
-                                  : null,
-                              isPlaying: isPlaying,
-                              currentPeak: currentPeak,
-                              showBreathingEffect: true,
-                              sharedBreathingValue: _breathingAnimation.value,
-                            ),
+                      // Waveform Seek Bar.
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24.0,
+                            vertical: 16,
+                          ),
+                          child: WaveformSeekBar(
+                            waveformData: _waveformData,
+                            progress: _currentSliderValue,
+                            activeColor: dominantColor,
+                            inactiveColor: Colors.grey.withValues(alpha: 0.3),
+                            onSeek: (value) => _handleSeek(value),
                           ),
                         ),
-                        if (_showLyrics &&
-                            _lrcData != null &&
-                            _rupdateLyricsStatus())
-                          Positioned.fill(
-                            child: LyricsOverlay(
-                              isPlaying: isPlaying,
-                              key: ValueKey(currentSong.path),
-                              lrc: _lrcData!,
-                              currentPosition: Duration(
-                                seconds: (_currentSliderValue *
-                                        currentSong.duration.inSeconds)
-                                    .toInt(),
-                              ),
-                              dominantColor: dominantColor,
-                              currentPeak: currentPeak,
-                              entranceScale: _lyricsEntranceScale,
-                              entranceOpacity: _lyricsEntranceOpacity,
-                              sharedBreathingValue: _breathingAnimation.value,
-                              onLyricTap: (timestamp) {
-                                final position = timestamp.inSeconds.toDouble();
-                                final progress =
-                                    position / currentSong.duration.inSeconds;
-                                _handleSeek(progress.clamp(0.0, 1.0));
-                              },
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  // Waveform Seek Bar.
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24.0,
-                        vertical: 16,
                       ),
-                      child: WaveformSeekBar(
-                        waveformData: _waveformData,
-                        progress: _currentSliderValue,
-                        activeColor: dominantColor,
-                        inactiveColor: Colors.grey.withValues(alpha: 0.3),
-                        onSeek: (value) => _handleSeek(value),
-                      ),
-                    ),
-                  ),
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32.0,
-                        vertical: 16,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: DynamicIconButton(
-                                icon: _hasLyrics
-                                    ? (_showLyrics
-                                        ? Broken.card_slash
-                                        : Broken.document)
-                                    : Broken.danger,
-                                onPressed:
-                                    _hasLyrics ? () => _toggleLyrics() : null,
-                                backgroundColor: dominantColor,
-                              ),
-                            ),
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32.0,
+                            vertical: 16,
                           ),
-                          Expanded(
-                            flex: 2,
-                            child: Center(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Hero(
-                                    tag: 'controls-prev',
-                                    child: DynamicIconButton(
-                                      icon: Broken.previous,
-                                      onPressed: currentIndex > 0
-                                          ? _handleSkipPrevious
-                                          : null,
-                                      backgroundColor: dominantColor,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 24),
-                                  Hero(
-                                    tag: 'controls-playPause',
-                                    child: ParticlePlayButton(
-                                      isPlaying: isPlaying,
-                                      color: dominantColor,
-                                      onPressed: _togglePlayPause,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 24),
-                                  Hero(
-                                    tag: 'controls-next',
-                                    child: DynamicIconButton(
-                                      icon: Broken.next,
-                                      onPressed: currentIndex <
-                                              widget.songList.length - 1
-                                          ? _handleSkipNext
-                                          : null,
-                                      backgroundColor: dominantColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  MouseRegion(
-                                    onEnter: (_) =>
-                                        setState(() => _isHoveringVol = true),
-                                    onExit: (_) =>
-                                        setState(() => _isHoveringVol = false),
-                                    child: AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 300),
-                                      curve: Curves.easeOut,
-                                      width: _isHoveringVol ? 150 : 40,
-                                      child: Row(
-                                        children: [
-                                          VolumeIcon(
-                                            volume: _volume,
-                                            dominantColor: dominantColor,
-                                          ),
-                                          if (_isHoveringVol) ...[
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: AdaptiveSlider(
-                                                dominantColor: dominantColor,
-                                                value: _volume,
-                                                onChanged: (newVolume) async {
-                                                  await VolumeController()
-                                                      .setVolume(newVolume);
-                                                  setState(() =>
-                                                      _volume = newVolume);
-                                                  await rust_api.setVolume(
-                                                      volume: newVolume);
-                                                },
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  DynamicIconButton(
-                                    icon: _repeatMode == RepeatMode.repeatOnce
-                                        ? Broken.repeate_one
-                                        : _repeatMode == RepeatMode.repeatAll
-                                            ? Broken.repeat
-                                            : Broken.arrow_2,
-                                    onPressed: _toggleRepeatMode,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: DynamicIconButton(
+                                    icon: _hasLyrics
+                                        ? (_showLyrics
+                                            ? Broken.card_slash
+                                            : Broken.document)
+                                        : Broken.danger,
+                                    onPressed: _hasLyrics
+                                        ? () => _toggleLyrics()
+                                        : null,
                                     backgroundColor: dominantColor,
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
+                              Expanded(
+                                flex: 2,
+                                child: Center(
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Hero(
+                                        tag: 'controls-prev',
+                                        child: DynamicIconButton(
+                                          icon: Broken.previous,
+                                          onPressed: currentIndex > 0
+                                              ? _handleSkipPrevious
+                                              : null,
+                                          backgroundColor: dominantColor,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 24),
+                                      Hero(
+                                        tag: 'controls-playPause',
+                                        child: ParticlePlayButton(
+                                          isPlaying: isPlaying,
+                                          color: dominantColor,
+                                          onPressed: _togglePlayPause,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 24),
+                                      Hero(
+                                        tag: 'controls-next',
+                                        child: DynamicIconButton(
+                                          icon: Broken.next,
+                                          onPressed: currentIndex <
+                                                  widget.songList.length - 1
+                                              ? _handleSkipNext
+                                              : null,
+                                          backgroundColor: dominantColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      MouseRegion(
+                                        onEnter: (_) => setState(
+                                            () => _isHoveringVol = true),
+                                        onExit: (_) => setState(
+                                            () => _isHoveringVol = false),
+                                        child: AnimatedContainer(
+                                          duration:
+                                              const Duration(milliseconds: 300),
+                                          curve: Curves.easeOut,
+                                          width: _isHoveringVol ? 150 : 40,
+                                          child: Row(
+                                            children: [
+                                              VolumeIcon(
+                                                volume: _volume,
+                                                dominantColor: dominantColor,
+                                              ),
+                                              if (_isHoveringVol) ...[
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: AdaptiveSlider(
+                                                    dominantColor:
+                                                        dominantColor,
+                                                    value: _volume,
+                                                    onChanged:
+                                                        (newVolume) async {
+                                                      await VolumeController()
+                                                          .setVolume(newVolume);
+                                                      setState(() =>
+                                                          _volume = newVolume);
+                                                      await rust_api.setVolume(
+                                                          volume: newVolume);
+                                                    },
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      DynamicIconButton(
+                                        icon:
+                                            _repeatMode == RepeatMode.repeatOnce
+                                                ? Broken.repeate_one
+                                                : _repeatMode ==
+                                                        RepeatMode.repeatAll
+                                                    ? Broken.repeat
+                                                    : Broken.arrow_2,
+                                        onPressed: _toggleRepeatMode,
+                                        backgroundColor: dominantColor,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  )
-                ],
-              ),
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    ));
+          ),
+        ));
   }
 
   List<double> _generateDummyWaveformData() {
