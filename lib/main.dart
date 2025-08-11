@@ -4022,15 +4022,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required bool value,
     required Function(bool) onChanged,
   }) {
-    final glowColor = widget.dominantColor.withAlpha(60);
-    final trackColor = widget.dominantColor.withAlpha(30);
+    final glowColor = _currentColor.withAlpha(60);
+    final trackColor = _currentColor.withAlpha(30);
     final textColor = Theme.of(context).textTheme.bodyLarge?.color;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(15),
-        hoverColor: widget.dominantColor.withAlpha(30),
+        hoverColor: _currentColor.withAlpha(30),
         onTap: () => onChanged(!value),
         child: ListTile(
           title: GlowText(
@@ -4064,7 +4064,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                   border: Border.all(
-                    color: widget.dominantColor.withAlpha(value ? 100 : 40),
+                    color: _currentColor.withAlpha(value ? 100 : 40),
                     width: 1.5,
                   ),
                   boxShadow: [
@@ -4089,8 +4089,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          widget.dominantColor.withAlpha(200),
-                          widget.dominantColor.withAlpha(100),
+                          _currentColor.withAlpha(200),
+                          _currentColor.withAlpha(100),
                         ],
                       ),
                       boxShadow: [
