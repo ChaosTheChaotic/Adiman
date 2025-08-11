@@ -3770,13 +3770,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _musicFolderController = TextEditingController(text: widget.musicFolder);
     _escapeNode = FocusNode();
     _escapeNode.requestFocus();
+    defaultThemeColorNotifier.addListener(_handleThemeColorChange);
     _loadChecks();
   }
 
   @override
   void dispose() {
     _musicFolderController.dispose();
+    defaultThemeColorNotifier.removeListener(_handleThemeColorChange);
     super.dispose();
+  }
+
+  void _handleThemeColorChange() {
+    if (_currentSong?.albumArt == null && mounted) {
+      setState(() {
+        _currentColor = defaultThemeColorNotifier.value;
+      });
+    }
   }
 
   Future<void> _loadChecks() async {
@@ -5055,6 +5065,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         });
       }
     });
+    defaultThemeColorNotifier.addListener(_handleThemeColorChange);
     _isTempFile = widget.isTemp;
     _isTempFile ? _togglePlayPause : null;
     _breathingController = AnimationController(
@@ -5150,6 +5161,14 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
     _updateParticleOptions();
     _initializeLyricsAnimation();
+  }
+
+  void _handleThemeColorChange() {
+    if (currentSong.albumArt == null && mounted) {
+      setState(() {
+        dominantColor = defaultThemeColorNotifier.value;
+      });
+    }
   }
 
   void _initializeLyricsAnimation() {
@@ -6023,7 +6042,14 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   Future<void> _updateDominantColor() async {
     try {
-      if (currentSong.albumArt == null) return;
+      if (currentSong.albumArt == null) {
+        if (mounted) {
+          setState(() {
+            dominantColor = defaultThemeColorNotifier.value;
+          });
+        }
+        return;
+      }
 
       final colorValue =
           await color_extractor.getDominantColor(data: currentSong.albumArt!);
@@ -6372,6 +6398,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     _breathingController.dispose();
     _fadeController.dispose();
     _lyricsAnimationController.dispose();
+    defaultThemeColorNotifier.removeListener(_handleThemeColorChange);
     if (widget.isTemp && widget.tempPath != null) {
       try {
         final file = File(widget.tempPath!);
