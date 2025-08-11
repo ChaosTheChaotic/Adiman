@@ -239,7 +239,7 @@ class _MiniPlayerState extends State<MiniPlayer>
     try {
       final colorValue =
           await color_extractor.getDominantColor(data: song.albumArt!);
-      return Color(colorValue ?? 0xFF383770);
+      return Color(colorValue ?? _defaultThemeColor.toARGB32());
     } catch (e) {
       return _defaultThemeColor;
     }
@@ -1676,7 +1676,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     try {
       final colorValue =
           await color_extractor.getDominantColor(data: song.albumArt!);
-      return Color(colorValue ?? 0xFF383770);
+      return Color(colorValue ?? _defaultThemeColor.toARGB32());
     } catch (e) {
       NamidaSnackbar(content: 'Failed to get dominant color $e');
       return _defaultThemeColor;
@@ -6004,7 +6004,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
       if (mounted) {
         setState(() {
-          dominantColor = Color(colorValue ?? 0xFF383770);
+          dominantColor = Color(colorValue ?? _defaultThemeColor.toARGB32());
         });
       }
     } catch (e) {
@@ -7060,7 +7060,7 @@ class _DownloadScreenState extends State<DownloadScreen>
             final colorValue = await color_extractor.getDominantColor(
                 data: _tempSong!.albumArt!);
             setState(() {
-              _dominantColor = Color(colorValue ?? 0xFF383770);
+              _dominantColor = Color(colorValue ?? _defaultThemeColor.toARGB32());
             });
           } catch (e) {
             NamidaSnackbar(
