@@ -7060,7 +7060,8 @@ class _DownloadScreenState extends State<DownloadScreen>
             final colorValue = await color_extractor.getDominantColor(
                 data: _tempSong!.albumArt!);
             setState(() {
-              _dominantColor = Color(colorValue ?? _defaultThemeColor.toARGB32());
+              _dominantColor =
+                  Color(colorValue ?? _defaultThemeColor.toARGB32());
             });
           } catch (e) {
             NamidaSnackbar(
