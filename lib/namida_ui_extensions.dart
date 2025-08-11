@@ -639,7 +639,7 @@ class _AlbumArt extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             color: Colors.transparent,
-            image: image != null 
+            image: image != null
                 ? DecorationImage(
                     image: image!,
                     fit: BoxFit.cover,
@@ -687,7 +687,7 @@ class _AlbumArt extends StatelessWidget {
                               child: GlowIcon(
                                 Broken.adiman,
                                 color: Colors.white,
-				glowColor: Colors.white,
+                                glowColor: Colors.white,
                                 size: 28,
                               ),
                             )
@@ -722,10 +722,8 @@ class _AlbumArt extends StatelessWidget {
                                 child: GlowIcon(
                                   Broken.adiman,
                                   color: Colors.white,
-				  glowColor: Colors.white,
-                                  size: Tween<double>(
-                                          begin: 28,
-                                          end: 80)
+                                  glowColor: Colors.white,
+                                  size: Tween<double>(begin: 28, end: 80)
                                       .evaluate(animation),
                                 ),
                               )

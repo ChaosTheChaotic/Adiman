@@ -23,6 +23,7 @@ import 'broken_icons.dart';
 
 final ValueNotifier<Color> defaultThemeColorNotifier =
     ValueNotifier<Color>(const Color(0xFF383770));
+final ValueNotifier<bool> useDominantColorsNotifier = ValueNotifier<bool>(true);
 
 class Song {
   final String title;
@@ -133,6 +134,8 @@ class _MiniPlayerState extends State<MiniPlayer>
   double _volume = 1.0;
   StreamSubscription<bool>? _playbackStateSubscription;
   bool _isHoveringVol = false;
+  Color? _localDominantColor;
+  late VoidCallback _useDominantColorsListener;
 
   @override
   void initState() {
@@ -144,6 +147,11 @@ class _MiniPlayerState extends State<MiniPlayer>
         });
       }
     });
+    _useDominantColorsListener = () {
+      _updateDominantColor();
+    };
+    useDominantColorsNotifier.addListener(_useDominantColorsListener);
+    _localDominantColor = widget.dominantColor;
     _playbackStateSubscription = widget.service.playbackStateStream.listen((
       isPlaying,
     ) {
@@ -165,6 +173,15 @@ class _MiniPlayerState extends State<MiniPlayer>
       (_) => _updatePlayback(),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkPlayingState());
+  }
+
+  Future<void> _updateDominantColor() async {
+    final color = await _getDominantColor(widget.song);
+    if (mounted) {
+      setState(() {
+        _localDominantColor = color;
+      });
+    }
   }
 
   void _checkPlayingState() async {
@@ -237,8 +254,10 @@ class _MiniPlayerState extends State<MiniPlayer>
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    final bool useDom = SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
-    if (song.albumArt == null || !useDom) return defaultThemeColorNotifier.value;
+    final useDom = useDominantColorsNotifier.value;
+    if (song.albumArt == null || !useDom) {
+      return defaultThemeColorNotifier.value;
+    }
 
     try {
       final colorValue =
@@ -250,17 +269,27 @@ class _MiniPlayerState extends State<MiniPlayer>
   }
 
   @override
+  void didUpdateWidget(MiniPlayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.song != widget.song) {
+      _updateDominantColor();
+    }
+  }
+
+  @override
   void dispose() {
     _progressTimer.cancel();
     _playPauseController.dispose();
     _playbackStateSubscription?.cancel();
+    useDominantColorsNotifier.removeListener(_useDominantColorsListener);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final textColor = widget.dominantColor.computeLuminance() > 0.01
-        ? widget.dominantColor
+    final effectiveColor = _localDominantColor ?? widget.dominantColor;
+    final textColor = effectiveColor.computeLuminance() > 0.01
+        ? effectiveColor
         : Theme.of(context).textTheme.bodyLarge?.color;
     return GestureDetector(
       onTap: () async {
@@ -308,21 +337,21 @@ class _MiniPlayerState extends State<MiniPlayer>
       child: Material(
         elevation: 4,
         color: Colors.black.withValues(alpha: 0.4),
-        surfaceTintColor: widget.dominantColor.withValues(alpha: 0.8),
+        surfaceTintColor: effectiveColor.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: widget.dominantColor.withValues(alpha: 0.3),
+              color: effectiveColor.withValues(alpha: 0.3),
               width: 1.5,
             ),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                widget.dominantColor.withValues(alpha: 0.15),
+                effectiveColor.withValues(alpha: 0.15),
                 Colors.black.withValues(alpha: 0.3),
               ],
             ),
@@ -356,7 +385,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: widget.dominantColor.withValues(alpha: 0.3),
+                            color: effectiveColor.withValues(alpha: 0.3),
                             blurRadius: 12,
                             spreadRadius: 2,
                           ),
@@ -387,7 +416,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                     children: [
                       GlowText(
                         widget.song.title,
-                        glowColor: widget.dominantColor.withValues(alpha: 0.2),
+                        glowColor: effectiveColor.withValues(alpha: 0.2),
                         style: TextStyle(
                           color: textColor,
                           fontWeight: FontWeight.w600,
@@ -425,13 +454,13 @@ class _MiniPlayerState extends State<MiniPlayer>
                             children: [
                               VolumeIcon(
                                 volume: _volume,
-                                dominantColor: widget.dominantColor,
+                                dominantColor: effectiveColor,
                               ),
                               if (_isHoveringVol) ...[
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: AdaptiveSlider(
-                                    dominantColor: widget.dominantColor,
+                                    dominantColor: effectiveColor,
                                     value: _volume,
                                     onChanged: (newVolume) async {
                                       await VolumeController()
@@ -453,13 +482,13 @@ class _MiniPlayerState extends State<MiniPlayer>
                 Hero(
                   tag: 'controls-prev',
                   child: Material(
-                    color: widget.dominantColor.withValues(alpha: 0.2),
+                    color: effectiveColor.withValues(alpha: 0.2),
                     shape: const CircleBorder(),
                     child: IconButton(
                       icon: GlowIcon(
                         Broken.previous,
                         color: textColor,
-                        glowColor: widget.dominantColor.withValues(alpha: 0.3),
+                        glowColor: effectiveColor.withValues(alpha: 0.3),
                       ),
                       onPressed: widget.currentIndex > 0
                           ? () => _handleSkip(false)
@@ -470,14 +499,14 @@ class _MiniPlayerState extends State<MiniPlayer>
                 Hero(
                   tag: 'controls-playPause',
                   child: Material(
-                    color: widget.dominantColor.withValues(alpha: 0.2),
+                    color: effectiveColor.withValues(alpha: 0.2),
                     shape: const CircleBorder(),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
                         boxShadow: [
                           BoxShadow(
-                            color: widget.dominantColor.withValues(alpha: 0.3),
+                            color: effectiveColor.withValues(alpha: 0.3),
                             blurRadius: 8,
                             spreadRadius: 2,
                           ),
@@ -489,8 +518,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                               ? Broken.pause
                               : Broken.play,
                           color: textColor,
-                          glowColor:
-                              widget.dominantColor.withValues(alpha: 0.2),
+                          glowColor: effectiveColor.withValues(alpha: 0.2),
                         ),
                         onPressed: _togglePlayPause,
                       ),
@@ -500,13 +528,13 @@ class _MiniPlayerState extends State<MiniPlayer>
                 Hero(
                   tag: 'controls-next',
                   child: Material(
-                    color: widget.dominantColor.withValues(alpha: 0.2),
+                    color: effectiveColor.withValues(alpha: 0.2),
                     shape: const CircleBorder(),
                     child: IconButton(
                       icon: GlowIcon(
                         Broken.next,
                         color: textColor,
-                        glowColor: widget.dominantColor.withValues(alpha: 0.3),
+                        glowColor: effectiveColor.withValues(alpha: 0.3),
                       ),
                       onPressed:
                           widget.currentIndex < widget.songList.length - 1
@@ -542,6 +570,8 @@ Future<void> main() async {
   globalService = AdimanService();
   VolumeController();
   await SharedPreferencesService.init();
+  useDominantColorsNotifier.value = 
+      SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
   runApp(const MyApp());
 }
 
@@ -1682,8 +1712,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    final bool useDom = SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
-    if (song.albumArt == null || !useDom) return defaultThemeColorNotifier.value;
+    final bool useDom =
+        SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
+    if (song.albumArt == null || !useDom)
+      return defaultThemeColorNotifier.value;
 
     try {
       final colorValue =
@@ -3785,7 +3817,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _handleThemeColorChange() {
-    final bool useDom = SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
+    final bool useDom =
+        SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
     if ((_currentSong?.albumArt == null || !useDom) && mounted) {
       setState(() {
         _currentColor = defaultThemeColorNotifier.value;
@@ -3804,7 +3837,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _fadeIn = SharedPreferencesService.instance.getBool('fadeIn') ?? false;
       _mSn = SharedPreferencesService.instance.getBool('mSn') ?? false;
       _breathe = SharedPreferencesService.instance.getBool('breathe') ?? true;
-      _useDominantColors = SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
+      _useDominantColors =
+          SharedPreferencesService.instance.getBool('useDominantColors') ??
+              true;
     });
     final savedSeparators =
         SharedPreferencesService.instance.getStringList('separators');
@@ -3856,6 +3891,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _saveUseDominantColors(bool value) async {
     await SharedPreferencesService.instance.setBool('useDominantColors', value);
+    useDominantColorsNotifier.value = value; // Add this line
     setState(() => _useDominantColors = value);
   }
 
@@ -4373,12 +4409,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           value: _mSn,
                           onChanged: _saveMSn,
                         ),
-			_buildSettingsSwitch(
-			  context,
-			  title: 'Use dominant colors from album art',
-			  value: _useDominantColors,
-			  onChanged: _saveUseDominantColors,
-			),
+                        _buildSettingsSwitch(
+                          context,
+                          title: 'Use dominant colors from album art',
+                          value: _useDominantColors,
+                          onChanged: _saveUseDominantColors,
+                        ),
                       ],
                     ),
                   ),
@@ -5058,6 +5094,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   late final _particlePaint = Paint()
     ..style = PaintingStyle.fill
     ..color = Colors.white;
+  late VoidCallback _useDominantColorsListener;
 
   RepeatMode _repeatMode = RepeatMode.normal;
   bool _hasRepeated = false;
@@ -5081,6 +5118,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         });
       }
     });
+    _useDominantColorsListener = () {
+      _updateDominantColor();
+    };
+    useDominantColorsNotifier.addListener(_useDominantColorsListener);
     defaultThemeColorNotifier.addListener(_handleThemeColorChange);
     _isTempFile = widget.isTemp;
     _isTempFile ? _togglePlayPause : null;
@@ -5180,7 +5221,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   }
 
   void _handleThemeColorChange() {
-    final useDominant = SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
+    final useDominant =
+        SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
     if (!useDominant || currentSong.albumArt == null) {
       if (mounted) {
         setState(() {
@@ -6060,17 +6102,17 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   }
 
   Future<void> _updateDominantColor() async {
-    try {
-	final bool useDom = SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
-    	if (currentSong.albumArt == null || !useDom) {
-        if (mounted) {
-          setState(() {
-            dominantColor = defaultThemeColorNotifier.value;
-          });
-        }
-        return;
+    final useDom = useDominantColorsNotifier.value;
+    if (currentSong.albumArt == null || !useDom) {
+      if (mounted) {
+        setState(() {
+          dominantColor = defaultThemeColorNotifier.value;
+        });
       }
+      return;
+    }
 
+    try {
       final colorValue =
           await color_extractor.getDominantColor(data: currentSong.albumArt!);
 
@@ -6081,10 +6123,6 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         });
       }
     } catch (e) {
-      NamidaSnackbar(
-        backgroundColor: dominantColor,
-        content: 'Error generating dominant color: $e',
-      );
       if (mounted) {
         setState(() => dominantColor = defaultThemeColorNotifier.value);
       }
@@ -6419,6 +6457,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     _fadeController.dispose();
     _lyricsAnimationController.dispose();
     defaultThemeColorNotifier.removeListener(_handleThemeColorChange);
+    useDominantColorsNotifier.removeListener(_useDominantColorsListener);
     if (widget.isTemp && widget.tempPath != null) {
       try {
         final file = File(widget.tempPath!);
@@ -7188,165 +7227,167 @@ class _DownloadScreenState extends State<DownloadScreen>
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: ThemeData.dark(),
-      child: KeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.escape &&
-            !_isDownloading) {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          Navigator.pop(context);
-        }
-      },
-      child: Scaffold(
-        body: Stack(
-          children: [
-            // Blurred Background
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 100, sigmaY: 100),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment.topCenter,
-                      radius: 1.8,
-                      colors: [_dominantColor.withAlpha(30), Colors.black],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            SafeArea(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        DynamicIconButton(
-                          icon: Broken.arrow_left,
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                            Navigator.pop(context);
-                          },
-                          backgroundColor: _dominantColor,
-                          size: 40,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: NamidaTextField(
-                            controller: _searchController,
-                            focusNode: _searchFocus,
-                            hintText: 'Search song or paste URL...',
-                            prefixIcon: Broken.search_normal,
-                            onSubmitted: (_) => _startDownload(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: _currentTrack == null ? _buildEmptyState() : null,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (_isDownloading)
-              Positioned.fill(
-                child: KeyboardListener(
-                  focusNode: FocusNode(),
-                  autofocus: true,
-                  onKeyEvent: (event) {
-                    if (event is KeyDownEvent &&
-                        event.logicalKey == LogicalKeyboardKey.escape) {
-                      setState(() => _isDownloading = false);
-                      rust_api.cancelDownload();
-                      rust_api.stopSong();
-                    }
-                  },
+        data: ThemeData.dark(),
+        child: KeyboardListener(
+          focusNode: _focusNode,
+          autofocus: true,
+          onKeyEvent: (event) {
+            if (event is KeyDownEvent &&
+                event.logicalKey == LogicalKeyboardKey.escape &&
+                !_isDownloading) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              Navigator.pop(context);
+            }
+          },
+          child: Scaffold(
+            body: Stack(
+              children: [
+                // Blurred Background
+                Positioned.fill(
                   child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    filter: ui.ImageFilter.blur(sigmaX: 100, sigmaY: 100),
                     child: Container(
-                      color: Colors.black54,
-                      child: Stack(
-                        children: [
-                          Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CircularProgressIndicator(
-                                  valueColor:
-                                      AlwaysStoppedAnimation(_dominantColor),
-                                ),
-                                const SizedBox(height: 16),
-                                GlowText(
-                                  'Downloading...',
-                                  glowColor: _dominantColor,
-                                  style: TextStyle(
-                                      color: Colors.white, fontSize: 18),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Positioned(
-                            top: 10,
-                            left: 10,
-                            child: DynamicIconButton(
-                              icon: Broken.cross,
-                              onPressed: () {
-                                setState(() => _isDownloading = false);
-                                rust_api.cancelDownload();
-                                rust_api.pauseSong();
-                              },
-                              backgroundColor: _dominantColor,
-                              size: 40,
-                            ),
-                          ),
-                        ],
+                      decoration: BoxDecoration(
+                        gradient: RadialGradient(
+                          center: Alignment.topCenter,
+                          radius: 1.8,
+                          colors: [_dominantColor.withAlpha(30), Colors.black],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            if (_tempSong != null)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: MiniPlayer(
-                  onReloadLibrary: widget.onReloadLibrary,
-                  musicFolder: widget.musicFolder,
-                  song: _tempSong!,
-                  songList: [_tempSong!],
-                  service: widget.service,
-                  dominantColor: _dominantColor,
-                  currentIndex: 0,
-                  isTemp: true,
-                  onClose: () {
-                    setState(() {
-                      _tempSong = null;
-                      _dominantColor = defaultThemeColorNotifier.value;
-                    });
-                    rust_api.stopSong();
-                  },
-                  onUpdate: (newSong, newIndex, newColor) {
-                    setState(() {
-                      _tempSong = newSong;
-                      _dominantColor = newColor;
-                    });
-                  },
-                  isCurrent: true,
+                SafeArea(
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          children: [
+                            DynamicIconButton(
+                              icon: Broken.arrow_left,
+                              onPressed: () {
+                                ScaffoldMessenger.of(context)
+                                    .hideCurrentSnackBar();
+                                Navigator.pop(context);
+                              },
+                              backgroundColor: _dominantColor,
+                              size: 40,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: NamidaTextField(
+                                controller: _searchController,
+                                focusNode: _searchFocus,
+                                hintText: 'Search song or paste URL...',
+                                prefixIcon: Broken.search_normal,
+                                onSubmitted: (_) => _startDownload(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child:
+                              _currentTrack == null ? _buildEmptyState() : null,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-          ],
-        ),
-      ),
-    ));
+                if (_isDownloading)
+                  Positioned.fill(
+                    child: KeyboardListener(
+                      focusNode: FocusNode(),
+                      autofocus: true,
+                      onKeyEvent: (event) {
+                        if (event is KeyDownEvent &&
+                            event.logicalKey == LogicalKeyboardKey.escape) {
+                          setState(() => _isDownloading = false);
+                          rust_api.cancelDownload();
+                          rust_api.stopSong();
+                        }
+                      },
+                      child: BackdropFilter(
+                        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          color: Colors.black54,
+                          child: Stack(
+                            children: [
+                              Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation(
+                                          _dominantColor),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    GlowText(
+                                      'Downloading...',
+                                      glowColor: _dominantColor,
+                                      style: TextStyle(
+                                          color: Colors.white, fontSize: 18),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Positioned(
+                                top: 10,
+                                left: 10,
+                                child: DynamicIconButton(
+                                  icon: Broken.cross,
+                                  onPressed: () {
+                                    setState(() => _isDownloading = false);
+                                    rust_api.cancelDownload();
+                                    rust_api.pauseSong();
+                                  },
+                                  backgroundColor: _dominantColor,
+                                  size: 40,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                if (_tempSong != null)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: MiniPlayer(
+                      onReloadLibrary: widget.onReloadLibrary,
+                      musicFolder: widget.musicFolder,
+                      song: _tempSong!,
+                      songList: [_tempSong!],
+                      service: widget.service,
+                      dominantColor: _dominantColor,
+                      currentIndex: 0,
+                      isTemp: true,
+                      onClose: () {
+                        setState(() {
+                          _tempSong = null;
+                          _dominantColor = defaultThemeColorNotifier.value;
+                        });
+                        rust_api.stopSong();
+                      },
+                      onUpdate: (newSong, newIndex, newColor) {
+                        setState(() {
+                          _tempSong = newSong;
+                          _dominantColor = newColor;
+                        });
+                      },
+                      isCurrent: true,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ));
   }
 
   Widget _buildEmptyState() {
