@@ -534,6 +534,7 @@ Future<void> main() async {
   await rust_api.initializePlayer();
   globalService = AdimanService();
   VolumeController();
+  await SharedPreferencesService.init();
   runApp(const MyApp());
 }
 
@@ -707,10 +708,11 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   }
 
   Future<void> _getVimBindings() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
     if (mounted) {
       setState(() {
-        _vimKeybindings = prefs.getBool('vimKeybindings') ?? false;
+        _vimKeybindings =
+            SharedPreferencesService.instance.getBool('vimKeybindings') ??
+                false;
       });
     }
   }
@@ -745,8 +747,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   }
 
   Future<void> _loadMusicFolder() async {
-    final prefs = await SharedPreferences.getInstance();
-    String musicFolder = prefs.getString('musicFolder') ?? '~/Music';
+    String musicFolder =
+        SharedPreferencesService.instance.getString('musicFolder') ?? '~/Music';
     if (musicFolder.startsWith('~')) {
       final home = Platform.environment['HOME'] ?? '';
       musicFolder = musicFolder.replaceFirst('~', home);
@@ -1465,7 +1467,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     setState(() => isLoading = true);
     try {
       final expectedCount = await countAudioFiles(currentMusicDirectory);
-      final prefs = await SharedPreferences.getInstance();
       int currentCount = 0;
       List<Song> loadedSongs = [];
 
@@ -1475,7 +1476,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
       do {
         final metadata = await rust_api.scanMusicDirectory(
           dirPath: currentMusicDirectory,
-          autoConvert: prefs.getBool('autoConvert') ?? false,
+          autoConvert:
+              SharedPreferencesService.instance.getBool('autoConvert') ?? false,
         );
         loadedSongs = metadata.map((m) => Song.fromMetadata(m)).toList();
         currentCount = loadedSongs.length;
@@ -1496,7 +1498,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
 
         if (currentCount >= expectedCount) {
           break;
-        } else if (prefs.getBool('autoConvert') ?? false) {
+        } else if (SharedPreferencesService.instance.getBool('autoConvert') ??
+            false) {
           await Future.delayed(const Duration(seconds: 1));
         }
       } while (currentCount >= expectedCount);
@@ -3063,10 +3066,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 ),
                               ),
                               Icon(
-                                Broken.menu_1,
+                                Broken.adiman,
                                 key: ValueKey<bool>(_isDrawerOpen),
                                 color: textColor,
-                                size: 28,
+                                size: 32,
                               ),
                             ],
                           ),
@@ -3695,6 +3698,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _clearMp3Cache = false;
   bool _vimKeybindings = false;
   bool _fadeIn = false;
+  bool _mSn = false;
+  bool _breathe = true;
   late FocusNode _escapeNode;
 
   Song? _currentSong;
@@ -3725,14 +3730,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadChecks() async {
-    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _autoConvert = prefs.getBool('autoConvert') ?? false;
-      _clearMp3Cache = prefs.getBool('clearMp3Cache') ?? false;
-      _vimKeybindings = prefs.getBool('vimKeybindings') ?? false;
-      _fadeIn = prefs.getBool('fadeIn') ?? false;
+      _autoConvert =
+          SharedPreferencesService.instance.getBool('autoConvert') ?? false;
+      _clearMp3Cache =
+          SharedPreferencesService.instance.getBool('clearMp3Cache') ?? false;
+      _vimKeybindings =
+          SharedPreferencesService.instance.getBool('vimKeybindings') ?? false;
+      _fadeIn = SharedPreferencesService.instance.getBool('fadeIn') ?? false;
+      _mSn = SharedPreferencesService.instance.getBool('mSn') ?? false;
+      _breathe = SharedPreferencesService.instance.getBool('breathe') ?? true;
     });
-    final savedSeparators = prefs.getStringList('separators');
+    final savedSeparators =
+        SharedPreferencesService.instance.getStringList('separators');
     if (savedSeparators != null) {
       rust_api.setSeparators(separators: savedSeparators);
     }
@@ -3747,28 +3757,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveAutoConvert(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('autoConvert', value);
+    await SharedPreferencesService.instance.setBool('autoConvert', value);
     setState(() => _autoConvert = value);
   }
 
   Future<void> _saveVimKeybindings(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('vimKeybindings', value);
+    await SharedPreferencesService.instance.setBool('vimKeybindings', value);
     setState(() => _vimKeybindings = value);
   }
 
   Future<void> _saveClearMp3Cache(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('clearMp3Cache', value);
+    await SharedPreferencesService.instance.setBool('clearMp3Cache', value);
     setState(() => _clearMp3Cache = value);
   }
 
   Future<void> _saveFadeIn(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('fadeIn', value);
+    await SharedPreferencesService.instance.setBool('fadeIn', value);
     rust_api.setFadein(value: value);
     setState(() => _fadeIn = value);
+  }
+
+  Future<void> _saveMSn(bool value) async {
+    await SharedPreferencesService.instance.setBool('mSn', value);
+    rust_api.setFadein(value: value);
+    setState(() => _mSn = value);
+  }
+
+  Future<void> _saveBreathe(bool value) async {
+    await SharedPreferencesService.instance.setBool('breathe', value);
+    rust_api.setFadein(value: value);
+    setState(() => _breathe = value);
   }
 
   Future<void> _clearCache() async {
@@ -4084,9 +4102,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             _musicFolderController.text,
                           );
 
-                          SharedPreferences prefs =
-                              await SharedPreferences.getInstance();
-                          await prefs.setString('musicFolder', expandedPath);
+                          await SharedPreferencesService.instance
+                              .setString('musicFolder', expandedPath);
 
                           if (widget.onMusicFolderChanged != null) {
                             await widget.onMusicFolderChanged!(expandedPath);
@@ -4148,6 +4165,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: 'Music fade in on seek and song start',
                       value: _fadeIn,
                       onChanged: _saveFadeIn,
+                    ),
+                    _buildSettingsSwitch(
+                      context,
+                      title: 'Breathing animation on the album art',
+                      value: _breathe,
+                      onChanged: _saveBreathe,
+                    ),
+                    _buildSettingsSwitch(
+                      context,
+                      title: 'Alternate default for no album art',
+                      value: _mSn,
+                      onChanged: _saveMSn,
                     ),
                   ],
                 ),
@@ -4318,12 +4347,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             final updatedSeparators =
                                                 await rust_api
                                                     .getCurrentSeparators();
-                                            final prefs =
-                                                await SharedPreferences
-                                                    .getInstance();
-                                            await prefs.setStringList(
-                                                'separators',
-                                                updatedSeparators);
+                                            await SharedPreferencesService
+                                                .instance
+                                                .setStringList('separators',
+                                                    updatedSeparators);
 
                                             setStateDialog(() {
                                               currentSeparators =
@@ -4482,12 +4509,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                   final updatedSeparators =
                                                       await rust_api
                                                           .getCurrentSeparators();
-                                                  final prefs =
-                                                      await SharedPreferences
-                                                          .getInstance();
-                                                  await prefs.setStringList(
-                                                      'separators',
-                                                      updatedSeparators);
+                                                  await SharedPreferencesService
+                                                      .instance
+                                                      .setStringList(
+                                                          'separators',
+                                                          updatedSeparators);
 
                                                   setStateDialog(() =>
                                                       currentSeparators =
@@ -4561,10 +4587,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     rust_api.resetSeparators();
                                     final updatedSeparators =
                                         await rust_api.getCurrentSeparators();
-                                    final prefs =
-                                        await SharedPreferences.getInstance();
-                                    await prefs.setStringList(
-                                        'separators', updatedSeparators);
+                                    await SharedPreferencesService.instance
+                                        .setStringList(
+                                            'separators', updatedSeparators);
 
                                     setStateDialog(() =>
                                         currentSeparators = updatedSeparators);
@@ -6135,8 +6160,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     if (!widget.isTemp || widget.tempPath == null) return;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final musicFolder = prefs.getString('musicFolder') ?? '~/Music';
+      final musicFolder =
+          SharedPreferencesService.instance.getString('musicFolder') ??
+              '~/Music';
       final expandedPath = musicFolder.replaceFirst(
         '~',
         Platform.environment['HOME'] ?? '',
@@ -6384,9 +6410,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                   ? MemoryImage(
                                       currentSong.albumArt!,
                                     )
-                                  : AssetImage(
-                                      "assets/default_album.png",
-                                    ) as ImageProvider,
+                                  : null,
                               isPlaying: isPlaying,
                               currentPeak: currentPeak,
                               showBreathingEffect: true,
@@ -6871,11 +6895,11 @@ class _DownloadScreenState extends State<DownloadScreen>
 
     try {
       final downloadedPath = await rust_api.downloadToTemp(query: query);
-      final prefs = await SharedPreferences.getInstance();
 
       final metadata = await rust_api.scanMusicDirectory(
         dirPath: path.dirname(downloadedPath),
-        autoConvert: prefs.getBool('autoConvert') ?? true,
+        autoConvert:
+            SharedPreferencesService.instance.getBool('autoConvert') ?? true,
       );
 
       if (metadata.isNotEmpty) {
@@ -7410,5 +7434,20 @@ class AdaptiveSlider extends StatelessWidget {
         onChanged: onChanged,
       ),
     );
+  }
+}
+
+class SharedPreferencesService {
+  static SharedPreferences? _instance;
+
+  static SharedPreferences get instance {
+    if (_instance == null) {
+      throw Exception('SharedPreferences not initialized!');
+    }
+    return _instance!;
+  }
+
+  static Future<void> init() async {
+    _instance = await SharedPreferences.getInstance();
   }
 }

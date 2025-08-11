@@ -167,7 +167,7 @@ class _WaveformPainter extends CustomPainter {
 }
 
 class NamidaThumbnail extends StatefulWidget {
-  final ImageProvider image;
+  final ImageProvider? image;
   final bool isPlaying;
   final bool showBreathingEffect;
   final double currentPeak;
@@ -247,6 +247,12 @@ class _NamidaThumbnailState extends State<NamidaThumbnail>
     }
   }
 
+  double getMSn() {
+    return SharedPreferencesService.instance.getBool('mSn') ?? false == true
+        ? 0.6
+        : 0.3;
+  }
+
   @override
   void dispose() {
     _breathingController.dispose();
@@ -265,31 +271,80 @@ class _NamidaThumbnailState extends State<NamidaThumbnail>
         builder: (context, _) {
           return LayoutBuilder(
             builder: (context, constraints) {
-              return Transform.scale(
-                scale: breathingValue + (peakValue - 1.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white
-                            .withAlpha((breathingValue * 70).toInt()),
-                        spreadRadius: breathingValue * 6,
-                        blurRadius: 30,
-                        blurStyle: BlurStyle.outer,
+              return ((SharedPreferencesService.instance.getBool('mSn') ??
+                              false == true) &&
+                          (widget.image == null)) ||
+                      !(SharedPreferencesService.instance.getBool('breathe') ??
+                          true != false)
+                  ? Container(
+                      decoration: widget.image != null
+                          ? BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.white
+                                      .withAlpha((breathingValue * 70).toInt()),
+                                  spreadRadius: breathingValue * 6,
+                                  blurRadius: 30,
+                                  blurStyle: BlurStyle.outer,
+                                ),
+                              ],
+                            )
+                          : null,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: widget.image != null
+                            ? Image(
+                                image: widget.image!,
+                                fit: BoxFit.cover,
+                                gaplessPlayback: true,
+                              )
+                            : Center(
+                                child: GlowIcon(
+                                  Broken.adiman,
+                                  color: Colors.white,
+                                  glowColor: Colors.white,
+                                  size: constraints.maxWidth * getMSn(),
+                                ),
+                              ),
                       ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image(
-                      image: widget.image,
-                      fit: BoxFit.cover,
-                      gaplessPlayback: true,
-                    ),
-                  ),
-                ),
-              );
+                    )
+                  : Transform.scale(
+                      scale: breathingValue + (peakValue - 1.0),
+                      child: Container(
+                        decoration: widget.image != null
+                            ? BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.white.withAlpha(
+                                        (breathingValue * 70).toInt()),
+                                    spreadRadius: breathingValue * 6,
+                                    blurRadius: 30,
+                                    blurStyle: BlurStyle.outer,
+                                  ),
+                                ],
+                              )
+                            : null,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: widget.image != null
+                              ? Image(
+                                  image: widget.image!,
+                                  fit: BoxFit.cover,
+                                  gaplessPlayback: true,
+                                )
+                              : Center(
+                                  child: GlowIcon(
+                                    Broken.adiman,
+                                    color: Colors.white,
+                                    glowColor: Colors.white,
+                                    size: constraints.maxWidth * getMSn(),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    );
             },
           );
         });
