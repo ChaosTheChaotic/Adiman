@@ -21,7 +21,8 @@ import 'package:dbus/dbus.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'broken_icons.dart';
 
-Color _defaultThemeColor = const Color(0xFF383770);
+final ValueNotifier<Color> defaultThemeColorNotifier =
+    ValueNotifier<Color>(const Color(0xFF383770));
 
 class Song {
   final String title;
@@ -58,10 +59,11 @@ class Song {
   }
 }
 
-ThemeData _buildDynamicTheme(Color dominantColor) {
+ThemeData _buildDynamicTheme(BuildContext context, Color dominantColor) {
+  final theme = Theme.of(context);
   final bool isDark = dominantColor.computeLuminance() < 0.4;
   final textColor = isDark ? Colors.white : dominantColor;
-  return ThemeData.dark().copyWith(
+  return theme.copyWith(
     colorScheme: ColorScheme.fromSeed(
       seedColor: dominantColor,
       brightness: isDark ? Brightness.dark : Brightness.light,
@@ -234,14 +236,14 @@ class _MiniPlayerState extends State<MiniPlayer>
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    if (song.albumArt == null) return _defaultThemeColor;
+    if (song.albumArt == null) return defaultThemeColorNotifier.value;
 
     try {
       final colorValue =
           await color_extractor.getDominantColor(data: song.albumArt!);
-      return Color(colorValue ?? _defaultThemeColor.toARGB32());
+      return Color(colorValue ?? defaultThemeColorNotifier.value.toARGB32());
     } catch (e) {
-      return _defaultThemeColor;
+      return defaultThemeColorNotifier.value;
     }
   }
 
@@ -549,44 +551,40 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  Color _themeColor = _defaultThemeColor;
+  @override
+  void initState() {
+    super.initState();
+  }
 
   void updateThemeColor(Color newColor) {
-    setState(() {
-      _themeColor = newColor;
-      _defaultThemeColor = newColor;
-    });
+    defaultThemeColorNotifier.value = newColor;
     SharedPreferencesService.instance
         .setInt('defaultThemeColor', newColor.toARGB32());
   }
 
   @override
-  void initState() {
-    super.initState();
-    _loadThemeColor();
-  }
-
-  Future<void> _loadThemeColor() async {
-    final savedColorValue =
-        SharedPreferencesService.instance.getInt('defaultThemeColor');
-    if (savedColorValue != null) {
-      setState(() {
-        _themeColor = Color(savedColorValue);
-        _defaultThemeColor = Color(savedColorValue); // Update static variable
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Adiman',
-      debugShowCheckedModeBanner: false,
-      scrollBehavior: const MaterialScrollBehavior().copyWith(
-        scrollbars: false,
-      ),
-      theme: _buildDynamicTheme(_themeColor), // Use state color
-      home: SongSelectionScreen(updateThemeColor: updateThemeColor),
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final savedColor =
+          SharedPreferencesService.instance.getInt('defaultThemeColor');
+      if (savedColor != null) {
+        defaultThemeColorNotifier.value = Color(savedColor);
+      }
+    });
+
+    return ValueListenableBuilder<Color>(
+      valueListenable: defaultThemeColorNotifier,
+      builder: (context, color, _) {
+        return MaterialApp(
+          title: 'Adiman',
+          theme: _buildDynamicTheme(context, color),
+          home: Builder(
+            builder: (context) => SongSelectionScreen(
+              updateThemeColor: updateThemeColor,
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -661,7 +659,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   Song? currentSong;
   int currentIndex = 0;
   bool showMiniPlayer = false;
-  Color dominantColor = _defaultThemeColor;
+  Color dominantColor = defaultThemeColorNotifier.value;
   final ScrollController _scrollController = ScrollController();
   double _lastOffset = 0;
   late AnimationController _extraHeaderController;
@@ -708,6 +706,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   @override
   void initState() {
     super.initState();
+    dominantColor = defaultThemeColorNotifier.value;
+    defaultThemeColorNotifier.addListener(_handleDefaultColorChange);
     service = globalService;
     _mainFocusNode = FocusNode();
     _searchFocusNode = FocusNode();
@@ -751,6 +751,12 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
             SharedPreferencesService.instance.getBool('vimKeybindings') ??
                 false;
       });
+    }
+  }
+
+  void _handleDefaultColorChange() {
+    if (currentSong == null) {
+      setState(() => dominantColor = defaultThemeColorNotifier.value);
     }
   }
 
@@ -1674,15 +1680,15 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    if (song.albumArt == null) return _defaultThemeColor;
+    if (song.albumArt == null) return defaultThemeColorNotifier.value;
 
     try {
       final colorValue =
           await color_extractor.getDominantColor(data: song.albumArt!);
-      return Color(colorValue ?? _defaultThemeColor.toARGB32());
+      return Color(colorValue ?? defaultThemeColorNotifier.value.toARGB32());
     } catch (e) {
       NamidaSnackbar(content: 'Failed to get dominant color $e');
-      return _defaultThemeColor;
+      return defaultThemeColorNotifier.value;
     }
   }
 
@@ -2636,6 +2642,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     _extraHeaderController.dispose();
     _playlistTransitionController.dispose();
     _searchController.dispose();
+    defaultThemeColorNotifier.removeListener(_handleDefaultColorChange);
     super.dispose();
   }
 
@@ -3240,7 +3247,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                               child: Center(
                                 child: CircularProgressIndicator(
                                   valueColor: AlwaysStoppedAnimation<Color>(
-                                    _defaultThemeColor,
+                                    defaultThemeColorNotifier.value,
                                   ),
                                 ),
                               ),
@@ -3888,7 +3895,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showColorPicker() async {
-    Color tempColor = _defaultThemeColor;
+    Color tempColor = defaultThemeColorNotifier.value;
 
     showDialog(
         context: context,
@@ -4912,7 +4919,8 @@ class SongListTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: _defaultThemeColor.withValues(alpha: 0.2),
+                      color: defaultThemeColorNotifier.value
+                          .withValues(alpha: 0.2),
                       blurRadius: 5,
                       spreadRadius: 1,
                     ),
@@ -5080,7 +5088,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
     _focusNode = FocusNode();
     _focusNode.requestFocus();
-    dominantColor = _defaultThemeColor;
+    dominantColor = defaultThemeColorNotifier.value;
     currentSong = widget.song;
     currentIndex = widget.currentIndex;
     _playPauseController = AnimationController(
@@ -6014,7 +6022,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
       if (mounted) {
         setState(() {
-          dominantColor = Color(colorValue ?? _defaultThemeColor.toARGB32());
+          dominantColor =
+              Color(colorValue ?? defaultThemeColorNotifier.value.toARGB32());
         });
       }
     } catch (e) {
@@ -6023,7 +6032,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         content: 'Error generating dominant color: $e',
       );
       if (mounted) {
-        setState(() => dominantColor = _defaultThemeColor);
+        setState(() => dominantColor = defaultThemeColorNotifier.value);
       }
     }
   }
@@ -7031,7 +7040,7 @@ class _DownloadScreenState extends State<DownloadScreen>
   final FocusNode _searchFocus = FocusNode();
   Track? _currentTrack;
   late AnimationController _breathingController;
-  Color _dominantColor = _defaultThemeColor;
+  Color _dominantColor = defaultThemeColorNotifier.value;
   late FocusNode _focusNode;
   bool _isDownloading = false;
   Song? _tempSong;
@@ -7070,14 +7079,14 @@ class _DownloadScreenState extends State<DownloadScreen>
             final colorValue = await color_extractor.getDominantColor(
                 data: _tempSong!.albumArt!);
             setState(() {
-              _dominantColor =
-                  Color(colorValue ?? _defaultThemeColor.toARGB32());
+              _dominantColor = Color(
+                  colorValue ?? defaultThemeColorNotifier.value.toARGB32());
             });
           } catch (e) {
             NamidaSnackbar(
-                backgroundColor: _defaultThemeColor,
+                backgroundColor: defaultThemeColorNotifier.value,
                 content: 'Error generating dominant color: $e');
-            setState(() => _dominantColor = _defaultThemeColor);
+            setState(() => _dominantColor = defaultThemeColorNotifier.value);
           }
         }
 
@@ -7251,7 +7260,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                   onClose: () {
                     setState(() {
                       _tempSong = null;
-                      _dominantColor = _defaultThemeColor;
+                      _dominantColor = defaultThemeColorNotifier.value;
                     });
                     rust_api.stopSong();
                   },
