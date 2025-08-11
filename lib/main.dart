@@ -554,7 +554,10 @@ class _MyAppState extends State<MyApp> {
   void updateThemeColor(Color newColor) {
     setState(() {
       _themeColor = newColor;
+      _defaultThemeColor = newColor;
     });
+    SharedPreferencesService.instance
+        .setInt('defaultThemeColor', newColor.toARGB32());
   }
 
   @override
@@ -3974,8 +3977,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     if (widget.updateThemeColor != null) {
                                       widget.updateThemeColor!(tempColor);
                                     }
-                                    if (mounted)
+                                    if (mounted) {
                                       Navigator.pop(context, tempColor);
+                                    }
                                   },
                                   backgroundColor: widget.dominantColor,
                                   size: 40,
