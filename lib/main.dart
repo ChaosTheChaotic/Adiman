@@ -3805,6 +3805,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _mSn = false;
   bool _breathe = true;
   bool _useDominantColors = false;
+  int _waveformBars = 1000;
+  double _particleSpawnOpacity = 0.4;
+  double _particleOpacityChangeRate = 0.2;
+  double _particleMinOpacity = 0.1;
+  double _particleMaxOpacity = 0.6;
+  double _particleMinRadius = 2.0;
+  double _particleMaxRadius = 4.0;
+  int _particleCount = 50;
   late FocusNode _escapeNode;
 
   Song? _currentSong;
@@ -3889,6 +3897,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _useDominantColors =
           SharedPreferencesService.instance.getBool('useDominantColors') ??
               true;
+      _waveformBars = SharedPreferencesService.instance.getInt('waveformBars') ?? 1000;
+      _particleSpawnOpacity = SharedPreferencesService.instance.getDouble('particleSpawnOpacity') ?? 0.4;
+      _particleOpacityChangeRate = SharedPreferencesService.instance.getDouble('particleOpacityChangeRate') ?? 0.2;
+      _particleMinOpacity = SharedPreferencesService.instance.getDouble('particleMinOpacity') ?? 0.1;
+      _particleMaxOpacity = SharedPreferencesService.instance.getDouble('particleMaxOpacity') ?? 0.6;
+      _particleMinRadius = SharedPreferencesService.instance.getDouble('particleMinRadius') ?? 2.0;
+      _particleMaxRadius = SharedPreferencesService.instance.getDouble('particleMaxRadius') ?? 4.0;
+      _particleCount = SharedPreferencesService.instance.getInt('particleCount') ?? 50;
     });
     final savedSeparators =
         SharedPreferencesService.instance.getStringList('separators');
@@ -3940,8 +3956,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _saveUseDominantColors(bool value) async {
     await SharedPreferencesService.instance.setBool('useDominantColors', value);
-    useDominantColorsNotifier.value = value; // Add this line
+    useDominantColorsNotifier.value = value;
     setState(() => _useDominantColors = value);
+  }
+
+  Future<void> _saveWaveformBars(int value) async {
+    await SharedPreferencesService.instance.setInt('waveformBars', value);
+    setState(() => _waveformBars = value);
+  }
+  
+  Future<void> _saveParticleSpawnOpacity(double value) async {
+    await SharedPreferencesService.instance.setDouble('particleSpawnOpacity', value);
+    setState(() => _particleSpawnOpacity = value);
+  }
+
+  Future<void> _saveParticleOpacityChangeRate(double value) async {
+    await SharedPreferencesService.instance.setDouble('particleOpacityChangeRate', value);
+    setState(() => _particleOpacityChangeRate = value);
+  }
+
+  Future<void> _saveParticleMinOpacity(double value) async {
+    await SharedPreferencesService.instance.setDouble('particleMinOpacity', value);
+    setState(() => _particleMinOpacity = value);
+  }
+
+  Future<void> _saveParticleMaxOpacity(double value) async {
+    await SharedPreferencesService.instance.setDouble('particleMaxOpacity', value);
+    setState(() => _particleMaxOpacity = value);
+  }
+
+  Future<void> _saveParticleMinRadius(double value) async {
+    await SharedPreferencesService.instance.setDouble('particleMinRadius', value);
+    setState(() => _particleMinRadius = value);
+  }
+  
+  Future<void> _saveParticleMaxRadius(double value) async {
+    await SharedPreferencesService.instance.setDouble('particleMaxRadius', value);
+    setState(() => _particleMaxRadius = value);
+  }
+
+  Future<void> _saveParticleCount(int value) async {
+    await SharedPreferencesService.instance.setInt('particleCount', value);
+    setState(() => _particleCount = value);
   }
 
   Future<void> _clearCache() async {
@@ -4464,6 +4520,111 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           value: _useDominantColors,
                           onChanged: _saveUseDominantColors,
                         ),
+			GlowText(
+			  'Waveform & Particles',
+			  glowColor: _currentColor.withValues(alpha: 0.3),
+			  style: TextStyle(
+			    fontSize: 24,
+			    color: textColor,
+			    fontWeight: FontWeight.w700,
+			  ),
+			),
+			const SizedBox(height: 20),
+			ListTile(
+			  title: Text('Waveform Bars Count', style: TextStyle(color: textColor)),
+			  subtitle: Text('Current: $_waveformBars', style: TextStyle(color: textColor.withAlpha(150))),
+			  trailing: SizedBox(
+			    width: 100,
+			    child: TextField(
+			      keyboardType: TextInputType.number,
+			      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+			      decoration: InputDecoration(
+			        hintText: 'Count',
+			        border: OutlineInputBorder(),
+			        filled: true,
+			        fillColor: Colors.black.withAlpha(50),
+			      ),
+			      style: TextStyle(color: textColor),
+			      onSubmitted: (value) {
+			        if (value.isNotEmpty) {
+			          final intValue = int.tryParse(value) ?? 1000;
+			          _saveWaveformBars(intValue);
+			        }
+			      },
+			    ),
+			  ),
+			),
+			ExpansionTile(
+			  title: Text('Particle Settings', style: TextStyle(color: textColor)),
+			  children: [
+			    _buildParticleSlider(
+			      label: 'Spawn Opacity',
+			      value: _particleSpawnOpacity,
+			      min: 0.0,
+			      max: 1.0,
+			      onChanged: _saveParticleSpawnOpacity,
+			    ),
+			    _buildParticleSlider(
+			      label: 'Opacity Change Rate',
+			      value: _particleOpacityChangeRate,
+			      min: 0.0,
+			      max: 1.0,
+			      onChanged: _saveParticleOpacityChangeRate,
+			    ),
+			    _buildParticleSlider(
+			      label: 'Min Opacity',
+			      value: _particleMinOpacity,
+			      min: 0.0,
+			      max: 1.0,
+			      onChanged: _saveParticleMinOpacity,
+			    ),
+			    _buildParticleSlider(
+			      label: 'Max Opacity',
+			      value: _particleMaxOpacity,
+			      min: 0.0,
+			      max: 1.0,
+			      onChanged: _saveParticleMaxOpacity,
+			    ),
+			    _buildParticleSlider(
+			      label: 'Min Radius',
+			      value: _particleMinRadius,
+			      min: 0.5,
+			      max: 10.0,
+			      onChanged: _saveParticleMinRadius,
+			    ),
+			    _buildParticleSlider(
+			      label: 'Max Radius',
+			      value: _particleMaxRadius,
+			      min: 0.5,
+			      max: 10.0,
+			      onChanged: _saveParticleMaxRadius,
+			    ),
+			    ListTile(
+			      title: Text('Particle Count', style: TextStyle(color: textColor)),
+			      subtitle: Text('Current: $_particleCount', style: TextStyle(color: textColor.withAlpha(150))),
+			      trailing: SizedBox(
+			        width: 100,
+			        child: TextField(
+			          keyboardType: TextInputType.number,
+			          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+			          decoration: InputDecoration(
+			            hintText: 'Count',
+			            border: OutlineInputBorder(),
+			            filled: true,
+			            fillColor: Colors.black.withAlpha(50),
+			          ),
+			          style: TextStyle(color: textColor),
+			          onSubmitted: (value) {
+			            if (value.isNotEmpty) {
+			              final intValue = int.tryParse(value) ?? 50;
+			              _saveParticleCount(intValue);
+			            }
+			          },
+			        ),
+			      ),
+			    ),
+			  ],
+			),
                       ],
                     ),
                   ),
@@ -4506,6 +4667,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ));
+  }
+
+  Widget _buildParticleSlider({
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required Function(double) onChanged,
+  }) {
+    final textColor = _currentColor.computeLuminance() > 0.01
+        ? _currentColor
+        : Theme.of(context).textTheme.bodyLarge?.color;
+    return ListTile(
+      title: Text(label, style: TextStyle(color: textColor)),
+      subtitle: Slider(
+        value: value,
+        min: min,
+        max: max,
+        divisions: 20,
+        activeColor: _currentColor,
+        inactiveColor: Colors.grey,
+        onChanged: (newValue) => onChanged(newValue),
+      ),
+      trailing: Text(value.toStringAsFixed(2), 
+               style: TextStyle(color: textColor)),
+    );
   }
 
   Future<void> _showSeparatorManagementPopup() async {
@@ -5871,18 +6058,18 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
             150 +
         50;
 
-    _particleOptions = ParticleOptions(
-      baseColor: Colors.white,
-      spawnOpacity: 0.4,
-      opacityChangeRate: 0.2,
-      minOpacity: 0.1,
-      maxOpacity: 0.6,
-      spawnMinSpeed: peakSpeed,
-      spawnMaxSpeed: 60 + peakSpeed * 0.7,
-      spawnMinRadius: 2.0,
-      spawnMaxRadius: 4.0,
-      particleCount: 50,
-    );
+      _particleOptions = ParticleOptions(
+        baseColor: Colors.white,
+        spawnOpacity: SharedPreferencesService.instance.getDouble('particleSpawnOpacity') ?? 0.4,
+        opacityChangeRate: SharedPreferencesService.instance.getDouble('particleOpacityChangeRate') ?? 0.2,
+        minOpacity: SharedPreferencesService.instance.getDouble('particleMinOpacity') ?? 0.1,
+        maxOpacity: SharedPreferencesService.instance.getDouble('particleMaxOpacity') ?? 0.6,
+        spawnMinSpeed: peakSpeed,
+        spawnMaxSpeed: 60 + peakSpeed * 0.7,
+        spawnMinRadius: SharedPreferencesService.instance.getDouble('particleMinRadius') ?? 2.0,
+        spawnMaxRadius: SharedPreferencesService.instance.getDouble('particleMaxRadius') ?? 4.0,
+        particleCount: SharedPreferencesService.instance.getInt('particleCount') ?? 50,
+      );
   }
 
   /// Initialize waveform data by decoding the MP3 file.
@@ -5891,9 +6078,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
       _waveformData = List.filled(1000, 0.0);
     });
     try {
+      final waveformBars = SharedPreferencesService.instance.getInt('waveformBars') ?? 1000;
       List<double> waveform = await rust_api.extractWaveformFromMp3(
         mp3Path: currentSong.path,
-        sampleCount: 1000,
+        sampleCount: waveformBars,
         channels: 2,
       );
       if (mounted) {
