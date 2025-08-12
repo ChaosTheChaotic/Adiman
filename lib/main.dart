@@ -254,7 +254,7 @@ class _MiniPlayerState extends State<MiniPlayer>
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    final useDom = useDominantColorsNotifier.value;
+    final bool useDom = useDominantColorsNotifier.value;
     if (song.albumArt == null || !useDom) {
       return defaultThemeColorNotifier.value;
     }
@@ -740,6 +740,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     super.initState();
     dominantColor = defaultThemeColorNotifier.value;
     defaultThemeColorNotifier.addListener(_handleDefaultColorChange);
+    useDominantColorsNotifier.addListener(_updateDominantColor);
     service = globalService;
     _mainFocusNode = FocusNode();
     _searchFocusNode = FocusNode();
@@ -774,6 +775,18 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     _getVimBindings();
 
     _searchController.addListener(_updateSearchResults);
+  }
+
+  void _updateDominantColor() {
+    if (currentSong != null) {
+      _getDominantColor(currentSong!).then((newColor) {
+        if (mounted) {
+          setState(() => dominantColor = newColor);
+        }
+      });
+    } else {
+      setState(() => dominantColor = defaultThemeColorNotifier.value);
+    }
   }
 
   Future<void> _getVimBindings() async {
@@ -1714,8 +1727,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   Future<Color> _getDominantColor(Song song) async {
     final bool useDom =
         SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
-    if (song.albumArt == null || !useDom)
+    if (song.albumArt == null || !useDom) {
       return defaultThemeColorNotifier.value;
+    }
 
     try {
       final colorValue =
@@ -2678,6 +2692,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     _playlistTransitionController.dispose();
     _searchController.dispose();
     defaultThemeColorNotifier.removeListener(_handleDefaultColorChange);
+    useDominantColorsNotifier.removeListener(_updateDominantColor);
     super.dispose();
   }
 
