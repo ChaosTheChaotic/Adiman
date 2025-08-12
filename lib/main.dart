@@ -452,10 +452,13 @@ class _MiniPlayerState extends State<MiniPlayer>
                           width: _isHoveringVol ? 150 : 40,
                           child: Row(
                             children: [
-                              VolumeIcon(
-                                volume: _volume,
-                                dominantColor: effectiveColor,
-                              ),
+			      Hero(
+              		        tag: 'volume-${widget.song.path}',
+              		        child: VolumeIcon(
+              		          volume: _volume,
+              		          dominantColor: effectiveColor,
+              		        ),
+              		      ),
                               if (_isHoveringVol) ...[
                                 const SizedBox(width: 8),
                                 Expanded(
@@ -6864,10 +6867,13 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                           width: _isHoveringVol ? 150 : 40,
                                           child: Row(
                                             children: [
-                                              VolumeIcon(
-                                                volume: _volume,
-                                                dominantColor: dominantColor,
-                                              ),
+					      Hero(
+        				        tag: 'volume-${currentSong.path}',
+        				        child: VolumeIcon(
+        				          volume: _volume,
+        				          dominantColor: dominantColor,
+        				        ),
+        				      ),
                                               if (_isHoveringVol) ...[
                                                 const SizedBox(width: 8),
                                                 Expanded(
