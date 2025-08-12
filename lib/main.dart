@@ -608,6 +608,7 @@ class _MyAppState extends State<MyApp> {
       valueListenable: defaultThemeColorNotifier,
       builder: (context, color, _) {
         return MaterialApp(
+	  scrollBehavior: const MaterialScrollBehavior().copyWith(scrollbars: false),
           title: 'Adiman',
           theme: _buildDynamicTheme(context, color),
           home: Builder(
