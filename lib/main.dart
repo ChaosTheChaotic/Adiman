@@ -452,13 +452,13 @@ class _MiniPlayerState extends State<MiniPlayer>
                           width: _isHoveringVol ? 150 : 40,
                           child: Row(
                             children: [
-			      Hero(
-              		        tag: 'volume-${widget.song.path}',
-              		        child: VolumeIcon(
-              		          volume: _volume,
-              		          dominantColor: effectiveColor,
-              		        ),
-              		      ),
+                              Hero(
+                                tag: 'volume-${widget.song.path}',
+                                child: VolumeIcon(
+                                  volume: _volume,
+                                  dominantColor: effectiveColor,
+                                ),
+                              ),
                               if (_isHoveringVol) ...[
                                 const SizedBox(width: 8),
                                 Expanded(
@@ -573,7 +573,7 @@ Future<void> main() async {
   globalService = AdimanService();
   VolumeController();
   await SharedPreferencesService.init();
-  useDominantColorsNotifier.value = 
+  useDominantColorsNotifier.value =
       SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
   runApp(const MyApp());
 }
@@ -611,7 +611,8 @@ class _MyAppState extends State<MyApp> {
       valueListenable: defaultThemeColorNotifier,
       builder: (context, color, _) {
         return MaterialApp(
-	  scrollBehavior: const MaterialScrollBehavior().copyWith(scrollbars: false),
+          scrollBehavior:
+              const MaterialScrollBehavior().copyWith(scrollbars: false),
           title: 'Adiman',
           theme: _buildDynamicTheme(context, color),
           home: Builder(
@@ -6867,13 +6868,14 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                           width: _isHoveringVol ? 150 : 40,
                                           child: Row(
                                             children: [
-					      Hero(
-        				        tag: 'volume-${currentSong.path}',
-        				        child: VolumeIcon(
-        				          volume: _volume,
-        				          dominantColor: dominantColor,
-        				        ),
-        				      ),
+                                              Hero(
+                                                tag:
+                                                    'volume-${currentSong.path}',
+                                                child: VolumeIcon(
+                                                  volume: _volume,
+                                                  dominantColor: dominantColor,
+                                                ),
+                                              ),
                                               if (_isHoveringVol) ...[
                                                 const SizedBox(width: 8),
                                                 Expanded(
