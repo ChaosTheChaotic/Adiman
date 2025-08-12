@@ -3821,13 +3821,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _escapeNode = FocusNode();
     _escapeNode.requestFocus();
     defaultThemeColorNotifier.addListener(_handleThemeColorChange);
+    useDominantColorsNotifier.addListener(_updateDominantColor);
     _loadChecks();
+  }
+
+  Future<Color> _getDominantColor(Song song) async {
+    final bool useDom = useDominantColorsNotifier.value;
+    if (song.albumArt == null || !useDom) {
+      return defaultThemeColorNotifier.value;
+    }
+
+    try {
+      final colorValue =
+          await color_extractor.getDominantColor(data: song.albumArt!);
+      return Color(colorValue ?? defaultThemeColorNotifier.value.toARGB32());
+    } catch (e) {
+      return defaultThemeColorNotifier.value;
+    }
+  }
+
+  void _updateDominantColor() {
+    if (_currentSong != null) {
+      _getDominantColor(_currentSong!).then((newColor) {
+        if (mounted) {
+          setState(() => _currentColor = newColor);
+        }
+      });
+    } else {
+      setState(() => _currentColor = defaultThemeColorNotifier.value);
+    }
   }
 
   @override
   void dispose() {
     _musicFolderController.dispose();
     defaultThemeColorNotifier.removeListener(_handleThemeColorChange);
+    useDominantColorsNotifier.removeListener(_updateDominantColor);
     super.dispose();
   }
 
