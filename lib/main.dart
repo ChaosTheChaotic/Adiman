@@ -3839,12 +3839,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _escapeNode.requestFocus();
     defaultThemeColorNotifier.addListener(_handleThemeColorChange);
     useDominantColorsNotifier.addListener(_updateDominantColor);
-    _waveformBarsController = TextEditingController(
-      text: _waveformBars.toString()
-    );
-    _particleCountController = TextEditingController(
-      text: _particleCount.toString()
-    );
+    _waveformBarsController =
+        TextEditingController(text: _waveformBars.toString());
+    _particleCountController =
+        TextEditingController(text: _particleCount.toString());
     _loadChecks();
   }
 
@@ -4688,7 +4686,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               children: [
                                 Expanded(
                                   child: TextField(
-				    controller: _waveformBarsController,
+                                    controller: _waveformBarsController,
                                     keyboardType: TextInputType.number,
                                     inputFormatters: [
                                       FilteringTextInputFormatter.digitsOnly
@@ -4788,7 +4786,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   children: [
                                     Expanded(
                                       child: TextField(
-					controller: _particleCountController,
+                                        controller: _particleCountController,
                                         keyboardType: TextInputType.number,
                                         inputFormatters: [
                                           FilteringTextInputFormatter.digitsOnly
