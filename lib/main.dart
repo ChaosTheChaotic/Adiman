@@ -4458,7 +4458,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Stack(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 80.0),
+                    padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, (_currentSong != null ? 80.0 : 0.0)),
                     child: ListView(
                       children: [
                         GlowText(
