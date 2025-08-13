@@ -6,7 +6,10 @@ use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use regex::Regex;
-use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source, cpal::traits::{DeviceTrait, HostTrait}};
+use rodio::{
+    cpal::traits::{DeviceTrait, HostTrait},
+    Decoder, OutputStream, OutputStreamBuilder, Sink, Source,
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::cmp::max;
@@ -100,11 +103,7 @@ pub fn get_cvol() -> f32 {
 pub fn list_audio_devices() -> Vec<String> {
     let host = rodio::cpal::default_host();
     match host.devices() {
-        Ok(devices) => {
-            devices
-                .filter_map(|d| d.name().ok())
-                .collect()
-        }
+        Ok(devices) => devices.filter_map(|d| d.name().ok()).collect(),
         Err(e) => {
             eprintln!("Error listing audio devices: {}", e);
             Vec::new()
