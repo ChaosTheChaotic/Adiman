@@ -3796,7 +3796,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isClearingCache = false;
   bool _isReloadingLibrary = false;
-  bool _isChangingParticleColor = false;
+  final bool _isChangingParticleColor = false;
   Color _particleBaseColor = Colors.white;
   final bool _isChangingColor = false;
   final bool _isManagingSeparators = false;
@@ -3922,7 +3922,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _particleCount =
           SharedPreferencesService.instance.getInt('particleCount') ?? 50;
       _particleBaseColor = Color(
-        SharedPreferencesService.instance.getInt('particleBaseColor') ?? Colors.white.value,
+        SharedPreferencesService.instance.getInt('particleBaseColor') ?? Colors.white.toARGB32(),
       );
     });
     final savedSeparators =
@@ -4028,10 +4028,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveParticleBaseColor(Color color) async {
     await SharedPreferencesService.instance.setInt('particleBaseColor', color.toARGB32());
     setState(() => _particleBaseColor = color);
-  }
-
-  void _resetParticleBaseColor() {
-    _saveParticleBaseColor(Colors.white);
   }
 
   Future<void> _clearCache() async {
