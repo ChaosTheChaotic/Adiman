@@ -3822,6 +3822,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late Color _currentColor;
 
   late TextEditingController _musicFolderController;
+  late TextEditingController _waveformBarsController;
+  late TextEditingController _particleCountController;
 
   final GlobalKey<_MiniPlayerState> _miniPlayerKey =
       GlobalKey<_MiniPlayerState>();
@@ -3837,6 +3839,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _escapeNode.requestFocus();
     defaultThemeColorNotifier.addListener(_handleThemeColorChange);
     useDominantColorsNotifier.addListener(_updateDominantColor);
+    _waveformBarsController = TextEditingController(
+      text: _waveformBars.toString()
+    );
+    _particleCountController = TextEditingController(
+      text: _particleCount.toString()
+    );
     _loadChecks();
   }
 
@@ -3872,6 +3880,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _musicFolderController.dispose();
     defaultThemeColorNotifier.removeListener(_handleThemeColorChange);
     useDominantColorsNotifier.removeListener(_updateDominantColor);
+    _waveformBarsController.dispose();
+    _particleCountController.dispose();
     super.dispose();
   }
 
@@ -3983,6 +3993,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveWaveformBars(int value) async {
     await SharedPreferencesService.instance.setInt('waveformBars', value);
     setState(() => _waveformBars = value);
+    _waveformBarsController.text = '';
   }
 
   Future<void> _saveParticleSpawnOpacity(double value) async {
@@ -4024,6 +4035,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveParticleCount(int value) async {
     await SharedPreferencesService.instance.setInt('particleCount', value);
     setState(() => _particleCount = value);
+    _particleCountController.text = '';
   }
 
   Future<void> _saveParticleBaseColor(Color color) async {
@@ -4671,28 +4683,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style:
                                   TextStyle(color: textColor.withAlpha(150))),
                           trailing: SizedBox(
-                            width: 100,
-                            child: TextField(
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly
+                            width: 150,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+				    controller: _waveformBarsController,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly
+                                    ],
+                                    decoration: InputDecoration(
+                                      hintText: (SharedPreferencesService
+                                                  .instance
+                                                  .getInt('waveformBars') ??
+                                              1000)
+                                          .toString(),
+                                      border: OutlineInputBorder(),
+                                      filled: true,
+                                      fillColor: Colors.black.withAlpha(50),
+                                    ),
+                                    style: TextStyle(color: textColor),
+                                    onSubmitted: (value) {
+                                      if (value.isNotEmpty) {
+                                        final intValue =
+                                            int.tryParse(value) ?? 1000;
+                                        _saveWaveformBars(intValue);
+                                      }
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildResetButton(
+                                  onPressed: () async {
+                                    await _saveWaveformBars(1000);
+                                    setState(() {});
+                                  },
+                                ),
                               ],
-                              decoration: InputDecoration(
-                                hintText: (SharedPreferencesService.instance
-                                            .getInt('waveformBars') ??
-                                        1000)
-                                    .toString(),
-                                border: OutlineInputBorder(),
-                                filled: true,
-                                fillColor: Colors.black.withAlpha(50),
-                              ),
-                              style: TextStyle(color: textColor),
-                              onSubmitted: (value) {
-                                if (value.isNotEmpty) {
-                                  final intValue = int.tryParse(value) ?? 1000;
-                                  _saveWaveformBars(intValue);
-                                }
-                              },
                             ),
                           ),
                         ),
@@ -4706,6 +4734,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               min: 0.0,
                               max: 1.0,
                               onChanged: _saveParticleSpawnOpacity,
+                              defaultValue: 0.4,
                             ),
                             _buildParticleSlider(
                               label: 'Opacity Change Rate',
@@ -4713,6 +4742,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               min: 0.0,
                               max: 1.0,
                               onChanged: _saveParticleOpacityChangeRate,
+                              defaultValue: 0.2,
                             ),
                             _buildParticleSlider(
                               label: 'Min Opacity',
@@ -4720,6 +4750,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               min: 0.0,
                               max: 1.0,
                               onChanged: _saveParticleMinOpacity,
+                              defaultValue: 0.1,
                             ),
                             _buildParticleSlider(
                               label: 'Max Opacity',
@@ -4727,6 +4758,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               min: 0.0,
                               max: 1.0,
                               onChanged: _saveParticleMaxOpacity,
+                              defaultValue: 0.6,
                             ),
                             _buildParticleSlider(
                               label: 'Min Radius',
@@ -4734,6 +4766,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               min: 0.5,
                               max: 10.0,
                               onChanged: _saveParticleMinRadius,
+                              defaultValue: 2.0,
                             ),
                             _buildParticleSlider(
                               label: 'Max Radius',
@@ -4741,6 +4774,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               min: 0.5,
                               max: 10.0,
                               onChanged: _saveParticleMaxRadius,
+                              defaultValue: 4.0,
                             ),
                             ListTile(
                               title: Text('Particle Count',
@@ -4749,29 +4783,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   style: TextStyle(
                                       color: textColor.withAlpha(150))),
                               trailing: SizedBox(
-                                width: 100,
-                                child: TextField(
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly
+                                width: 150,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+					controller: _particleCountController,
+                                        keyboardType: TextInputType.number,
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.digitsOnly
+                                        ],
+                                        decoration: InputDecoration(
+                                          hintText: (SharedPreferencesService
+                                                      .instance
+                                                      .getInt(
+                                                          'particleCount') ??
+                                                  50)
+                                              .toString(),
+                                          border: OutlineInputBorder(),
+                                          filled: true,
+                                          fillColor: Colors.black.withAlpha(50),
+                                        ),
+                                        style: TextStyle(color: textColor),
+                                        onSubmitted: (value) {
+                                          if (value.isNotEmpty) {
+                                            final intValue =
+                                                int.tryParse(value) ?? 50;
+                                            _saveParticleCount(intValue);
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _buildResetButton(
+                                      onPressed: () async {
+                                        await _saveParticleCount(50);
+                                        setState(() {});
+                                      },
+                                    ),
                                   ],
-                                  decoration: InputDecoration(
-                                    hintText: (SharedPreferencesService.instance
-                                                .getInt('particleCount') ??
-                                            50)
-                                        .toString(),
-                                    border: OutlineInputBorder(),
-                                    filled: true,
-                                    fillColor: Colors.black.withAlpha(50),
-                                  ),
-                                  style: TextStyle(color: textColor),
-                                  onSubmitted: (value) {
-                                    if (value.isNotEmpty) {
-                                      final intValue =
-                                          int.tryParse(value) ?? 50;
-                                      _saveParticleCount(intValue);
-                                    }
-                                  },
                                 ),
                               ),
                             ),
@@ -4821,12 +4871,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ));
   }
 
+  Widget _buildResetButton({required VoidCallback onPressed}) {
+    return IconButton(
+      icon: GlowIcon(
+        Broken.refresh,
+        size: 20,
+        color: _currentColor,
+        glowColor: _currentColor.withAlpha(80),
+      ),
+      onPressed: onPressed,
+    );
+  }
+
   Widget _buildParticleSlider({
     required String label,
     required double value,
     required double min,
     required double max,
     required Function(double) onChanged,
+    required double defaultValue,
   }) {
     final textColor = _currentColor.computeLuminance() > 0.01
         ? _currentColor
@@ -4842,8 +4905,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         inactiveColor: Colors.grey,
         onChanged: (newValue) => onChanged(newValue),
       ),
-      trailing:
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
           Text(value.toStringAsFixed(2), style: TextStyle(color: textColor)),
+          const SizedBox(width: 8),
+          _buildResetButton(
+            onPressed: () => onChanged(defaultValue),
+          ),
+        ],
+      ),
     );
   }
 
