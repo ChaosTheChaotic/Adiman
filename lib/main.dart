@@ -3922,7 +3922,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _particleCount =
           SharedPreferencesService.instance.getInt('particleCount') ?? 50;
       _particleBaseColor = Color(
-        SharedPreferencesService.instance.getInt('particleBaseColor') ?? Colors.white.toARGB32(),
+        SharedPreferencesService.instance.getInt('particleBaseColor') ??
+            Colors.white.toARGB32(),
       );
     });
     final savedSeparators =
@@ -4026,7 +4027,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveParticleBaseColor(Color color) async {
-    await SharedPreferencesService.instance.setInt('particleBaseColor', color.toARGB32());
+    await SharedPreferencesService.instance
+        .setInt('particleBaseColor', color.toARGB32());
     setState(() => _particleBaseColor = color);
   }
 
@@ -4199,7 +4201,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _showParticleColorPicker() async {
     Color tempColor = _particleBaseColor;
-  
+
     showDialog(
       context: context,
       builder: (context) {
@@ -4238,7 +4240,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
-                              color: Theme.of(context).textTheme.bodyLarge?.color,
+                              color:
+                                  Theme.of(context).textTheme.bodyLarge?.color,
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -4261,7 +4264,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               DynamicIconButton(
                                 icon: Broken.refresh,
                                 onPressed: () {
-                                  setStateDialog(() => tempColor = Colors.white);
+                                  setStateDialog(
+                                      () => tempColor = Colors.white);
                                 },
                                 backgroundColor: _currentColor,
                                 size: 40,
@@ -6207,7 +6211,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         50;
 
     _particleOptions = ParticleOptions(
-      baseColor: Color(SharedPreferencesService.instance.getInt('particleBaseColor') ?? Colors.white.toARGB32()),
+      baseColor: Color(
+          SharedPreferencesService.instance.getInt('particleBaseColor') ??
+              Colors.white.toARGB32()),
       spawnOpacity:
           SharedPreferencesService.instance.getDouble('particleSpawnOpacity') ??
               0.4,
