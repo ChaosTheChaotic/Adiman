@@ -4564,7 +4564,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 FilteringTextInputFormatter.digitsOnly
                               ],
                               decoration: InputDecoration(
-                                hintText: 'Count',
+                                hintText: (SharedPreferencesService.instance
+                                            .getInt('waveformBars') ??
+                                        1000)
+                                    .toString(),
                                 border: OutlineInputBorder(),
                                 filled: true,
                                 fillColor: Colors.black.withAlpha(50),
@@ -4639,7 +4642,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     FilteringTextInputFormatter.digitsOnly
                                   ],
                                   decoration: InputDecoration(
-                                    hintText: 'Count',
+                                    hintText: (SharedPreferencesService.instance
+                                                .getInt('particleCount') ??
+                                            50)
+                                        .toString(),
                                     border: OutlineInputBorder(),
                                     filled: true,
                                     fillColor: Colors.black.withAlpha(50),
