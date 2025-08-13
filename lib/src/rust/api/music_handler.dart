@@ -15,6 +15,9 @@ Future<void> setFadein({required bool value}) =>
 
 Future<double> getCvol() => RustLib.instance.api.crateApiMusicHandlerGetCvol();
 
+Future<List<String>> listAudioDevices() =>
+    RustLib.instance.api.crateApiMusicHandlerListAudioDevices();
+
 Future<bool> initializePlayer() =>
     RustLib.instance.api.crateApiMusicHandlerInitializePlayer();
 

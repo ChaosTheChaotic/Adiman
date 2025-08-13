@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1686699472;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1046340059;
 
 // Section: executor
 
@@ -544,6 +544,39 @@ fn wire__crate__api__music_handler__is_playing_impl(
             move |context| {
                 transform_result_sse::<_, ()>((move || {
                     let output_ok = Result::<_, ()>::Ok(crate::api::music_handler::is_playing())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__music_handler__list_audio_devices_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "list_audio_devices",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::music_handler::list_audio_devices())?;
                     Ok(output_ok)
                 })())
             }
@@ -1356,55 +1389,61 @@ fn pde_ffi_dispatcher_primary_impl(
             data_len,
         ),
         15 => wire__crate__api__music_handler__is_playing_impl(port, ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__music_handler__pause_song_impl(port, ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__music_handler__play_song_impl(port, ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__music_handler__player_state_default_impl(
+        16 => wire__crate__api__music_handler__list_audio_devices_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        19 => wire__crate__api__music_handler__remove_separator_impl(
+        17 => wire__crate__api__music_handler__pause_song_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__music_handler__play_song_impl(port, ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__music_handler__player_state_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => wire__crate__api__music_handler__reset_separators_impl(
+        20 => wire__crate__api__music_handler__remove_separator_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__music_handler__resume_song_impl(port, ptr, rust_vec_len, data_len),
-        22 => wire__crate__api__music_handler__scan_music_directory_impl(
+        21 => wire__crate__api__music_handler__reset_separators_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        23 => {
+        22 => wire__crate__api__music_handler__resume_song_impl(port, ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__music_handler__scan_music_directory_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        24 => {
             wire__crate__api__music_handler__search_lyrics_impl(port, ptr, rust_vec_len, data_len)
         }
-        24 => wire__crate__api__music_handler__seek_to_position_impl(
+        25 => wire__crate__api__music_handler__seek_to_position_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        25 => wire__crate__api__music_handler__set_fadein_impl(port, ptr, rust_vec_len, data_len),
-        26 => {
+        26 => wire__crate__api__music_handler__set_fadein_impl(port, ptr, rust_vec_len, data_len),
+        27 => {
             wire__crate__api__music_handler__set_separators_impl(port, ptr, rust_vec_len, data_len)
         }
-        27 => wire__crate__api__music_handler__set_volume_impl(port, ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__music_handler__skip_to_next_impl(port, ptr, rust_vec_len, data_len),
-        29 => wire__crate__api__music_handler__skip_to_previous_impl(
+        28 => wire__crate__api__music_handler__set_volume_impl(port, ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__music_handler__skip_to_next_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__music_handler__skip_to_previous_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        30 => wire__crate__api__music_handler__stop_song_impl(port, ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__music_handler__stop_song_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
