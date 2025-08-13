@@ -3796,6 +3796,8 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isClearingCache = false;
   bool _isReloadingLibrary = false;
+  bool _isChangingParticleColor = false;
+  Color _particleBaseColor = Colors.white;
   final bool _isChangingColor = false;
   final bool _isManagingSeparators = false;
   bool _autoConvert = false;
@@ -3919,6 +3921,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               4.0;
       _particleCount =
           SharedPreferencesService.instance.getInt('particleCount') ?? 50;
+      _particleBaseColor = Color(
+        SharedPreferencesService.instance.getInt('particleBaseColor') ?? Colors.white.value,
+      );
     });
     final savedSeparators =
         SharedPreferencesService.instance.getStringList('separators');
@@ -4018,6 +4023,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveParticleCount(int value) async {
     await SharedPreferencesService.instance.setInt('particleCount', value);
     setState(() => _particleCount = value);
+  }
+
+  Future<void> _saveParticleBaseColor(Color color) async {
+    await SharedPreferencesService.instance.setInt('particleBaseColor', color.toARGB32());
+    setState(() => _particleBaseColor = color);
+  }
+
+  void _resetParticleBaseColor() {
+    _saveParticleBaseColor(Colors.white);
   }
 
   Future<void> _clearCache() async {
@@ -4185,6 +4199,99 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           );
         });
+  }
+
+  Future<void> _showParticleColorPicker() async {
+    Color tempColor = _particleBaseColor;
+  
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: _AnimatedPopupWrapper(
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          _currentColor.withAlpha(30),
+                          Colors.black.withAlpha(200),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: _currentColor.withAlpha(100),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GlowText(
+                            'Particle Base Color',
+                            glowColor: _currentColor.withAlpha(80),
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: Theme.of(context).textTheme.bodyLarge?.color,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          ColorPicker(
+                            pickerColor: tempColor,
+                            onColorChanged: (color) {
+                              setStateDialog(() => tempColor = color);
+                            },
+                            displayThumbColor: true,
+                            enableAlpha: false,
+                            labelTypes: const [],
+                            pickerAreaHeightPercent: 0.7,
+                            hexInputBar: true,
+                            portraitOnly: true,
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              DynamicIconButton(
+                                icon: Broken.refresh,
+                                onPressed: () {
+                                  setStateDialog(() => tempColor = Colors.white);
+                                },
+                                backgroundColor: _currentColor,
+                                size: 40,
+                              ),
+                              DynamicIconButton(
+                                icon: Broken.tick,
+                                onPressed: () async {
+                                  await _saveParticleBaseColor(tempColor);
+                                  if (mounted) Navigator.pop(context);
+                                },
+                                backgroundColor: _currentColor,
+                                size: 40,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _buildSettingsSwitch(
@@ -4492,6 +4599,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           label: 'Default Theme Color',
                           isLoading: _isChangingColor,
                           onPressed: _showColorPicker,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildActionButton(
+                          icon: Broken.colors_square,
+                          label: 'Particle base color',
+                          isLoading: _isChangingParticleColor,
+                          onPressed: _showParticleColorPicker,
                         ),
                         const SizedBox(height: 16),
                         _buildActionButton(
@@ -6097,7 +6211,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         50;
 
     _particleOptions = ParticleOptions(
-      baseColor: Colors.white,
+      baseColor: Color(SharedPreferencesService.instance.getInt('particleBaseColor') ?? Colors.white.toARGB32()),
       spawnOpacity:
           SharedPreferencesService.instance.getDouble('particleSpawnOpacity') ??
               0.4,
