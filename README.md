@@ -78,6 +78,8 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 - cdparanoia (this is required for my cd_audio library to build as it uses cdda_interface.h)
 - git
 - GTK
+- rustup
+- Working rust
 ## Build steps
 1. Git clone the repo and go into the directory
 ```
