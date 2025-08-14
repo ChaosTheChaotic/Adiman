@@ -26,6 +26,49 @@ use std::sync::{
 use std::thread;
 use std::time::{Duration, Instant};
 use walkdir::WalkDir;
+use std::ffi::CStr;
+use cd_audio::{sget_devices, sverify_audio, sget_track_meta};
+
+pub fn list_audio_cds() -> Vec<String> {
+    let sdev_list = sget_devices();
+    sdev_list.inner.clone().into_iter()
+        .filter(|dev| sverify_audio(dev.clone()))
+        .collect()
+}
+
+pub fn get_cd_track_metadata(device: String, track: u32) -> SongMetadata {
+    let track_i32 = track as i32;
+    let meta = sget_track_meta(device.clone(), track_i32);
+    
+    // Convert C strings to Rust strings safely
+    let title = if meta.inner.title.is_null() {
+        "Unknown title".to_string()
+    } else {
+        unsafe { CStr::from_ptr(meta.inner.title).to_string_lossy().into_owned() }
+    };
+    
+    let artist = if meta.inner.artist.is_null() {
+        "Unknown artist".to_string()
+    } else {
+        unsafe { CStr::from_ptr(meta.inner.artist).to_string_lossy().into_owned() }
+    };
+    
+    let genre = if meta.inner.genre.is_null() {
+        "Unknown genre".to_string()
+    } else {
+        unsafe { CStr::from_ptr(meta.inner.genre).to_string_lossy().into_owned() }
+    };
+
+    SongMetadata {
+        title,
+        artist,
+        album: "Unknown Album".to_string(), // CD tracks don't have individual album info
+        duration: 0, // Duration not available from CD metadata
+        path: format!("cdda://{}/track{}", device, track),
+        album_art: None, // CD tracks don't have embedded album art
+        genre,
+    }
+}
 
 fn get_mp3_cache_dir() -> PathBuf {
     let mut cache_dir = std::env::temp_dir();
