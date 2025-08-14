@@ -2976,12 +2976,15 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     Navigator.pop(context); // Close CD selection dialog
     setState(() => isLoading = true);
     int tracks = await rust_api.trackNum(device: device);
+    print(tracks);
 
     try {
       List<Song> cdTracks = [];
       for (int i = 0; i <= tracks; i++) {
+	print(i);
           final trackMeta =
               await rust_api.getCdTrackMetadata(device: device, track: i);
+	  print(trackMeta);
           final track = Song.fromMetadata(trackMeta);
           cdTracks.add(track);
         }
