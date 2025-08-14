@@ -1,6 +1,7 @@
 use crate::api::utils::fpre;
 use atomic_float::AtomicF32;
 use audiotags::Tag;
+use cd_audio::{sget_devices, sget_track_meta, strack_duration, strack_num, sverify_audio};
 use flutter_rust_bridge::frb;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
@@ -14,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::cmp::max;
 use std::collections::{HashMap, HashSet};
+use std::ffi::CStr;
 use std::fs;
 use std::io::{BufReader, Cursor, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
@@ -26,8 +28,6 @@ use std::sync::{
 use std::thread;
 use std::time::{Duration, Instant};
 use walkdir::WalkDir;
-use std::ffi::CStr;
-use cd_audio::{sget_devices, sverify_audio, sget_track_meta, strack_num, strack_duration};
 
 pub fn track_num(device: String) -> i32 {
     return strack_num(device);
@@ -35,7 +35,10 @@ pub fn track_num(device: String) -> i32 {
 
 pub fn list_audio_cds() -> Vec<String> {
     let sdev_list = sget_devices();
-    sdev_list.inner.clone().into_iter()
+    sdev_list
+        .inner
+        .clone()
+        .into_iter()
         .filter(|dev| sverify_audio(dev.clone()))
         .collect()
 }
@@ -44,31 +47,43 @@ pub fn get_cd_track_metadata(device: String, track: u32) -> SongMetadata {
     let track_i32 = track as i32;
     let meta = sget_track_meta(device.clone(), track_i32);
     let duration = strack_duration(device.clone(), track_i32) as u64;
-    
+
     // Convert C strings to Rust strings safely
     let title = if meta.inner.title.is_null() {
         "Unknown title".to_string()
     } else {
-        unsafe { CStr::from_ptr(meta.inner.title).to_string_lossy().into_owned() }
+        unsafe {
+            CStr::from_ptr(meta.inner.title)
+                .to_string_lossy()
+                .into_owned()
+        }
     };
-    
+
     let artist = if meta.inner.artist.is_null() {
         "Unknown artist".to_string()
     } else {
-        unsafe { CStr::from_ptr(meta.inner.artist).to_string_lossy().into_owned() }
+        unsafe {
+            CStr::from_ptr(meta.inner.artist)
+                .to_string_lossy()
+                .into_owned()
+        }
     };
-    
+
     let genre = if meta.inner.genre.is_null() {
         "Unknown genre".to_string()
     } else {
-        unsafe { CStr::from_ptr(meta.inner.genre).to_string_lossy().into_owned() }
+        unsafe {
+            CStr::from_ptr(meta.inner.genre)
+                .to_string_lossy()
+                .into_owned()
+        }
     };
 
     SongMetadata {
         title,
         artist,
         album: "Unknown Album".to_string(), // CD tracks don't have individual album info
-        duration, // Duration not available from CD metadata directly
+        duration,                           // Duration not available from CD metadata directly
         path: format!("cdda://{}/track{}", device, track),
         album_art: None, // CD tracks don't have embedded album art
         genre,

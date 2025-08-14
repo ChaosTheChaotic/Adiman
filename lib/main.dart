@@ -2979,8 +2979,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     print("tracks: " + tracks.toString());
     if (tracks <= -1) {
       ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
-	backgroundColor: dominantColor,
-	content: 'trackNum returned ${tracks} due to failure',
+        backgroundColor: dominantColor,
+        content: 'trackNum returned ${tracks} due to failure',
       ));
       return;
     }
@@ -2988,13 +2988,16 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     try {
       List<Song> cdTracks = [];
       for (int i = 1; i <= tracks; i++) {
-	print("Checking track" + i.toString());
-          final trackMeta =
-              await rust_api.getCdTrackMetadata(device: device, track: i);
-	  print("TrackMeta for track " + i.toString() + "= " + trackMeta.toString());
-          final track = Song.fromMetadata(trackMeta);
-          cdTracks.add(track);
-        }
+        print("Checking track" + i.toString());
+        final trackMeta =
+            await rust_api.getCdTrackMetadata(device: device, track: i);
+        print("TrackMeta for track " +
+            i.toString() +
+            "= " +
+            trackMeta.toString());
+        final track = Song.fromMetadata(trackMeta);
+        cdTracks.add(track);
+      }
 
       if (cdTracks.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
