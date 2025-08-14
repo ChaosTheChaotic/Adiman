@@ -55,7 +55,9 @@ class Song {
       path: metadata.path as String,
       albumArt: metadata.albumArt as Uint8List?,
       //duration: Duration(seconds: (metadata.duration as BigInt).toInt()),
-      duration: metadata.duration > 0 ? Duration(seconds: (metadata.duration as BigInt).toInt()) : Duration.zero,
+      duration: metadata.duration as BigInt > BigInt.from(0) 
+          ? Duration(seconds: (metadata.duration as BigInt).toInt())
+          : Duration.zero,
       genre: metadata.genre as String,
     );
   }
