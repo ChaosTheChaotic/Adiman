@@ -92,6 +92,6 @@ flutter_rust_bridge_codegen generate && flutter build linux --release
 build/linux/<your_architecture>/release/bundle/adiman
 ```
 
-## Helpful people
+# Helpful people
 - MSOB7Y (the creator of namida) for the inspiration and motivation for this and where I got the icons from
 - DuckTheCrowolf (thevietnamesecrow on discord) for making the logo
