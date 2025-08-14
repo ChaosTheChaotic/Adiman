@@ -2839,6 +2839,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   }
 
   Future<void> _showAudioCdSelection() async {
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      _scaffoldKey.currentState?.closeDrawer();
+    }
     setState(() => isLoading = true);
     try {
       final cds = await rust_api.listAudioCds();
