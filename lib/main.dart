@@ -2838,6 +2838,186 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     );
   }
 
+  Future<void> _showAudioCdSelection() async {
+    setState(() => isLoading = true);
+    try {
+      final cds = await rust_api.listAudioCds();
+      if (!mounted) return;
+      
+      if (cds.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+          backgroundColor: dominantColor,
+          content: 'No audio CDs found',
+        ));
+        return;
+      }
+  
+      await showDialog(
+        context: context,
+        builder: (context) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: _AnimatedPopupWrapper(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(28),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        dominantColor.withValues(alpha: 0.15),
+                        Colors.black.withValues(alpha: 0.6),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: dominantColor.withValues(alpha: 0.3),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GlowText(
+                          'Audio CDs',
+                          glowColor: dominantColor.withValues(alpha: 0.3),
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: dominantColor.computeLuminance() > 0.01
+                                ? dominantColor
+                                : Theme.of(context).textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ...cds.map(
+                          (device) => Material(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(15),
+                            child: InkWell(
+                              onTap: () => _loadCdTracks(device),
+                              borderRadius: BorderRadius.circular(15),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(15),
+                                  border: Border.all(
+                                    color: dominantColor.withValues(alpha: 0.2),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: Row(
+                                  children: [
+                                    GlowIcon(
+                                      Broken.cd,
+                                      color: dominantColor.computeLuminance() > 0.01
+                                          ? dominantColor
+                                          : Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.color,
+                                      blurRadius: 8,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Text(
+                                        'CD Drive: ${device.split('/').last}',
+                                        style: TextStyle(
+                                          color: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.color,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+        backgroundColor: dominantColor,
+        content: 'Error loading CDs: $e',
+      ));
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+  
+  Future<void> _loadCdTracks(String device) async {
+    Navigator.pop(context); // Close CD selection dialog
+    setState(() => isLoading = true);
+    int tracks = await rust_api.trackNum(device: device);
+    
+    try {
+      List<Song> cdTracks = [];
+      for (int i = 1; i <= tracks; i++) {
+        try {
+          final trackMeta = await rust_api.getCdTrackMetadata(device: device, track: i);
+	  final track = Song.fromMetadata(trackMeta);
+          cdTracks.add(track);
+        } catch (e) {
+          // Stop when we get an error (no more tracks)
+          break;
+        }
+      }
+  
+      if (cdTracks.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+          backgroundColor: dominantColor,
+          content: 'No tracks found on CD',
+        ));
+        return;
+      }
+  
+      setState(() {
+        songs = cdTracks;
+        displayedSongs = cdTracks;
+        _currentPlaylistName = 'Audio CD';
+        currentMusicDirectory = 'cdda://$device';
+      });
+  
+      // Animate in CD tracks
+      Future.delayed(Duration(milliseconds: 100), () {
+        if (mounted) {
+          setState(() {
+            for (var track in cdTracks) {
+              _visibleSongs[track.path] = true;
+            }
+          });
+        }
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+        backgroundColor: dominantColor,
+        content: 'Error loading CD tracks: $e',
+      ));
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
   Widget _buildLyricsSectionHeader(BuildContext context) {
     final iconColor =
         dominantColor.computeLuminance() > 0.01 ? dominantColor : Colors.white;
@@ -3259,6 +3439,11 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   );
                                 },
                               ),
+			      _buildMenuTile(
+			        icon: Broken.cd,
+			        title: 'Audio CD',
+			        onTap: _showAudioCdSelection,
+			      ),
                             ],
                           ),
                         ),

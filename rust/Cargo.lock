@@ -161,9 +161,9 @@ dependencies = [
 
 [[package]]
 name = "arbitrary"
-version = "1.4.1"
+version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dde20b3d026af13f561bdd0f15edf01fc734f0dafcedbaf42bba506a9517f223"
+checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
 
 [[package]]
 name = "arg_enum_proc_macro"
@@ -412,7 +412,7 @@ dependencies = [
 [[package]]
 name = "cd_audio"
 version = "0.1.0"
-source = "git+https://github.com/ChaosTheChaotic/cd_audio.git#3a9f5019deb6446971bba5d8dbc25ab7118d4d7b"
+source = "git+https://github.com/ChaosTheChaotic/cd_audio.git#f993a1ba4aaef69c2af8fc8b442566023da731ec"
 dependencies = [
  "cmake",
  "pkg-config",

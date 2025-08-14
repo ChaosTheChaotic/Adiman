@@ -27,7 +27,11 @@ use std::thread;
 use std::time::{Duration, Instant};
 use walkdir::WalkDir;
 use std::ffi::CStr;
-use cd_audio::{sget_devices, sverify_audio, sget_track_meta};
+use cd_audio::{sget_devices, sverify_audio, sget_track_meta, strack_num};
+
+pub fn track_num(device: String) -> i32 {
+    return strack_num(device);
+}
 
 pub fn list_audio_cds() -> Vec<String> {
     let sdev_list = sget_devices();
