@@ -2976,15 +2976,22 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     Navigator.pop(context); // Close CD selection dialog
     setState(() => isLoading = true);
     int tracks = await rust_api.trackNum(device: device);
-    print(tracks);
+    print("tracks: " + tracks.toString());
+    if (tracks <= -1) {
+      ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+	backgroundColor: dominantColor,
+	content: 'trackNum returned -1 due to failure',
+      ));
+      return;
+    }
 
     try {
       List<Song> cdTracks = [];
       for (int i = 0; i <= tracks; i++) {
-	print(i);
+	print("Checking track" + i.toString());
           final trackMeta =
               await rust_api.getCdTrackMetadata(device: device, track: i);
-	  print(trackMeta);
+	  print("TrackMeta for track " + i.toString() + "= " + trackMeta.toString());
           final track = Song.fromMetadata(trackMeta);
           cdTracks.add(track);
         }
