@@ -27,7 +27,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 use walkdir::WalkDir;
 use std::ffi::CStr;
-use cd_audio::{sget_devices, sverify_audio, sget_track_meta, strack_num};
+use cd_audio::{sget_devices, sverify_audio, sget_track_meta, strack_num, strack_duration};
 
 pub fn track_num(device: String) -> i32 {
     return strack_num(device);
@@ -43,6 +43,7 @@ pub fn list_audio_cds() -> Vec<String> {
 pub fn get_cd_track_metadata(device: String, track: u32) -> SongMetadata {
     let track_i32 = track as i32;
     let meta = sget_track_meta(device.clone(), track_i32);
+    let duration = strack_duration(device.clone(), track_i32) as u64;
     
     // Convert C strings to Rust strings safely
     let title = if meta.inner.title.is_null() {
@@ -67,7 +68,7 @@ pub fn get_cd_track_metadata(device: String, track: u32) -> SongMetadata {
         title,
         artist,
         album: "Unknown Album".to_string(), // CD tracks don't have individual album info
-        duration: 0, // Duration not available from CD metadata
+        duration, // Duration not available from CD metadata directly
         path: format!("cdda://{}/track{}", device, track),
         album_art: None, // CD tracks don't have embedded album art
         genre,
