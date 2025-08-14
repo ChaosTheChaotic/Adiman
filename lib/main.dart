@@ -2980,16 +2980,11 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     try {
       List<Song> cdTracks = [];
       for (int i = 0; i <= tracks; i++) {
-        try {
           final trackMeta =
               await rust_api.getCdTrackMetadata(device: device, track: i);
           final track = Song.fromMetadata(trackMeta);
           cdTracks.add(track);
-        } catch (e) {
-          // Stop when we get an error (no more tracks)
-          break;
         }
-      }
 
       if (cdTracks.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
