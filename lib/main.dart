@@ -2979,7 +2979,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
 
     try {
       List<Song> cdTracks = [];
-      for (int i = 1; i <= tracks; i++) {
+      for (int i = 0; i <= tracks; i++) {
         try {
           final trackMeta =
               await rust_api.getCdTrackMetadata(device: device, track: i);
