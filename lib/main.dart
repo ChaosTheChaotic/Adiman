@@ -2980,7 +2980,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     if (tracks <= -1) {
       ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
 	backgroundColor: dominantColor,
-	content: 'trackNum returned -1 due to failure',
+	content: 'trackNum returned ${tracks} due to failure',
       ));
       return;
     }
