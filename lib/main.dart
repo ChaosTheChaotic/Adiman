@@ -55,7 +55,7 @@ class Song {
       path: metadata.path as String,
       albumArt: metadata.albumArt as Uint8List?,
       //duration: Duration(seconds: (metadata.duration as BigInt).toInt()),
-      duration: metadata.duration as BigInt > BigInt.from(0) 
+      duration: metadata.duration as BigInt > BigInt.from(0)
           ? Duration(seconds: (metadata.duration as BigInt).toInt())
           : Duration.zero,
       genre: metadata.genre as String,
@@ -2849,7 +2849,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     try {
       final cds = await rust_api.listAudioCds();
       if (!mounted) return;
-      
+
       if (cds.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
           backgroundColor: dominantColor,
@@ -2857,7 +2857,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
         ));
         return;
       }
-  
+
       await showDialog(
         context: context,
         builder: (context) {
@@ -2924,7 +2924,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   children: [
                                     GlowIcon(
                                       Broken.cd,
-                                      color: dominantColor.computeLuminance() > 0.01
+                                      color: dominantColor.computeLuminance() >
+                                              0.01
                                           ? dominantColor
                                           : Theme.of(context)
                                               .textTheme
@@ -2970,25 +2971,26 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
       if (mounted) setState(() => isLoading = false);
     }
   }
-  
+
   Future<void> _loadCdTracks(String device) async {
     Navigator.pop(context); // Close CD selection dialog
     setState(() => isLoading = true);
     int tracks = await rust_api.trackNum(device: device);
-    
+
     try {
       List<Song> cdTracks = [];
       for (int i = 1; i <= tracks; i++) {
         try {
-          final trackMeta = await rust_api.getCdTrackMetadata(device: device, track: i);
-	  final track = Song.fromMetadata(trackMeta);
+          final trackMeta =
+              await rust_api.getCdTrackMetadata(device: device, track: i);
+          final track = Song.fromMetadata(trackMeta);
           cdTracks.add(track);
         } catch (e) {
           // Stop when we get an error (no more tracks)
           break;
         }
       }
-  
+
       if (cdTracks.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
           backgroundColor: dominantColor,
@@ -2996,14 +2998,14 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
         ));
         return;
       }
-  
+
       setState(() {
         songs = cdTracks;
         displayedSongs = cdTracks;
         _currentPlaylistName = 'Audio CD';
         currentMusicDirectory = 'cdda://$device';
       });
-  
+
       // Animate in CD tracks
       Future.delayed(Duration(milliseconds: 100), () {
         if (mounted) {
@@ -3445,11 +3447,11 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   );
                                 },
                               ),
-			      _buildMenuTile(
-			        icon: Broken.cd,
-			        title: 'Audio CD',
-			        onTap: _showAudioCdSelection,
-			      ),
+                              _buildMenuTile(
+                                icon: Broken.cd,
+                                title: 'Audio CD',
+                                onTap: _showAudioCdSelection,
+                              ),
                             ],
                           ),
                         ),
@@ -4649,7 +4651,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Stack(
                 children: [
                   Padding(
-                    padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, (_currentSong != null ? 80.0 : 0.0)),
+                    padding: EdgeInsets.fromLTRB(
+                        16.0, 16.0, 16.0, (_currentSong != null ? 80.0 : 0.0)),
                     child: ListView(
                       children: [
                         GlowText(
