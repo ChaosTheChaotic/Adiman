@@ -2988,7 +2988,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     try {
       List<Song> cdTracks = [];
       for (int i = 1; i <= tracks; i++) {
-        print("Checking track" + i.toString());
+        print("Checking track " + i.toString());
         final trackMeta =
             await rust_api.getCdTrackMetadata(device: device, track: i);
         print("TrackMeta for track " +
