@@ -46,13 +46,13 @@ pub fn list_audio_cds() -> Vec<String> {
 pub fn get_cd_track_metadata(device: String, track: u32) -> SongMetadata {
     let track_i32 = track as i32;
     let (title, artist, genre) = sget_track_meta(device.clone(), track_i32);
-    //let duration = strack_duration(device.clone(), track_i32) as u64;
+    let duration = strack_duration(device.clone(), track_i32) as u64;
 
     SongMetadata {
         title,
         artist,
         album: "Unknown Album".to_string(),
-        duration: 100,
+        duration,
         path: format!("cdda://{}/track{}", device, track),
         album_art: None,
         genre,
