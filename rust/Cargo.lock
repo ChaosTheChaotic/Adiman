@@ -412,9 +412,10 @@ dependencies = [
 [[package]]
 name = "cd_audio"
 version = "0.1.0"
-source = "git+https://github.com/ChaosTheChaotic/cd_audio.git#452d1154b96feeb46c1b855da0cbb78a94e3df7a"
+source = "git+https://github.com/ChaosTheChaotic/cd_audio.git#e9371a1287aeb632c660fe16a9559dcbf5ffaa85"
 dependencies = [
  "cmake",
+ "once_cell",
  "pkg-config",
 ]
 

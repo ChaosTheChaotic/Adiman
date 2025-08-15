@@ -2997,7 +2997,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
             trackMeta.toString());
         final track = Song.fromMetadata(trackMeta);
         cdTracks.add(track);
-	await Future.delayed(Duration(milliseconds: 100));
       }
 
       if (cdTracks.isEmpty) {
