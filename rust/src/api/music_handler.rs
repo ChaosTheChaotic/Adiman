@@ -365,9 +365,10 @@ impl AudioPlayer {
                     if path.starts_with("cdda://") {
                         // Parse CD path
                         let path_after_scheme = &path[7..];
-                        if let Some(pos) = path_after_scheme.find('/') {
-                            let device = &path_after_scheme[..pos];
-                            let track_str = &path_after_scheme[pos+1..];
+                        let track_start = path_after_scheme.rfind("track");
+                        if let Some(track_index) = track_start {
+                            let device = path_after_scheme[..track_index].trim_end_matches('/');
+                            let track_str = &path_after_scheme[track_index..];
                             
                             if !track_str.starts_with("track") {
                                 println!("Invalid track in CD path: {}", path);
@@ -384,7 +385,7 @@ impl AudioPlayer {
     
                             // Warn about seek position
                             if position != 0.0 {
-                                println!("Warning: Seeking in CD tracks is not supported. Starting from beginning.");
+                                println!("Warning: Seeking in CD tracks is not supported (yet). Starting from beginning.");
                             }
     
                             // Create CD source
