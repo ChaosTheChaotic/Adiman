@@ -6,9 +6,9 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `background_worker`, `crossfade`, `extract_metadata`, `get_cached_mp3_path`, `get_mp3_cache_dir`, `get_position`, `new`, `parse_lrc_metadata`, `pause`, `play`, `resume`, `seek`, `set_volume`, `stop`
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AudioChunk`, `AudioPlayer`, `PlayerMessage`, `StreamWrapper`, `StreamingBuffer`, `StreamingSource`, `Track`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `channels`, `clone`, `clone`, `clone`, `current_span_len`, `drop`, `fmt`, `fmt`, `fmt`, `fmt`, `next`, `sample_rate`, `total_duration`
+// These functions are ignored because they are not marked as `pub`: `background_worker`, `crossfade`, `extract_metadata`, `fill_buffer`, `get_cached_mp3_path`, `get_mp3_cache_dir`, `get_position`, `new`, `new`, `parse_lrc_metadata`, `pause`, `play`, `resume`, `seek`, `set_volume`, `stop`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AudioChunk`, `AudioPlayer`, `CDStreamSource`, `PlayerMessage`, `SafeSCDStream`, `StreamWrapper`, `StreamingBuffer`, `StreamingSource`, `Track`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `channels`, `channels`, `clone`, `clone`, `clone`, `current_span_len`, `current_span_len`, `drop`, `fmt`, `fmt`, `fmt`, `fmt`, `next`, `next`, `sample_rate`, `sample_rate`, `total_duration`, `total_duration`
 
 Future<int> trackNum({required String device}) =>
     RustLib.instance.api.crateApiMusicHandlerTrackNum(device: device);

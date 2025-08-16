@@ -1,7 +1,7 @@
 use crate::api::utils::fpre;
 use atomic_float::AtomicF32;
 use audiotags::Tag;
-use cd_audio::{sget_devices, sget_track_meta, strack_duration, strack_num, sverify_audio};
+use cd_audio::{sget_devices, sget_track_meta, strack_duration, strack_num, sverify_audio, SCDStream, sopen_cd_stream, sread_cd_stream};
 use flutter_rust_bridge::frb;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
@@ -15,7 +15,6 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::cmp::max;
 use std::collections::{HashMap, HashSet};
-use std::ffi::CStr;
 use std::fs;
 use std::io::{BufReader, Cursor, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
@@ -28,6 +27,90 @@ use std::sync::{
 use std::thread;
 use std::time::{Duration, Instant};
 use walkdir::WalkDir;
+
+struct SafeSCDStream(SCDStream);
+unsafe impl Send for SafeSCDStream {}
+
+struct CDStreamSource {
+    stream: SafeSCDStream,
+    buffer: [u8; 2352 * 10],
+    buffer_pos: usize,
+    buffer_len: usize,
+    sample_rate: u32,
+    channels: u16,
+    total_duration: Duration,
+}
+
+impl CDStreamSource {
+    fn new(device: &str, track: i32) -> Result<Self, String> {
+        let stream = sopen_cd_stream(device, track)
+            .ok_or("Failed to open CD stream")?;
+
+        let duration_secs = strack_duration(device.to_string(), track);
+        if duration_secs < 0 {
+            return Err("Failed to get track duration".to_string());
+        }
+        let total_duration = Duration::from_secs(duration_secs as u64);
+
+        Ok(Self {
+            stream: SafeSCDStream(stream),
+            buffer: [0; 2352 * 10],
+            buffer_pos: 0,
+            buffer_len: 0,
+            sample_rate: 44100,
+            channels: 2,
+            total_duration,  // Set duration
+        })
+    }
+
+    fn fill_buffer(&mut self) -> Result<(), String> {
+        let mut stream = &mut self.stream.0;
+        let sectors = 10;
+        let read = sread_cd_stream(&mut stream, &mut self.buffer, sectors as i32);
+        
+        if read < 0 {
+            return Err("Error reading CD stream".into());
+        } else if read == 0 {
+            return Err("End of stream".into());
+        }
+        
+        self.buffer_len = read as usize * 2352;
+        self.buffer_pos = 0;
+        Ok(())
+    }
+}
+
+impl Source for CDStreamSource {
+    fn current_span_len(&self) -> Option<usize> { None }
+    fn channels(&self) -> u16 { self.channels }
+    fn sample_rate(&self) -> u32 { self.sample_rate }
+    fn total_duration(&self) -> Option<Duration> { Some(self.total_duration) }
+}
+
+impl Iterator for CDStreamSource {
+    type Item = f32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Check if there are at least 2 bytes left in the buffer
+        if self.buffer_len.checked_sub(self.buffer_pos).unwrap_or(0) < 2 {
+            if self.fill_buffer().is_err() {
+                return None;
+            }
+            // After refilling, if we still don't have 2 bytes, return None
+            if self.buffer_len.checked_sub(self.buffer_pos).unwrap_or(0) < 2 {
+                return None;
+            }
+        }
+
+        let sample = i16::from_le_bytes([
+            self.buffer[self.buffer_pos],
+            self.buffer[self.buffer_pos + 1],
+        ]);
+        self.buffer_pos += 2;
+        
+        Some(sample as f32 / 32768.0)
+    }
+}
 
 pub fn track_num(device: String) -> i32 {
     return strack_num(device);
@@ -279,105 +362,159 @@ impl AudioPlayer {
         while let Ok(message) = receiver.recv() {
             match message {
                 PlayerMessage::Load { path, position } => {
-                    if let Ok(file) = fs::File::open(&path) {
-                        let mut reader = BufReader::new(file);
-                        if position > 0.0 {
-                            let bytes_pos = (position * 44100.0 * 2.0) as u64;
-                            let _ = reader.seek(SeekFrom::Start(bytes_pos));
-                        }
-                        let chunks = Arc::new(Mutex::new(Vec::new()));
-                        let mut decoder: Option<Decoder<Cursor<Vec<u8>>>> = None;
-                        let mut sample_rate = 44100;
-                        let mut channels = 2;
-                        let mut total_duration = Duration::from_secs(0);
-                        let mut initial_data = Vec::new();
-                        if reader.read_to_end(&mut initial_data).is_ok() && !initial_data.is_empty()
-                        {
-                            let cursor = Cursor::new(initial_data.clone());
-                            if let Ok(dec) = Decoder::try_from(cursor) {
-                                sample_rate = dec.sample_rate();
-                                channels = dec.channels();
-                                total_duration =
-                                    dec.total_duration().unwrap_or(Duration::from_secs(0));
-                                decoder = Some(dec);
+                    if path.starts_with("cdda://") {
+                        // Parse CD path
+                        let path_after_scheme = &path[7..];
+                        if let Some(pos) = path_after_scheme.find('/') {
+                            let device = &path_after_scheme[..pos];
+                            let track_str = &path_after_scheme[pos+1..];
+                            
+                            if !track_str.starts_with("track") {
+                                println!("Invalid track in CD path: {}", path);
+                                continue;
                             }
-                        }
-                        let _ = reader.seek(SeekFrom::Start(0));
-                        {
-                            // Preload a (possibly empty) initial chunk
-                            let mut guard = chunks.lock().unwrap();
-                            if let Some(ref mut dec) = decoder {
-                                let samples: Vec<f32> = dec.take(0).map(|s| s).collect();
-                                guard.push(AudioChunk { samples });
+                            
+                            let track_num = match track_str[5..].parse::<i32>() {
+                                Ok(n) => n,
+                                Err(_) => {
+                                    println!("Invalid track number in CD path: {}", path);
+                                    continue;
+                                }
+                            };
+    
+                            // Warn about seek position
+                            if position != 0.0 {
+                                println!("Warning: Seeking in CD tracks is not supported. Starting from beginning.");
                             }
-                        }
-                        let streaming_buffer = StreamingBuffer {
-                            chunks: Arc::clone(&chunks),
-                            sample_rate,
-                            channels,
-                            total_duration,
-                        };
-                        {
-                            let mut buf = buffer.lock().unwrap();
-                            *buf = Some(streaming_buffer.clone());
-                        }
-                        // Create sink and append a streaming source.
-                        let new_sink = Arc::new(Sink::connect_new(&mixer));
-                        new_sink.set_volume(0.0);
-                        let source = StreamingSource {
-                            buffer: Arc::new(Mutex::new(Some(streaming_buffer))),
-                            current_chunk: 0,
-                            position: 0,
-                            chunks_processed: 0,
-                        };
-                        new_sink.append(source);
-                        new_sink.play();
-                        if let Ok(player_lock) = PLAYER.lock() {
-                            if let Some(player) = player_lock.as_ref() {
-                                let old_sink = player.sink.lock().unwrap().take();
-                                AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
-                                *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
-                                *player.current_file.lock().unwrap() = path.clone();
-                                *player.start_time.lock().unwrap() = Instant::now();
-                                *player.playing.lock().unwrap() = true;
-                                *player.is_paused.lock().unwrap() = false;
-                            }
-                        }
-                        // Spawn thread to buffer the rest of the audio in chunks.
-                        let chunks_clone = Arc::clone(&chunks);
-                        let file_path = path.clone();
-                        thread::spawn(move || {
-                            if let Ok(file) = fs::File::open(&file_path) {
-                                let mut reader = BufReader::new(file);
-                                let mut file_data = Vec::new();
-                                if reader.read_to_end(&mut file_data).is_ok() {
-                                    let cursor = Cursor::new(file_data);
-                                    if let Ok(decoder) = Decoder::try_from(cursor) {
-                                        let mut samples = Vec::with_capacity(sample_rate as usize);
-                                        for sample in decoder {
-                                            samples.push(sample);
-                                            if samples.len()
-                                                >= (sample_rate as usize * channels as usize)
-                                            {
-                                                if let Ok(mut guard) = chunks_clone.lock() {
-                                                    guard.push(AudioChunk {
-                                                        samples: samples.clone(),
-                                                    });
-                                                }
-                                                samples.clear();
-                                            }
+    
+                            // Create CD source
+                            match CDStreamSource::new(device, track_num) {
+                                Ok(source) => {
+                                    let new_sink = Arc::new(Sink::connect_new(&mixer));
+                                    new_sink.set_volume(0.0);
+                                    new_sink.append(source);
+                                    new_sink.play();
+    
+                                    // Clear buffer for CD track
+                                    {
+                                        let mut buf = buffer.lock().unwrap();
+                                        *buf = None;
+                                    }
+    
+                                    // Update player state
+                                    if let Ok(player_lock) = PLAYER.lock() {
+                                        if let Some(player) = player_lock.as_ref() {
+                                            let old_sink = player.sink.lock().unwrap().take();
+                                            AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
+                                            *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
+                                            *player.current_file.lock().unwrap() = path.clone();
+                                            *player.start_time.lock().unwrap() = Instant::now();
+                                            *player.playing.lock().unwrap() = true;
+                                            *player.is_paused.lock().unwrap() = false;
                                         }
-                                        if !samples.is_empty() {
-                                            if let Ok(mut guard) = chunks_clone.lock() {
-                                                guard.push(AudioChunk { samples });
+                                    }
+                                }
+                                Err(e) => println!("Failed to open CD stream: {}", e),
+                            }
+                        }
+                    } else {
+                        if let Ok(file) = fs::File::open(&path) {
+                            let mut reader = BufReader::new(file);
+                            if position > 0.0 {
+                                let bytes_pos = (position * 44100.0 * 2.0) as u64;
+                                let _ = reader.seek(SeekFrom::Start(bytes_pos));
+                            }
+                            let chunks = Arc::new(Mutex::new(Vec::new()));
+                            let mut decoder: Option<Decoder<Cursor<Vec<u8>>>> = None;
+                            let mut sample_rate = 44100;
+                            let mut channels = 2;
+                            let mut total_duration = Duration::from_secs(0);
+                            let mut initial_data = Vec::new();
+                            if reader.read_to_end(&mut initial_data).is_ok() && !initial_data.is_empty() {
+                                let cursor = Cursor::new(initial_data.clone());
+                                if let Ok(dec) = Decoder::try_from(cursor) {
+                                    sample_rate = dec.sample_rate();
+                                    channels = dec.channels();
+                                    total_duration = dec.total_duration().unwrap_or(Duration::from_secs(0));
+                                    decoder = Some(dec);
+                                }
+                            }
+                            let _ = reader.seek(SeekFrom::Start(0));
+                            {
+                                // Preload a (possibly empty) initial chunk
+                                let mut guard = chunks.lock().unwrap();
+                                if let Some(ref mut dec) = decoder {
+                                    let samples: Vec<f32> = dec.take(0).map(|s| s).collect();
+                                    guard.push(AudioChunk { samples });
+                                }
+                            }
+                            let streaming_buffer = StreamingBuffer {
+                                chunks: Arc::clone(&chunks),
+                                sample_rate,
+                                channels,
+                                total_duration,
+                            };
+                            {
+                                let mut buf = buffer.lock().unwrap();
+                                *buf = Some(streaming_buffer.clone());
+                            }
+                            // Create sink and append a streaming source.
+                            let new_sink = Arc::new(Sink::connect_new(&mixer));
+                            new_sink.set_volume(0.0);
+                            let source = StreamingSource {
+                                buffer: Arc::new(Mutex::new(Some(streaming_buffer))),
+                                current_chunk: 0,
+                                position: 0,
+                                chunks_processed: 0,
+                            };
+                            new_sink.append(source);
+                            new_sink.play();
+                            if let Ok(player_lock) = PLAYER.lock() {
+                                if let Some(player) = player_lock.as_ref() {
+                                    let old_sink = player.sink.lock().unwrap().take();
+                                    AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
+                                    *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
+                                    *player.current_file.lock().unwrap() = path.clone();
+                                    *player.start_time.lock().unwrap() = Instant::now();
+                                    *player.playing.lock().unwrap() = true;
+                                    *player.is_paused.lock().unwrap() = false;
+                                }
+                            }
+                            // Spawn thread to buffer the rest of the audio in chunks.
+                            let chunks_clone = Arc::clone(&chunks);
+                            let file_path = path.clone();
+                            thread::spawn(move || {
+                                if let Ok(file) = fs::File::open(&file_path) {
+                                    let mut reader = BufReader::new(file);
+                                    let mut file_data = Vec::new();
+                                    if reader.read_to_end(&mut file_data).is_ok() {
+                                        let cursor = Cursor::new(file_data);
+                                        if let Ok(decoder) = Decoder::try_from(cursor) {
+                                            let mut samples = Vec::with_capacity(sample_rate as usize);
+                                            for sample in decoder {
+                                                samples.push(sample);
+                                                if samples.len() >= (sample_rate as usize * channels as usize)
+                                                {
+                                                    if let Ok(mut guard) = chunks_clone.lock() {
+                                                        guard.push(AudioChunk {
+                                                            samples: samples.clone(),
+                                                        });
+                                                    }
+                                                    samples.clear();
+                                                }
+                                            }
+                                            if !samples.is_empty() {
+                                                if let Ok(mut guard) = chunks_clone.lock() {
+                                                    guard.push(AudioChunk { samples });
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
-                        });
-                    } else {
-                        println!("Failed to open file: {}", &path);
+                            });
+                        } else {
+                            println!("Failed to open file: {}", &path);
+                        }
                     }
                 }
                 PlayerMessage::Seek(position) => {
