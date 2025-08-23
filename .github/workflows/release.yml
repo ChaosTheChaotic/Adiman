@@ -29,7 +29,7 @@ jobs:
             libgtk-3-0 libgtk-3-dev \
             libblkid1 liblzma5 \
             libasound2-dev libpulse-dev \
-            cmake ninja-build clang cdparanoia libcdio-dev libcdio-cdda-dev libcdio-cdda-dev
+            cmake ninja-build clang cdparanoia libcdio-dev libcdio-cdda-dev libcdio-paranoia-dev
           sudo modprobe fuse
 
       - name: Setup Flutter
@@ -71,7 +71,7 @@ jobs:
           arch=x86_64 ./appimagetool-x86_64.AppImage  Adiman.AppDir
 
       - name: upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4libcdio-paranoia-dev
         with:
           name: Adiman-x86_64.AppImage
           path: Adiman-x86_64.AppImage
@@ -94,7 +94,7 @@ jobs:
             libblkid1 liblzma5 \
             libasound2-dev libpulse-dev \
             cmake ninja-build clang \
-            libgirepository1.0-dev gir1.2-gtk-3.0 cdparanoia libcdio-dev libcdio-cdda-dev libcdio-cdda-dev
+            libgirepository1.0-dev gir1.2-gtk-3.0 cdparanoia libcdio-dev libcdio-cdda-dev libcdio-paranoia-dev
           sudo modprobe fuse
           sudo ln -s /usr/lib/aarch64-linux-gnu/libgirepository-1.0.so /usr/lib/libgirepository-1.0.so
 

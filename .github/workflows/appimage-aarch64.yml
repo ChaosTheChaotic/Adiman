@@ -27,7 +27,7 @@ jobs:
             libblkid1 liblzma5 \
             libasound2-dev libpulse-dev \
             cmake ninja-build clang \
-            libgirepository1.0-dev gir1.2-gtk-3.0 cdparanoia libcdio-dev libcdio-cdda-dev libcdio-cdda-dev
+            libgirepository1.0-dev gir1.2-gtk-3.0 cdparanoia libcdio-dev libcdio-cdda-dev libcdio-paranoia-dev
           sudo modprobe fuse
           sudo ln -s /usr/lib/aarch64-linux-gnu/libgirepository-1.0.so /usr/lib/libgirepository-1.0.so
 
