@@ -49,6 +49,7 @@ dependencies:
     git:
       url: https://github.com/MSOB7YY/dart_lrc
   dbus: ^0.7.11
+  flutter_colorpicker: ^1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -76,6 +77,8 @@ flutter:
 
   assets:
     - assets/fonts/
+    - assets/default_album.png
+    - assets/adiman_cd.png
 
   fonts:
     - family: broken

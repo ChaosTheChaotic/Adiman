@@ -18,7 +18,12 @@ import 'package:flutter/services.dart';
 import 'package:anni_mpris_service/anni_mpris_service.dart';
 import 'package:animated_background/animated_background.dart';
 import 'package:dbus/dbus.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'broken_icons.dart';
+
+final ValueNotifier<Color> defaultThemeColorNotifier =
+    ValueNotifier<Color>(const Color(0xFF383770));
+final ValueNotifier<bool> useDominantColorsNotifier = ValueNotifier<bool>(true);
 
 class Song {
   final String title;
@@ -49,16 +54,21 @@ class Song {
       album: metadata.album as String,
       path: metadata.path as String,
       albumArt: metadata.albumArt as Uint8List?,
-      duration: Duration(seconds: (metadata.duration as BigInt).toInt()),
+      //duration: Duration(seconds: (metadata.duration as BigInt).toInt()),
+      duration: metadata.duration as BigInt > BigInt.from(0)
+          ? Duration(seconds: (metadata.duration as BigInt).toInt())
+          : Duration.zero,
       genre: metadata.genre as String,
     );
   }
 }
 
-ThemeData _buildDynamicTheme(Color dominantColor) {
+ThemeData _buildDynamicTheme(BuildContext context, Color dominantColor) {
+  final theme = Theme.of(context);
   final bool isDark = dominantColor.computeLuminance() < 0.4;
   final textColor = isDark ? Colors.white : dominantColor;
-  return ThemeData.dark().copyWith(
+  return theme.copyWith(
+    brightness: Brightness.dark,
     colorScheme: ColorScheme.fromSeed(
       seedColor: dominantColor,
       brightness: isDark ? Brightness.dark : Brightness.light,
@@ -127,6 +137,8 @@ class _MiniPlayerState extends State<MiniPlayer>
   double _volume = 1.0;
   StreamSubscription<bool>? _playbackStateSubscription;
   bool _isHoveringVol = false;
+  Color? _localDominantColor;
+  late VoidCallback _useDominantColorsListener;
 
   @override
   void initState() {
@@ -138,6 +150,11 @@ class _MiniPlayerState extends State<MiniPlayer>
         });
       }
     });
+    _useDominantColorsListener = () {
+      _updateDominantColor();
+    };
+    useDominantColorsNotifier.addListener(_useDominantColorsListener);
+    _localDominantColor = widget.dominantColor;
     _playbackStateSubscription = widget.service.playbackStateStream.listen((
       isPlaying,
     ) {
@@ -159,6 +176,15 @@ class _MiniPlayerState extends State<MiniPlayer>
       (_) => _updatePlayback(),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkPlayingState());
+  }
+
+  Future<void> _updateDominantColor() async {
+    final color = await _getDominantColor(widget.song);
+    if (mounted) {
+      setState(() {
+        _localDominantColor = color;
+      });
+    }
   }
 
   void _checkPlayingState() async {
@@ -231,14 +257,25 @@ class _MiniPlayerState extends State<MiniPlayer>
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    if (song.albumArt == null) return const Color(0xFF383770);
+    final bool useDom = useDominantColorsNotifier.value;
+    if (song.albumArt == null || !useDom) {
+      return defaultThemeColorNotifier.value;
+    }
 
     try {
       final colorValue =
           await color_extractor.getDominantColor(data: song.albumArt!);
-      return Color(colorValue ?? 0xFF383770);
+      return Color(colorValue ?? defaultThemeColorNotifier.value.toARGB32());
     } catch (e) {
-      return const Color(0xFF383770);
+      return defaultThemeColorNotifier.value;
+    }
+  }
+
+  @override
+  void didUpdateWidget(MiniPlayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.song != widget.song) {
+      _updateDominantColor();
     }
   }
 
@@ -247,13 +284,15 @@ class _MiniPlayerState extends State<MiniPlayer>
     _progressTimer.cancel();
     _playPauseController.dispose();
     _playbackStateSubscription?.cancel();
+    useDominantColorsNotifier.removeListener(_useDominantColorsListener);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final textColor = widget.dominantColor.computeLuminance() > 0.01
-        ? widget.dominantColor
+    final effectiveColor = _localDominantColor ?? widget.dominantColor;
+    final textColor = effectiveColor.computeLuminance() > 0.01
+        ? effectiveColor
         : Theme.of(context).textTheme.bodyLarge?.color;
     return GestureDetector(
       onTap: () async {
@@ -301,21 +340,21 @@ class _MiniPlayerState extends State<MiniPlayer>
       child: Material(
         elevation: 4,
         color: Colors.black.withValues(alpha: 0.4),
-        surfaceTintColor: widget.dominantColor.withValues(alpha: 0.8),
+        surfaceTintColor: effectiveColor.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: widget.dominantColor.withValues(alpha: 0.3),
+              color: effectiveColor.withValues(alpha: 0.3),
               width: 1.5,
             ),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                widget.dominantColor.withValues(alpha: 0.15),
+                effectiveColor.withValues(alpha: 0.15),
                 Colors.black.withValues(alpha: 0.3),
               ],
             ),
@@ -349,7 +388,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: widget.dominantColor.withValues(alpha: 0.3),
+                            color: effectiveColor.withValues(alpha: 0.3),
                             blurRadius: 12,
                             spreadRadius: 2,
                           ),
@@ -364,7 +403,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                                 gaplessPlayback: true,
                               )
                             : GlowIcon(
-                                Broken.musicnote,
+                                Broken.adiman,
                                 color: Colors.white,
                                 glowColor: Colors.white,
                               ),
@@ -380,7 +419,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                     children: [
                       GlowText(
                         widget.song.title,
-                        glowColor: widget.dominantColor.withValues(alpha: 0.2),
+                        glowColor: effectiveColor.withValues(alpha: 0.2),
                         style: TextStyle(
                           color: textColor,
                           fontWeight: FontWeight.w600,
@@ -403,64 +442,60 @@ class _MiniPlayerState extends State<MiniPlayer>
                   ),
                 ),
                 ValueListenableBuilder<double>(
-                    valueListenable: VolumeController().volume,
-                    builder: (context, volume, _) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: MouseRegion(
-                          onEnter: (_) => setState(() => _isHoveringVol = true),
-                          onExit: (_) => setState(() => _isHoveringVol = false),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOut,
-                            width: _isHoveringVol ? 150 : 40,
-                            child: Row(
-                              children: [
-                                VolumeIcon(
+                  valueListenable: VolumeController().volume,
+                  builder: (context, volume, _) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: MouseRegion(
+                        onEnter: (_) => setState(() => _isHoveringVol = true),
+                        onExit: (_) => setState(() => _isHoveringVol = false),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                          width: _isHoveringVol ? 150 : 40,
+                          child: Row(
+                            children: [
+                              Hero(
+                                tag: 'volume-${widget.song.path}',
+                                child: VolumeIcon(
                                   volume: _volume,
-                                  dominantColor: widget.dominantColor,
+                                  dominantColor: effectiveColor,
                                 ),
-                                if (_isHoveringVol) ...[
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: SliderTheme(
-                                      data: SliderThemeData(
-                                        trackHeight: 3,
-                                        thumbShape: const RoundSliderThumbShape(
-                                            enabledThumbRadius: 6),
-                                      ),
-                                      child: Slider(
-                                        value: _volume,
-                                        activeColor: widget.dominantColor,
-                                        inactiveColor: widget.dominantColor
-                                            .withValues(alpha: 0.3),
-                                        onChanged: (newVolume) async {
-                                          await VolumeController()
-                                              .setVolume(newVolume);
-                                          setState(() => _volume = newVolume);
-                                          await rust_api.setVolume(
-                                              volume: newVolume);
-                                        },
-                                      ),
-                                    ),
+                              ),
+                              if (_isHoveringVol) ...[
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: AdaptiveSlider(
+                                    dominantColor: effectiveColor,
+                                    value: _volume,
+                                    onChanged: (newVolume) async {
+                                      await VolumeController()
+                                          .setVolume(newVolume);
+                                      setState(() => _volume = newVolume);
+                                      await rust_api.setVolume(
+                                          volume: newVolume);
+                                    },
                                   ),
-                                ],
+                                ),
                               ],
-                            ),
+                            ],
                           ),
                         ),
-                      );
-                    }),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 3),
                 Hero(
                   tag: 'controls-prev',
                   child: Material(
-                    color: widget.dominantColor.withValues(alpha: 0.2),
+                    color: effectiveColor.withValues(alpha: 0.2),
                     shape: const CircleBorder(),
                     child: IconButton(
                       icon: GlowIcon(
                         Broken.previous,
                         color: textColor,
-                        glowColor: widget.dominantColor.withValues(alpha: 0.3),
+                        glowColor: effectiveColor.withValues(alpha: 0.3),
                       ),
                       onPressed: widget.currentIndex > 0
                           ? () => _handleSkip(false)
@@ -468,46 +503,31 @@ class _MiniPlayerState extends State<MiniPlayer>
                     ),
                   ),
                 ),
+                const SizedBox(width: 3),
                 Hero(
                   tag: 'controls-playPause',
                   child: Material(
-                    color: widget.dominantColor.withValues(alpha: 0.2),
+                    color: effectiveColor.withValues(alpha: 0.2),
                     shape: const CircleBorder(),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      decoration: BoxDecoration(
-                        boxShadow: [
-                          BoxShadow(
-                            color: widget.dominantColor.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: IconButton(
-                        icon: GlowIcon(
-                          _playPauseController.isForwardOrCompleted
-                              ? Broken.pause
-                              : Broken.play,
-                          color: textColor,
-                          glowColor:
-                              widget.dominantColor.withValues(alpha: 0.2),
-                        ),
-                        onPressed: _togglePlayPause,
-                      ),
+                    child: ParticlePlayButton(
+                      isPlaying: isPlaying,
+                      color: effectiveColor,
+                      onPressed: _togglePlayPause,
+                      miniP: true,
                     ),
                   ),
                 ),
+                const SizedBox(width: 3),
                 Hero(
                   tag: 'controls-next',
                   child: Material(
-                    color: widget.dominantColor.withValues(alpha: 0.2),
+                    color: effectiveColor.withValues(alpha: 0.2),
                     shape: const CircleBorder(),
                     child: IconButton(
                       icon: GlowIcon(
                         Broken.next,
                         color: textColor,
-                        glowColor: widget.dominantColor.withValues(alpha: 0.3),
+                        glowColor: effectiveColor.withValues(alpha: 0.3),
                       ),
                       onPressed:
                           widget.currentIndex < widget.songList.length - 1
@@ -542,28 +562,63 @@ Future<void> main() async {
   await rust_api.initializePlayer();
   globalService = AdimanService();
   VolumeController();
+  await SharedPreferencesService.init();
+  useDominantColorsNotifier.value =
+      SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  void updateThemeColor(Color newColor) {
+    defaultThemeColorNotifier.value = newColor;
+    SharedPreferencesService.instance
+        .setInt('defaultThemeColor', newColor.toARGB32());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Adiman',
-      debugShowCheckedModeBanner: false,
-      scrollBehavior: const MaterialScrollBehavior().copyWith(
-        scrollbars: false,
-      ),
-      theme: _buildDynamicTheme(Color(0xFF383770)),
-      home: const SongSelectionScreen(),
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final savedColor =
+          SharedPreferencesService.instance.getInt('defaultThemeColor');
+      if (savedColor != null) {
+        defaultThemeColorNotifier.value = Color(savedColor);
+      }
+    });
+
+    return ValueListenableBuilder<Color>(
+      valueListenable: defaultThemeColorNotifier,
+      builder: (context, color, _) {
+        return MaterialApp(
+          scrollBehavior:
+              const MaterialScrollBehavior().copyWith(scrollbars: false),
+          title: 'Adiman',
+          theme: _buildDynamicTheme(context, color),
+          home: Builder(
+            builder: (context) => SongSelectionScreen(
+              updateThemeColor: updateThemeColor,
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
 class SongSelectionScreen extends StatefulWidget {
-  const SongSelectionScreen({super.key});
+  final Function(Color)? updateThemeColor;
+  const SongSelectionScreen({super.key, this.updateThemeColor});
 
   @override
   State<SongSelectionScreen> createState() => _SongSelectionScreenState();
@@ -631,7 +686,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   Song? currentSong;
   int currentIndex = 0;
   bool showMiniPlayer = false;
-  Color dominantColor = Color(0xFF383770);
+  Color dominantColor = defaultThemeColorNotifier.value;
   final ScrollController _scrollController = ScrollController();
   double _lastOffset = 0;
   late AnimationController _extraHeaderController;
@@ -654,6 +709,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   late AnimationController _playlistTransitionController;
   late Animation<double> _playlistTransitionAnimation;
   bool _isPlaylistTransitioning = false;
+  bool _isLoadingCD = false;
+  bool _cdLoadingCancelled = false;
 
   SortOption _selectedSortOption = SortOption.title;
 
@@ -678,6 +735,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   @override
   void initState() {
     super.initState();
+    dominantColor = defaultThemeColorNotifier.value;
+    defaultThemeColorNotifier.addListener(_handleDefaultColorChange);
+    useDominantColorsNotifier.addListener(_updateDominantColor);
     service = globalService;
     _mainFocusNode = FocusNode();
     _searchFocusNode = FocusNode();
@@ -714,12 +774,31 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     _searchController.addListener(_updateSearchResults);
   }
 
+  void _updateDominantColor() {
+    if (currentSong != null) {
+      _getDominantColor(currentSong!).then((newColor) {
+        if (mounted) {
+          setState(() => dominantColor = newColor);
+        }
+      });
+    } else {
+      setState(() => dominantColor = defaultThemeColorNotifier.value);
+    }
+  }
+
   Future<void> _getVimBindings() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
     if (mounted) {
       setState(() {
-        _vimKeybindings = prefs.getBool('vimKeybindings') ?? false;
+        _vimKeybindings =
+            SharedPreferencesService.instance.getBool('vimKeybindings') ??
+                false;
       });
+    }
+  }
+
+  void _handleDefaultColorChange() {
+    if (currentSong == null) {
+      setState(() => dominantColor = defaultThemeColorNotifier.value);
     }
   }
 
@@ -753,8 +832,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   }
 
   Future<void> _loadMusicFolder() async {
-    final prefs = await SharedPreferences.getInstance();
-    String musicFolder = prefs.getString('musicFolder') ?? '~/Music';
+    String musicFolder =
+        SharedPreferencesService.instance.getString('musicFolder') ?? '~/Music';
     if (musicFolder.startsWith('~')) {
       final home = Platform.environment['HOME'] ?? '';
       musicFolder = musicFolder.replaceFirst('~', home);
@@ -1473,7 +1552,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     setState(() => isLoading = true);
     try {
       final expectedCount = await countAudioFiles(currentMusicDirectory);
-      final prefs = await SharedPreferences.getInstance();
       int currentCount = 0;
       List<Song> loadedSongs = [];
 
@@ -1483,7 +1561,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
       do {
         final metadata = await rust_api.scanMusicDirectory(
           dirPath: currentMusicDirectory,
-          autoConvert: prefs.getBool('autoConvert') ?? false,
+          autoConvert:
+              SharedPreferencesService.instance.getBool('autoConvert') ?? false,
         );
         loadedSongs = metadata.map((m) => Song.fromMetadata(m)).toList();
         currentCount = loadedSongs.length;
@@ -1504,7 +1583,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
 
         if (currentCount >= expectedCount) {
           break;
-        } else if (prefs.getBool('autoConvert') ?? false) {
+        } else if (SharedPreferencesService.instance.getBool('autoConvert') ??
+            false) {
           await Future.delayed(const Duration(seconds: 1));
         }
       } while (currentCount >= expectedCount);
@@ -1642,15 +1722,19 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   }
 
   Future<Color> _getDominantColor(Song song) async {
-    if (song.albumArt == null) return const Color(0xFF383770);
+    final bool useDom =
+        SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
+    if (song.albumArt == null || !useDom) {
+      return defaultThemeColorNotifier.value;
+    }
 
     try {
       final colorValue =
           await color_extractor.getDominantColor(data: song.albumArt!);
-      return Color(colorValue ?? 0xFF383770);
+      return Color(colorValue ?? defaultThemeColorNotifier.value.toARGB32());
     } catch (e) {
       NamidaSnackbar(content: 'Failed to get dominant color $e');
-      return Color(0xFF383770);
+      return defaultThemeColorNotifier.value;
     }
   }
 
@@ -2604,6 +2688,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     _extraHeaderController.dispose();
     _playlistTransitionController.dispose();
     _searchController.dispose();
+    defaultThemeColorNotifier.removeListener(_handleDefaultColorChange);
+    useDominantColorsNotifier.removeListener(_updateDominantColor);
     super.dispose();
   }
 
@@ -2742,6 +2828,214 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _showAudioCDSelection() async {
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      _scaffoldKey.currentState?.closeDrawer();
+    }
+    setState(() => isLoading = true);
+    try {
+      final cds = await rust_api.listAudioCds(); // Fine you win.
+      if (!mounted) return;
+
+      if (cds.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+          backgroundColor: dominantColor,
+          content: 'No audio CDs found',
+        ));
+        return;
+      }
+
+      await showDialog(
+        context: context,
+        builder: (context) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: _AnimatedPopupWrapper(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(28),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        dominantColor.withValues(alpha: 0.15),
+                        Colors.black.withValues(alpha: 0.6),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: dominantColor.withValues(alpha: 0.3),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GlowText(
+                          'Audio CDs',
+                          glowColor: dominantColor.withValues(alpha: 0.3),
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: dominantColor.computeLuminance() > 0.01
+                                ? dominantColor
+                                : Theme.of(context).textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ...cds.map(
+                          (device) => Material(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(15),
+                            child: InkWell(
+                              onTap: () => _loadCDTracks(device),
+                              borderRadius: BorderRadius.circular(15),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(15),
+                                  border: Border.all(
+                                    color: dominantColor.withValues(alpha: 0.2),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: Row(
+                                  children: [
+                                    GlowIcon(
+                                      Broken.cd,
+                                      color: dominantColor.computeLuminance() >
+                                              0.01
+                                          ? dominantColor
+                                          : Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.color,
+                                      blurRadius: 8,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Text(
+                                        'CD Drive: ${device.split('/').last}',
+                                        style: TextStyle(
+                                          color: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.color,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+        backgroundColor: dominantColor,
+        content: 'Error loading CDs: $e',
+      ));
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  void _cancelCDLoading() {
+    setState(() {
+      _cdLoadingCancelled = true;
+      _isLoadingCD = false;
+      isLoading = false;
+    });
+
+    _loadSongs();
+
+    ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+      backgroundColor: dominantColor,
+      content: 'CD loading cancelled',
+    ));
+  }
+
+  Future<void> _loadCDTracks(String device) async {
+    Navigator.pop(context);
+    setState(() {
+      isLoading = true;
+      _cdLoadingCancelled = false;
+      _isLoadingCD = true;
+    });
+    int tracks = await rust_api.trackNum(device: device);
+    if (tracks <= -1) {
+      ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+        backgroundColor: dominantColor,
+        content: 'trackNum returned $tracks due to failure',
+      ));
+      return;
+    }
+
+    try {
+      List<Song> cdTracks = [];
+      for (int i = 1; i <= tracks; i++) {
+        if (_cdLoadingCancelled) break;
+        final trackMeta = await rust_api.getCdTrackMetadata(
+            device: device, track: i); // Fine you win.
+        final track = Song.fromMetadata(trackMeta);
+        cdTracks.add(track);
+      }
+
+      if (cdTracks.isEmpty || _cdLoadingCancelled) {
+        ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+          backgroundColor: dominantColor,
+          content: 'No tracks found on CD',
+        ));
+        return;
+      }
+
+      setState(() {
+        songs = cdTracks;
+        displayedSongs = cdTracks;
+        _currentPlaylistName = 'Audio CD';
+        currentMusicDirectory = 'cdda://$device';
+      });
+
+      // Animate in CD tracks
+      Future.delayed(Duration(milliseconds: 100), () {
+        if (mounted) {
+          setState(() {
+            for (var track in cdTracks) {
+              _visibleSongs[track.path] = true;
+            }
+          });
+        }
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+        backgroundColor: dominantColor,
+        content: 'Error loading CD tracks: $e',
+      ));
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+      if (mounted) setState(() => _isLoadingCD = false);
+    }
   }
 
   Widget _buildLyricsSectionHeader(BuildContext context) {
@@ -3070,28 +3364,11 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              IconButton(
-                                icon: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 300),
-                                  child: Icon(
-                                    _isDrawerOpen
-                                        ? Broken.cross
-                                        : Broken.menu_1,
-                                    key: ValueKey<bool>(_isDrawerOpen),
-                                    color: textColor,
-                                    size: 28,
-                                  ),
-                                ),
-                                onPressed: () {
-                                  if (_isDrawerOpen) {
-                                    _scaffoldKey.currentState?.closeDrawer();
-                                    Navigator.of(context).pop();
-                                    _isDrawerOpen = false;
-                                  } else {
-                                    _scaffoldKey.currentState?.openDrawer();
-                                    _isDrawerOpen = true;
-                                  }
-                                },
+                              Icon(
+                                Broken.adiman,
+                                key: ValueKey<bool>(_isDrawerOpen),
+                                color: textColor,
+                                size: 32,
                               ),
                             ],
                           ),
@@ -3145,6 +3422,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                             showMiniPlayer = true;
                                           });
                                         },
+                                        updateThemeColor:
+                                            widget.updateThemeColor,
                                       ),
                                     ),
                                   ).then((_) => _getVimBindings());
@@ -3179,6 +3458,11 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                     ),
                                   );
                                 },
+                              ),
+                              _buildMenuTile(
+                                icon: Broken.cd,
+                                title: 'Audio CD',
+                                onTap: _showAudioCDSelection,
                               ),
                             ],
                           ),
@@ -3223,7 +3507,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                               child: Center(
                                 child: CircularProgressIndicator(
                                   valueColor: AlwaysStoppedAnimation<Color>(
-                                    Color(0xFF383770),
+                                    defaultThemeColorNotifier.value,
                                   ),
                                 ),
                               ),
@@ -3621,6 +3905,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                         ),
                       ),
                     ),
+                    if (_isLoadingCD)
+                      CDLoadingScreen(
+                          dominantColor: dominantColor,
+                          onCancel: _cancelCDLoading),
                     if (showMiniPlayer && currentSong != null)
                       Positioned(
                         left: 0,
@@ -3693,6 +3981,7 @@ class SettingsScreen extends StatefulWidget {
   final String? currentPlaylistName;
   final void Function(Song newSong, int newIndex, Color newColor)?
       onUpdateMiniPlayer;
+  final Function(Color)? updateThemeColor;
 
   const SettingsScreen({
     super.key,
@@ -3701,11 +3990,12 @@ class SettingsScreen extends StatefulWidget {
     required this.onReloadLibrary,
     this.currentSong,
     this.currentIndex = 0,
-    this.dominantColor = const Color(0xFF383770),
+    required this.dominantColor,
     required this.songs,
     required this.musicFolder,
     this.onUpdateMiniPlayer,
     this.currentPlaylistName,
+    this.updateThemeColor,
   });
 
   @override
@@ -3715,11 +4005,29 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isClearingCache = false;
   bool _isReloadingLibrary = false;
+  final bool _isChangingParticleColor = false;
+  Color _particleBaseColor = Colors.white;
+  bool _spinningAlbumArt = false;
+  final bool _isChangingColor = false;
   final bool _isManagingSeparators = false;
   bool _autoConvert = false;
   bool _clearMp3Cache = false;
   bool _vimKeybindings = false;
+  String _spotdlFlags = '';
   bool _fadeIn = false;
+  bool _mSn = false;
+  bool _breathe = true;
+  bool _useDominantColors = false;
+  bool _edgeBreathe = true;
+  bool _altSeek = false;
+  int _waveformBars = 1000;
+  double _particleSpawnOpacity = 0.4;
+  double _particleOpacityChangeRate = 0.2;
+  double _particleMinOpacity = 0.1;
+  double _particleMaxOpacity = 0.6;
+  double _particleMinRadius = 2.0;
+  double _particleMaxRadius = 4.0;
+  int _particleCount = 50;
   late FocusNode _escapeNode;
 
   Song? _currentSong;
@@ -3727,6 +4035,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late Color _currentColor;
 
   late TextEditingController _musicFolderController;
+  late TextEditingController _waveformBarsController;
+  late TextEditingController _particleCountController;
 
   final GlobalKey<_MiniPlayerState> _miniPlayerKey =
       GlobalKey<_MiniPlayerState>();
@@ -3740,24 +4050,113 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _musicFolderController = TextEditingController(text: widget.musicFolder);
     _escapeNode = FocusNode();
     _escapeNode.requestFocus();
+    defaultThemeColorNotifier.addListener(_handleThemeColorChange);
+    useDominantColorsNotifier.addListener(_updateDominantColor);
+    _waveformBarsController =
+        TextEditingController(text: _waveformBars.toString());
+    _particleCountController =
+        TextEditingController(text: _particleCount.toString());
     _loadChecks();
+  }
+
+  Future<Color> _getDominantColor(Song song) async {
+    final bool useDom = useDominantColorsNotifier.value;
+    if (song.albumArt == null || !useDom) {
+      return defaultThemeColorNotifier.value;
+    }
+
+    try {
+      final colorValue =
+          await color_extractor.getDominantColor(data: song.albumArt!);
+      return Color(colorValue ?? defaultThemeColorNotifier.value.toARGB32());
+    } catch (e) {
+      return defaultThemeColorNotifier.value;
+    }
+  }
+
+  void _updateDominantColor() {
+    if (_currentSong != null) {
+      _getDominantColor(_currentSong!).then((newColor) {
+        if (mounted) {
+          setState(() => _currentColor = newColor);
+        }
+      });
+    } else {
+      setState(() => _currentColor = defaultThemeColorNotifier.value);
+    }
   }
 
   @override
   void dispose() {
     _musicFolderController.dispose();
+    defaultThemeColorNotifier.removeListener(_handleThemeColorChange);
+    useDominantColorsNotifier.removeListener(_updateDominantColor);
+    _waveformBarsController.dispose();
+    _particleCountController.dispose();
     super.dispose();
   }
 
+  void _handleThemeColorChange() {
+    final bool useDom =
+        SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
+    if ((_currentSong?.albumArt == null || !useDom) && mounted) {
+      setState(() {
+        _currentColor = defaultThemeColorNotifier.value;
+      });
+    }
+  }
+
   Future<void> _loadChecks() async {
-    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _autoConvert = prefs.getBool('autoConvert') ?? false;
-      _clearMp3Cache = prefs.getBool('clearMp3Cache') ?? false;
-      _vimKeybindings = prefs.getBool('vimKeybindings') ?? false;
-      _fadeIn = prefs.getBool('fadeIn') ?? false;
+      _autoConvert =
+          SharedPreferencesService.instance.getBool('autoConvert') ?? false;
+      _clearMp3Cache =
+          SharedPreferencesService.instance.getBool('clearMp3Cache') ?? false;
+      _vimKeybindings =
+          SharedPreferencesService.instance.getBool('vimKeybindings') ?? false;
+      _fadeIn = SharedPreferencesService.instance.getBool('fadeIn') ?? false;
+      _mSn = SharedPreferencesService.instance.getBool('mSn') ?? false;
+      _breathe = SharedPreferencesService.instance.getBool('breathe') ?? true;
+      _useDominantColors =
+          SharedPreferencesService.instance.getBool('useDominantColors') ??
+              true;
+      _waveformBars =
+          SharedPreferencesService.instance.getInt('waveformBars') ?? 1000;
+      _particleSpawnOpacity =
+          SharedPreferencesService.instance.getDouble('particleSpawnOpacity') ??
+              0.4;
+      _particleOpacityChangeRate = SharedPreferencesService.instance
+              .getDouble('particleOpacityChangeRate') ??
+          0.2;
+      _particleMinOpacity =
+          SharedPreferencesService.instance.getDouble('particleMinOpacity') ??
+              0.1;
+      _particleMaxOpacity =
+          SharedPreferencesService.instance.getDouble('particleMaxOpacity') ??
+              0.6;
+      _particleMinRadius =
+          SharedPreferencesService.instance.getDouble('particleMinRadius') ??
+              2.0;
+      _particleMaxRadius =
+          SharedPreferencesService.instance.getDouble('particleMaxRadius') ??
+              4.0;
+      _particleCount =
+          SharedPreferencesService.instance.getInt('particleCount') ?? 50;
+      _particleBaseColor = Color(
+        SharedPreferencesService.instance.getInt('particleBaseColor') ??
+            Colors.white.toARGB32(),
+      );
+      _spinningAlbumArt =
+          SharedPreferencesService.instance.getBool('spinningAlbumArt') ??
+              false;
+      _spotdlFlags =
+          SharedPreferencesService.instance.getString('spotdlFlags') ?? '';
+      _edgeBreathe =
+          SharedPreferencesService.instance.getBool('edgeBreathe') ?? true;
+      _altSeek = SharedPreferencesService.instance.getBool('altSeek') ?? false;
     });
-    final savedSeparators = prefs.getStringList('separators');
+    final savedSeparators =
+        SharedPreferencesService.instance.getStringList('separators');
     if (savedSeparators != null) {
       rust_api.setSeparators(separators: savedSeparators);
     }
@@ -3772,28 +4171,116 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveAutoConvert(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('autoConvert', value);
+    await SharedPreferencesService.instance.setBool('autoConvert', value);
     setState(() => _autoConvert = value);
   }
 
   Future<void> _saveVimKeybindings(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('vimKeybindings', value);
+    await SharedPreferencesService.instance.setBool('vimKeybindings', value);
     setState(() => _vimKeybindings = value);
   }
 
   Future<void> _saveClearMp3Cache(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('clearMp3Cache', value);
+    await SharedPreferencesService.instance.setBool('clearMp3Cache', value);
     setState(() => _clearMp3Cache = value);
   }
 
   Future<void> _saveFadeIn(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('fadeIn', value);
+    await SharedPreferencesService.instance.setBool('fadeIn', value);
     rust_api.setFadein(value: value);
     setState(() => _fadeIn = value);
+  }
+
+  Future<void> _saveMSn(bool value) async {
+    await SharedPreferencesService.instance.setBool('mSn', value);
+    rust_api.setFadein(value: value);
+    setState(() => _mSn = value);
+  }
+
+  Future<void> _saveBreathe(bool value) async {
+    await SharedPreferencesService.instance.setBool('breathe', value);
+    rust_api.setFadein(value: value);
+    setState(() => _breathe = value);
+  }
+
+  Future<void> _saveUseDominantColors(bool value) async {
+    await SharedPreferencesService.instance.setBool('useDominantColors', value);
+    useDominantColorsNotifier.value = value;
+    setState(() => _useDominantColors = value);
+  }
+
+  Future<void> _saveWaveformBars(int value) async {
+    await SharedPreferencesService.instance.setInt('waveformBars', value);
+    setState(() => _waveformBars = value);
+    _waveformBarsController.text = '';
+  }
+
+  Future<void> _saveParticleSpawnOpacity(double value) async {
+    await SharedPreferencesService.instance
+        .setDouble('particleSpawnOpacity', value);
+    setState(() => _particleSpawnOpacity = value);
+  }
+
+  Future<void> _saveParticleOpacityChangeRate(double value) async {
+    await SharedPreferencesService.instance
+        .setDouble('particleOpacityChangeRate', value);
+    setState(() => _particleOpacityChangeRate = value);
+  }
+
+  Future<void> _saveParticleMinOpacity(double value) async {
+    await SharedPreferencesService.instance
+        .setDouble('particleMinOpacity', value);
+    setState(() => _particleMinOpacity = value);
+  }
+
+  Future<void> _saveParticleMaxOpacity(double value) async {
+    await SharedPreferencesService.instance
+        .setDouble('particleMaxOpacity', value);
+    setState(() => _particleMaxOpacity = value);
+  }
+
+  Future<void> _saveParticleMinRadius(double value) async {
+    await SharedPreferencesService.instance
+        .setDouble('particleMinRadius', value);
+    setState(() => _particleMinRadius = value);
+  }
+
+  Future<void> _saveParticleMaxRadius(double value) async {
+    await SharedPreferencesService.instance
+        .setDouble('particleMaxRadius', value);
+    setState(() => _particleMaxRadius = value);
+  }
+
+  Future<void> _saveParticleCount(int value) async {
+    await SharedPreferencesService.instance.setInt('particleCount', value);
+    setState(() => _particleCount = value);
+    _particleCountController.text = '';
+  }
+
+  Future<void> _saveParticleBaseColor(Color color) async {
+    await SharedPreferencesService.instance
+        .setInt('particleBaseColor', color.toARGB32());
+    setState(() => _particleBaseColor = color);
+  }
+
+  Future<void> _saveSpinningAlbumArt(bool value) async {
+    await SharedPreferencesService.instance.setBool('spinningAlbumArt', value);
+    setState(() => _spinningAlbumArt = value);
+  }
+
+  Future<void> _saveSpotdlFlags(String flags) async {
+    await SharedPreferencesService.instance.setString('spotdlFlags', flags);
+    setState(() => _spotdlFlags = flags);
+  }
+
+  Future<void> _saveEdgeBreathe(bool value) async {
+    await SharedPreferencesService.instance.setBool('edgeBreathe', value);
+    setState(() => _edgeBreathe = value);
+  }
+
+  Future<void> _saveAltSeek(bool value) async {
+    await SharedPreferencesService.instance.setBool('altSeek', value);
+    setState(() => _altSeek = value );
   }
 
   Future<void> _clearCache() async {
@@ -3852,21 +4339,227 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _miniPlayerKey.currentState?.togglePause();
   }
 
+  Future<void> _showColorPicker() async {
+    Color tempColor = defaultThemeColorNotifier.value;
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return Dialog(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                child: _AnimatedPopupWrapper(
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(28),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            widget.dominantColor.withAlpha(30),
+                            Colors.black.withAlpha(200),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: widget.dominantColor.withAlpha(100),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GlowText(
+                              'Default Theme Color',
+                              glowColor: widget.dominantColor.withAlpha(80),
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.color,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            ColorPicker(
+                              pickerColor: tempColor,
+                              onColorChanged: (color) {
+                                setState(() => tempColor = color);
+                              },
+                              displayThumbColor: true,
+                              enableAlpha: false,
+                              labelTypes: const [],
+                              pickerAreaHeightPercent: 0.7,
+                              hexInputBar: true,
+                              portraitOnly: true,
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                DynamicIconButton(
+                                  icon: Broken.refresh,
+                                  onPressed: () {
+                                    final defaultColor =
+                                        const Color(0xFF383770);
+                                    SharedPreferencesService.instance.setInt(
+                                        'defaultThemeColor',
+                                        defaultColor.toARGB32());
+                                    setStateDialog(
+                                        () => tempColor = defaultColor);
+                                    if (widget.updateThemeColor != null) {
+                                      widget.updateThemeColor!(defaultColor);
+                                    }
+                                  },
+                                  backgroundColor: widget.dominantColor,
+                                  size: 40,
+                                ),
+                                DynamicIconButton(
+                                  icon: Broken.tick,
+                                  onPressed: () async {
+                                    await SharedPreferencesService.instance
+                                        .setInt('defaultThemeColor',
+                                            tempColor.toARGB32());
+                                    if (widget.updateThemeColor != null) {
+                                      widget.updateThemeColor!(tempColor);
+                                    }
+                                    if (mounted) {
+                                      Navigator.pop(context, tempColor);
+                                    }
+                                  },
+                                  backgroundColor: widget.dominantColor,
+                                  size: 40,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        });
+  }
+
+  Future<void> _showParticleColorPicker() async {
+    Color tempColor = _particleBaseColor;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: _AnimatedPopupWrapper(
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          _currentColor.withAlpha(30),
+                          Colors.black.withAlpha(200),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: _currentColor.withAlpha(100),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GlowText(
+                            'Particle Base Color',
+                            glowColor: _currentColor.withAlpha(80),
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color:
+                                  Theme.of(context).textTheme.bodyLarge?.color,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          ColorPicker(
+                            pickerColor: tempColor,
+                            onColorChanged: (color) {
+                              setStateDialog(() => tempColor = color);
+                            },
+                            displayThumbColor: true,
+                            enableAlpha: false,
+                            labelTypes: const [],
+                            pickerAreaHeightPercent: 0.7,
+                            hexInputBar: true,
+                            portraitOnly: true,
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              DynamicIconButton(
+                                icon: Broken.refresh,
+                                onPressed: () {
+                                  setStateDialog(
+                                      () => tempColor = Colors.white);
+                                },
+                                backgroundColor: _currentColor,
+                                size: 40,
+                              ),
+                              DynamicIconButton(
+                                icon: Broken.tick,
+                                onPressed: () async {
+                                  await _saveParticleBaseColor(tempColor);
+                                  if (mounted) Navigator.pop(context);
+                                },
+                                backgroundColor: _currentColor,
+                                size: 40,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildSettingsSwitch(
     BuildContext context, {
     required String title,
     required bool value,
     required Function(bool) onChanged,
   }) {
-    final glowColor = widget.dominantColor.withAlpha(60);
-    final trackColor = widget.dominantColor.withAlpha(30);
+    final glowColor = _currentColor.withAlpha(60);
+    final trackColor = _currentColor.withAlpha(30);
     final textColor = Theme.of(context).textTheme.bodyLarge?.color;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(15),
-        hoverColor: widget.dominantColor.withAlpha(30),
+        hoverColor: _currentColor.withAlpha(30),
         onTap: () => onChanged(!value),
         child: ListTile(
           title: GlowText(
@@ -3900,7 +4593,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                   border: Border.all(
-                    color: widget.dominantColor.withAlpha(value ? 100 : 40),
+                    color: _currentColor.withAlpha(value ? 100 : 40),
                     width: 1.5,
                   ),
                   boxShadow: [
@@ -3925,8 +4618,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          widget.dominantColor.withAlpha(200),
-                          widget.dominantColor.withAlpha(100),
+                          _currentColor.withAlpha(200),
+                          _currentColor.withAlpha(100),
                         ],
                       ),
                       boxShadow: [
@@ -3959,261 +4652,544 @@ class _SettingsScreenState extends State<SettingsScreen> {
         : Theme.of(context).textTheme.bodyLarge?.color;
     final buttonTextColor = Theme.of(context).textTheme.bodyLarge?.color;
 
-    return KeyboardListener(
-      focusNode: _escapeNode,
-      autofocus: true,
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.escape) {
-            if (ModalRoute.of(context)?.isCurrent ?? false) {
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              Navigator.pop(context);
+    return Theme(
+        data: ThemeData(brightness: Brightness.dark),
+        child: KeyboardListener(
+          focusNode: _escapeNode,
+          autofocus: true,
+          onKeyEvent: (event) {
+            if (event is KeyDownEvent) {
+              if (event.logicalKey == LogicalKeyboardKey.escape) {
+                if (ModalRoute.of(context)?.isCurrent ?? false) {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  Navigator.pop(context);
+                }
+              } else if (event.logicalKey == LogicalKeyboardKey.space &&
+                  FocusScope.of(context).hasFocus &&
+                  FocusScope.of(context).focusedChild is EditableText) {
+                _togglePauseSong();
+              }
             }
-          } else if (event.logicalKey == LogicalKeyboardKey.space &&
-              FocusScope.of(context).hasFocus &&
-              FocusScope.of(context).focusedChild is EditableText) {
-            _togglePauseSong();
-          }
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: Icon(Broken.arrow_left)),
-          title: GlowText(
-            'Settings',
-            glowColor: _currentColor.withValues(alpha: 0.3),
-            style: TextStyle(
-              fontSize: 24,
-              color: textColor,
-              fontWeight: FontWeight.w600,
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: Icon(Broken.arrow_left)),
+              title: GlowText(
+                'Settings',
+                glowColor: _currentColor.withValues(alpha: 0.3),
+                style: TextStyle(
+                  fontSize: 24,
+                  color: textColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              backgroundColor: Colors.black,
+              surfaceTintColor: _currentColor,
             ),
-          ),
-          backgroundColor: Colors.black,
-          surfaceTintColor: _currentColor,
-        ),
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment.topCenter,
-              radius: 1.5,
-              colors: [_currentColor.withValues(alpha: 0.15), Colors.black],
-            ),
-          ),
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 80.0),
-                child: ListView(
-                  children: [
-                    GlowText(
-                      'Music Folder',
-                      glowColor: _currentColor.withValues(alpha: 0.2),
-                      style: TextStyle(
-                        fontSize: 28,
-                        color: textColor,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            _currentColor.withValues(alpha: 0.1),
-                            Colors.black.withValues(alpha: 0.3),
-                          ],
+            body: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.topCenter,
+                  radius: 1.5,
+                  colors: [_currentColor.withValues(alpha: 0.15), Colors.black],
+                ),
+              ),
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                        16.0, 16.0, 16.0, (_currentSong != null ? 80.0 : 0.0)),
+                    child: ListView(
+                      children: [
+                        GlowText(
+                          'Music Folder',
+                          glowColor: _currentColor.withValues(alpha: 0.2),
+                          style: TextStyle(
+                            fontSize: 28,
+                            color: textColor,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _currentColor.withValues(alpha: 0.2),
-                            blurRadius: 15,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: TextField(
-                        controller: _musicFolderController,
-                        style: TextStyle(color: textColor, fontSize: 16),
-                        cursorColor: _currentColor.computeLuminance() > 0.01
-                            ? _currentColor
-                            : Theme.of(context).textTheme.bodyLarge?.color,
-                        decoration: InputDecoration(
-                          hintText: 'Enter music folder path...',
-                          hintStyle: TextStyle(
-                            color: textColor!.withValues(alpha: 0.6),
-                            fontWeight: FontWeight.w300,
-                          ),
-                          prefixIcon: Icon(
-                            Broken.folder,
-                            color: textColor.withValues(alpha: 0.8),
-                          ),
-                          border: OutlineInputBorder(
+                        const SizedBox(height: 16),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                _currentColor.withValues(alpha: 0.1),
+                                Colors.black.withValues(alpha: 0.3),
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _currentColor.withValues(alpha: 0.2),
+                                blurRadius: 15,
+                                spreadRadius: 2,
+                              ),
+                            ],
                           ),
-                          filled: true,
-                          fillColor: Colors.transparent,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: _currentColor.withValues(alpha: 0.4),
-                              width: 1.5,
+                          child: TextField(
+                            controller: _musicFolderController,
+                            style: TextStyle(color: textColor, fontSize: 16),
+                            cursorColor: _currentColor.computeLuminance() > 0.01
+                                ? _currentColor
+                                : Theme.of(context).textTheme.bodyLarge?.color,
+                            decoration: InputDecoration(
+                              hintText: 'Enter music folder path...',
+                              hintStyle: TextStyle(
+                                color: textColor!.withValues(alpha: 0.6),
+                                fontWeight: FontWeight.w300,
+                              ),
+                              prefixIcon: Icon(
+                                Broken.folder,
+                                color: textColor.withValues(alpha: 0.8),
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              filled: true,
+                              fillColor: Colors.transparent,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 18,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: _currentColor.withValues(alpha: 0.4),
+                                  width: 1.5,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [_currentColor.withAlpha(220), _currentColor],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _currentColor.withAlpha(100),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 16,
-                            horizontal: 24,
-                          ),
-                          shape: RoundedRectangleBorder(
+                        const SizedBox(height: 20),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                _currentColor.withAlpha(220),
+                                _currentColor
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _currentColor.withAlpha(100),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 16,
+                                horizontal: 24,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            onPressed: () async {
+                              final expandedPath = expandTilde(
+                                _musicFolderController.text,
+                              );
+
+                              await SharedPreferencesService.instance
+                                  .setString('musicFolder', expandedPath);
+
+                              if (widget.onMusicFolderChanged != null) {
+                                await widget
+                                    .onMusicFolderChanged!(expandedPath);
+                              }
+
+                              ScaffoldMessenger.of(context)
+                                  .hideCurrentSnackBar();
+                              Navigator.pop(context, expandedPath);
+                            },
+                            icon: Icon(Broken.save_2, color: buttonTextColor),
+                            label: Text(
+                              'Save Music Folder',
+                              style: TextStyle(
+                                color: buttonTextColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                           ),
                         ),
-                        onPressed: () async {
-                          final expandedPath = expandTilde(
-                            _musicFolderController.text,
+                        const SizedBox(height: 32),
+                        _buildActionButton(
+                          icon: Broken.refresh,
+                          label: 'Reload Music Library',
+                          isLoading: _isReloadingLibrary,
+                          onPressed: _reloadLibrary,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildActionButton(
+                          icon: Broken.text,
+                          label: 'Manage Artist Seperators',
+                          isLoading: _isManagingSeparators,
+                          onPressed: _showSeparatorManagementPopup,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildActionButton(
+                          icon: Broken.colorfilter,
+                          label: 'Default Theme Color',
+                          isLoading: _isChangingColor,
+                          onPressed: _showColorPicker,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildActionButton(
+                          icon: Broken.colors_square,
+                          label: 'Particle base color',
+                          isLoading: _isChangingParticleColor,
+                          onPressed: _showParticleColorPicker,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildActionButton(
+                          icon: Broken.trash,
+                          label: 'Clear Cache',
+                          isLoading: _isClearingCache,
+                          onPressed: _clearCache,
+                        ),
+                        _buildSettingsSwitch(context,
+                            title: 'Vim keybindings',
+                            value: _vimKeybindings,
+                            onChanged: _saveVimKeybindings),
+                        _buildSettingsSwitch(
+                          context,
+                          title: 'Auto-convert non-MP3 files',
+                          value: _autoConvert,
+                          onChanged: _saveAutoConvert,
+                        ),
+                        _buildSettingsSwitch(
+                          context,
+                          title: 'Clear MP3 cache with app cache',
+                          value: _clearMp3Cache,
+                          onChanged: _saveClearMp3Cache,
+                        ),
+                        _buildSettingsSwitch(
+                          context,
+                          title: 'Music fade in on seek and song start',
+                          value: _fadeIn,
+                          onChanged: _saveFadeIn,
+                        ),
+                        _buildSettingsSwitch(
+                          context,
+                          title: 'Breathing animation on the album art',
+                          value: _breathe,
+                          onChanged: _saveBreathe,
+                        ),
+                        _buildSettingsSwitch(
+                          context,
+                          title: 'Alternate default for no album art',
+                          value: _mSn,
+                          onChanged: _saveMSn,
+                        ),
+                        _buildSettingsSwitch(
+                          context,
+                          title: 'Use dominant colors from album art',
+                          value: _useDominantColors,
+                          onChanged: _saveUseDominantColors,
+                        ),
+                        _buildSettingsSwitch(
+                          context,
+                          title: 'Spinning Album Art',
+                          value: _spinningAlbumArt,
+                          onChanged: _saveSpinningAlbumArt,
+                        ),
+                        _buildSettingsSwitch(
+			  context,
+                          title: 'Edge breathing effect',
+                          value: _edgeBreathe,
+                          onChanged: _saveEdgeBreathe
+			),
+			_buildSettingsSwitch(
+			  context, 
+			  title: 'Alt seekbar',
+			  value: _altSeek,
+			  onChanged: _saveAltSeek
+			),
+                        SettingsTextField(
+                          title: 'spotdl Custom Flags',
+                          initialValue: _spotdlFlags,
+                          hintText: 'Enter custom flags for spotdl...',
+                          onChanged: _saveSpotdlFlags,
+                          icon: Broken.setting_4,
+                          dominantColor: _currentColor,
+                        ),
+                        Row(
+                          children: [
+                            GlowIcon(
+                              Broken.sound,
+                              color: _currentColor,
+                              glowColor: _currentColor,
+                            ),
+                            const SizedBox(width: 12),
+                            GlowText(
+                              'Waveform & Particles',
+                              glowColor: _currentColor.withValues(alpha: 0.3),
+                              style: TextStyle(
+                                fontSize: 24,
+                                color: textColor,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        ListTile(
+                          title: Text('Waveform Bars Count',
+                              style: TextStyle(color: textColor)),
+                          subtitle: Text('Current: $_waveformBars',
+                              style:
+                                  TextStyle(color: textColor.withAlpha(150))),
+                          trailing: SizedBox(
+                            width: 150,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _waveformBarsController,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly
+                                    ],
+                                    decoration: InputDecoration(
+                                      hintText: (SharedPreferencesService
+                                                  .instance
+                                                  .getInt('waveformBars') ??
+                                              1000)
+                                          .toString(),
+                                      border: OutlineInputBorder(),
+                                      filled: true,
+                                      fillColor: Colors.black.withAlpha(50),
+                                    ),
+                                    style: TextStyle(color: textColor),
+                                    onSubmitted: (value) {
+                                      if (value.isNotEmpty) {
+                                        final intValue =
+                                            int.tryParse(value) ?? 1000;
+                                        _saveWaveformBars(intValue);
+                                      }
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildResetButton(
+                                  onPressed: () async {
+                                    await _saveWaveformBars(1000);
+                                    setState(() {});
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        ExpansionTile(
+                          title: Text('Particle Settings',
+                              style: TextStyle(color: textColor)),
+                          children: [
+                            _buildParticleSlider(
+                              label: 'Spawn Opacity',
+                              value: _particleSpawnOpacity,
+                              min: 0.0,
+                              max: 1.0,
+                              onChanged: _saveParticleSpawnOpacity,
+                              defaultValue: 0.4,
+                            ),
+                            _buildParticleSlider(
+                              label: 'Opacity Change Rate',
+                              value: _particleOpacityChangeRate,
+                              min: 0.0,
+                              max: 1.0,
+                              onChanged: _saveParticleOpacityChangeRate,
+                              defaultValue: 0.2,
+                            ),
+                            _buildParticleSlider(
+                              label: 'Min Opacity',
+                              value: _particleMinOpacity,
+                              min: 0.0,
+                              max: 1.0,
+                              onChanged: _saveParticleMinOpacity,
+                              defaultValue: 0.1,
+                            ),
+                            _buildParticleSlider(
+                              label: 'Max Opacity',
+                              value: _particleMaxOpacity,
+                              min: 0.0,
+                              max: 1.0,
+                              onChanged: _saveParticleMaxOpacity,
+                              defaultValue: 0.6,
+                            ),
+                            _buildParticleSlider(
+                              label: 'Min Radius',
+                              value: _particleMinRadius,
+                              min: 0.5,
+                              max: 10.0,
+                              onChanged: _saveParticleMinRadius,
+                              defaultValue: 2.0,
+                            ),
+                            _buildParticleSlider(
+                              label: 'Max Radius',
+                              value: _particleMaxRadius,
+                              min: 0.5,
+                              max: 10.0,
+                              onChanged: _saveParticleMaxRadius,
+                              defaultValue: 4.0,
+                            ),
+                            ListTile(
+                              title: Text('Particle Count',
+                                  style: TextStyle(color: textColor)),
+                              subtitle: Text('Current: $_particleCount',
+                                  style: TextStyle(
+                                      color: textColor.withAlpha(150))),
+                              trailing: SizedBox(
+                                width: 150,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _particleCountController,
+                                        keyboardType: TextInputType.number,
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.digitsOnly
+                                        ],
+                                        decoration: InputDecoration(
+                                          hintText: (SharedPreferencesService
+                                                      .instance
+                                                      .getInt(
+                                                          'particleCount') ??
+                                                  50)
+                                              .toString(),
+                                          border: OutlineInputBorder(),
+                                          filled: true,
+                                          fillColor: Colors.black.withAlpha(50),
+                                        ),
+                                        style: TextStyle(color: textColor),
+                                        onSubmitted: (value) {
+                                          if (value.isNotEmpty) {
+                                            final intValue =
+                                                int.tryParse(value) ?? 50;
+                                            _saveParticleCount(intValue);
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _buildResetButton(
+                                      onPressed: () async {
+                                        await _saveParticleCount(50);
+                                        setState(() {});
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_currentSong != null)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: MiniPlayer(
+                        onReloadLibrary: widget.onReloadLibrary,
+                        musicFolder: widget.musicFolder,
+                        key: _miniPlayerKey,
+                        song: _currentSong!,
+                        songList: widget.songs,
+                        service: widget.service,
+                        currentPlaylistName: widget.currentPlaylistName,
+                        currentIndex: _currentIndex,
+                        onClose: () => widget.onUpdateMiniPlayer?.call(
+                          _currentSong!,
+                          _currentIndex,
+                          _currentColor,
+                        ),
+                        onUpdate: (newSong, newIndex, newColor) {
+                          setState(() {
+                            _currentSong = newSong;
+                            _currentIndex = newIndex;
+                            _currentColor = newColor;
+                          });
+                          widget.onUpdateMiniPlayer?.call(
+                            newSong,
+                            newIndex,
+                            newColor,
                           );
-
-                          SharedPreferences prefs =
-                              await SharedPreferences.getInstance();
-                          await prefs.setString('musicFolder', expandedPath);
-
-                          if (widget.onMusicFolderChanged != null) {
-                            await widget.onMusicFolderChanged!(expandedPath);
-                          }
-
-                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                          Navigator.pop(context, expandedPath);
                         },
-                        icon: Icon(Broken.save_2, color: buttonTextColor),
-                        label: Text(
-                          'Save Music Folder',
-                          style: TextStyle(
-                            color: buttonTextColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
+                        dominantColor: _currentColor,
                       ),
                     ),
-                    const SizedBox(height: 32),
-                    _buildActionButton(
-                      icon: Broken.refresh,
-                      label: 'Reload Music Library',
-                      isLoading: _isReloadingLibrary,
-                      onPressed: _reloadLibrary,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildActionButton(
-                      icon: Broken.text,
-                      label: 'Manage Artist Seperators',
-                      isLoading: _isManagingSeparators,
-                      onPressed: _showSeparatorManagementPopup,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildActionButton(
-                      icon: Broken.trash,
-                      label: 'Clear Cache',
-                      isLoading: _isClearingCache,
-                      onPressed: _clearCache,
-                    ),
-                    _buildSettingsSwitch(context,
-                        title: 'Vim keybindings',
-                        value: _vimKeybindings,
-                        onChanged: _saveVimKeybindings),
-                    _buildSettingsSwitch(
-                      context,
-                      title: 'Auto-convert non-MP3 files',
-                      value: _autoConvert,
-                      onChanged: _saveAutoConvert,
-                    ),
-                    _buildSettingsSwitch(
-                      context,
-                      title: 'Clear MP3 cache with app cache',
-                      value: _clearMp3Cache,
-                      onChanged: _saveClearMp3Cache,
-                    ),
-                    _buildSettingsSwitch(
-                      context,
-                      title: 'Music fade in on seek and song start',
-                      value: _fadeIn,
-                      onChanged: _saveFadeIn,
-                    ),
-                  ],
-                ),
+                ],
               ),
-              if (_currentSong != null)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: MiniPlayer(
-                    onReloadLibrary: widget.onReloadLibrary,
-                    musicFolder: widget.musicFolder,
-                    key: _miniPlayerKey,
-                    song: _currentSong!,
-                    songList: widget.songs,
-                    service: widget.service,
-                    currentPlaylistName: widget.currentPlaylistName,
-                    currentIndex: _currentIndex,
-                    onClose: () => widget.onUpdateMiniPlayer?.call(
-                      _currentSong!,
-                      _currentIndex,
-                      _currentColor,
-                    ),
-                    onUpdate: (newSong, newIndex, newColor) {
-                      setState(() {
-                        _currentSong = newSong;
-                        _currentIndex = newIndex;
-                        _currentColor = newColor;
-                      });
-                      widget.onUpdateMiniPlayer?.call(
-                        newSong,
-                        newIndex,
-                        newColor,
-                      );
-                    },
-                    dominantColor: _currentColor,
-                  ),
-                ),
-            ],
+            ),
           ),
-        ),
+        ));
+  }
+
+  Widget _buildResetButton({required VoidCallback onPressed}) {
+    return IconButton(
+      icon: GlowIcon(
+        Broken.refresh,
+        size: 20,
+        color: _currentColor,
+        glowColor: _currentColor.withAlpha(80),
+      ),
+      onPressed: onPressed,
+    );
+  }
+
+  Widget _buildParticleSlider({
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required Function(double) onChanged,
+    required double defaultValue,
+  }) {
+    final textColor = _currentColor.computeLuminance() > 0.01
+        ? _currentColor
+        : Theme.of(context).textTheme.bodyLarge?.color;
+    return ListTile(
+      title: Text(label, style: TextStyle(color: textColor)),
+      subtitle: Slider(
+        value: value,
+        min: min,
+        max: max,
+        divisions: 20,
+        activeColor: _currentColor,
+        inactiveColor: Colors.grey,
+        onChanged: (newValue) => onChanged(newValue),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(value.toStringAsFixed(2), style: TextStyle(color: textColor)),
+          const SizedBox(width: 8),
+          _buildResetButton(
+            onPressed: () => onChanged(defaultValue),
+          ),
+        ],
       ),
     );
   }
@@ -4343,12 +5319,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             final updatedSeparators =
                                                 await rust_api
                                                     .getCurrentSeparators();
-                                            final prefs =
-                                                await SharedPreferences
-                                                    .getInstance();
-                                            await prefs.setStringList(
-                                                'separators',
-                                                updatedSeparators);
+                                            await SharedPreferencesService
+                                                .instance
+                                                .setStringList('separators',
+                                                    updatedSeparators);
 
                                             setStateDialog(() {
                                               currentSeparators =
@@ -4507,12 +5481,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                   final updatedSeparators =
                                                       await rust_api
                                                           .getCurrentSeparators();
-                                                  final prefs =
-                                                      await SharedPreferences
-                                                          .getInstance();
-                                                  await prefs.setStringList(
-                                                      'separators',
-                                                      updatedSeparators);
+                                                  await SharedPreferencesService
+                                                      .instance
+                                                      .setStringList(
+                                                          'separators',
+                                                          updatedSeparators);
 
                                                   setStateDialog(() =>
                                                       currentSeparators =
@@ -4586,10 +5559,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     rust_api.resetSeparators();
                                     final updatedSeparators =
                                         await rust_api.getCurrentSeparators();
-                                    final prefs =
-                                        await SharedPreferences.getInstance();
-                                    await prefs.setStringList(
-                                        'separators', updatedSeparators);
+                                    await SharedPreferencesService.instance
+                                        .setStringList(
+                                            'separators', updatedSeparators);
 
                                     setStateDialog(() =>
                                         currentSeparators = updatedSeparators);
@@ -4752,7 +5724,8 @@ class SongListTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0xFF383770).withValues(alpha: 0.2),
+                      color: defaultThemeColorNotifier.value
+                          .withValues(alpha: 0.2),
                       blurRadius: 5,
                       spreadRadius: 1,
                     ),
@@ -4844,6 +5817,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   bool _showLyrics = false;
   lrc_pkg.Lrc? _lrcData;
   bool _hasLyrics = false;
+  bool _isHoveringSeekbar = false;
   late FocusNode _focusNode;
   StreamSubscription<bool>? _playbackSubscription;
   StreamSubscription<Song>? _trackChangeSubscription;
@@ -4856,6 +5830,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   late final _particlePaint = Paint()
     ..style = PaintingStyle.fill
     ..color = Colors.white;
+  late VoidCallback _useDominantColorsListener;
 
   RepeatMode _repeatMode = RepeatMode.normal;
   bool _hasRepeated = false;
@@ -4868,6 +5843,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   late AnimationController _lyricsAnimationController;
   late Animation<double> _lyricsEntranceScale;
   late Animation<double> _lyricsEntranceOpacity;
+  late AnimationController _rotationController;
+  late Animation<double> _animation;
 
   @override
   void initState() {
@@ -4879,6 +5856,11 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         });
       }
     });
+    _useDominantColorsListener = () {
+      _updateDominantColor();
+    };
+    useDominantColorsNotifier.addListener(_useDominantColorsListener);
+    defaultThemeColorNotifier.addListener(_handleThemeColorChange);
     _isTempFile = widget.isTemp;
     _isTempFile ? _togglePlayPause : null;
     _breathingController = AnimationController(
@@ -4920,7 +5902,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
     _focusNode = FocusNode();
     _focusNode.requestFocus();
-    dominantColor = Color(0xFF383770);
+    dominantColor = defaultThemeColorNotifier.value;
     currentSong = widget.song;
     currentIndex = widget.currentIndex;
     _playPauseController = AnimationController(
@@ -4974,6 +5956,29 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
     _updateParticleOptions();
     _initializeLyricsAnimation();
+    _rotationController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+
+    _animation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(_rotationController);
+
+    _rotationController.repeat();
+  }
+
+  void _handleThemeColorChange() {
+    final useDominant =
+        SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
+    if (!useDominant || currentSong.albumArt == null) {
+      if (mounted) {
+        setState(() {
+          dominantColor = defaultThemeColorNotifier.value;
+        });
+      }
+    }
   }
 
   void _initializeLyricsAnimation() {
@@ -5567,16 +6572,31 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         50;
 
     _particleOptions = ParticleOptions(
-      baseColor: Colors.white,
-      spawnOpacity: 0.4,
-      opacityChangeRate: 0.2,
-      minOpacity: 0.1,
-      maxOpacity: 0.6,
+      baseColor: Color(
+          SharedPreferencesService.instance.getInt('particleBaseColor') ??
+              Colors.white.toARGB32()),
+      spawnOpacity:
+          SharedPreferencesService.instance.getDouble('particleSpawnOpacity') ??
+              0.4,
+      opacityChangeRate: SharedPreferencesService.instance
+              .getDouble('particleOpacityChangeRate') ??
+          0.2,
+      minOpacity:
+          SharedPreferencesService.instance.getDouble('particleMinOpacity') ??
+              0.1,
+      maxOpacity:
+          SharedPreferencesService.instance.getDouble('particleMaxOpacity') ??
+              0.6,
       spawnMinSpeed: peakSpeed,
       spawnMaxSpeed: 60 + peakSpeed * 0.7,
-      spawnMinRadius: 2.0,
-      spawnMaxRadius: 4.0,
-      particleCount: 50,
+      spawnMinRadius:
+          SharedPreferencesService.instance.getDouble('particleMinRadius') ??
+              2.0,
+      spawnMaxRadius:
+          SharedPreferencesService.instance.getDouble('particleMaxRadius') ??
+              4.0,
+      particleCount:
+          SharedPreferencesService.instance.getInt('particleCount') ?? 50,
     );
   }
 
@@ -5586,11 +6606,15 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
       _waveformData = List.filled(1000, 0.0);
     });
     try {
+      final waveformBars =
+          SharedPreferencesService.instance.getInt('waveformBars') ?? 1000;
       List<double> waveform = await rust_api.extractWaveformFromMp3(
         mp3Path: currentSong.path,
-        sampleCount: 1000,
+        sampleCount: waveformBars,
         channels: 2,
       );
+      //List<double> waveform = await rust_api.extractWaveform(
+      //    path: currentSong.path, sampleCount: waveformBars);
       if (mounted) {
         setState(() {
           _waveformData = waveform;
@@ -5846,24 +6870,29 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   }
 
   Future<void> _updateDominantColor() async {
-    try {
-      if (currentSong.albumArt == null) return;
+    final useDom = useDominantColorsNotifier.value;
+    if (currentSong.albumArt == null || !useDom) {
+      if (mounted) {
+        setState(() {
+          dominantColor = defaultThemeColorNotifier.value;
+        });
+      }
+      return;
+    }
 
+    try {
       final colorValue =
           await color_extractor.getDominantColor(data: currentSong.albumArt!);
 
       if (mounted) {
         setState(() {
-          dominantColor = Color(colorValue ?? 0xFF383770);
+          dominantColor =
+              Color(colorValue ?? defaultThemeColorNotifier.value.toARGB32());
         });
       }
     } catch (e) {
-      NamidaSnackbar(
-        backgroundColor: dominantColor,
-        content: 'Error generating dominant color: $e',
-      );
       if (mounted) {
-        setState(() => dominantColor = const Color(0xFF383770));
+        setState(() => dominantColor = defaultThemeColorNotifier.value);
       }
     }
   }
@@ -6160,8 +7189,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     if (!widget.isTemp || widget.tempPath == null) return;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final musicFolder = prefs.getString('musicFolder') ?? '~/Music';
+      final musicFolder =
+          SharedPreferencesService.instance.getString('musicFolder') ??
+              '~/Music';
       final expandedPath = musicFolder.replaceFirst(
         '~',
         Platform.environment['HOME'] ?? '',
@@ -6194,6 +7224,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     _breathingController.dispose();
     _fadeController.dispose();
     _lyricsAnimationController.dispose();
+    defaultThemeColorNotifier.removeListener(_handleThemeColorChange);
+    useDominantColorsNotifier.removeListener(_useDominantColorsListener);
     if (widget.isTemp && widget.tempPath != null) {
       try {
         final file = File(widget.tempPath!);
@@ -6218,402 +7250,506 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
     _updateParticleOptions();
 
-    return KeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.escape) {
-            if (_isTempFile) {
-              _handleSearchAnother();
-            } else if (!_isTempFile) {
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              Navigator.pop(context, {
-                'song': currentSong,
-                'index': currentIndex,
-                'dominantColor': dominantColor,
-              });
+    //return KeyboardListener(
+    return Theme(
+        data: ThemeData.dark(),
+        child: KeyboardListener(
+          focusNode: _focusNode,
+          autofocus: true,
+          onKeyEvent: (event) {
+            if (event is KeyDownEvent) {
+              if (event.logicalKey == LogicalKeyboardKey.escape) {
+                if (_isTempFile) {
+                  _handleSearchAnother();
+                } else if (!_isTempFile) {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  Navigator.pop(context, {
+                    'song': currentSong,
+                    'index': currentIndex,
+                    'dominantColor': dominantColor,
+                  });
+                }
+              } else if (event.logicalKey == LogicalKeyboardKey.space &&
+                  (FocusScope.of(context).focusedChild is! EditableText)) {
+                _togglePlayPause();
+              }
             }
-          } else if (event.logicalKey == LogicalKeyboardKey.space &&
-              (FocusScope.of(context).focusedChild is! EditableText)) {
-            _togglePlayPause();
-          }
-        }
-      },
-      child: Scaffold(
-        body: Stack(
-          children: [
-            AnimatedOpacity(
-              duration: const Duration(milliseconds: 500),
-              opacity: isPlaying ? 1.0 : 0.0,
-              child: AnimatedBackground(
-                behaviour: RandomParticleBehaviour(
-                  options: _particleOptions,
-                  paint: _particlePaint,
-                ),
-                vsync: this,
-                child: Container(),
-              ),
-            ),
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment.topCenter,
-                    radius: 1.8,
-                    colors: [
-                      dominantColor.withValues(alpha: 0.25),
-                      Colors.black,
-                    ],
+          },
+          child: Scaffold(
+            body: Stack(
+              children: [
+                if (SharedPreferencesService.instance.getBool('edgeBreathe') ??
+                    true) ...[
+                  Positioned.fill(
+                    child: EdgeBreathingEffect(
+                      dominantColor: dominantColor,
+                      currentPeak: currentPeak,
+                      isPlaying: isPlaying,
+                    ),
+                  ),
+                ],
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 500),
+                  opacity: isPlaying ? 1.0 : 0.0,
+                  child: AnimatedBackground(
+                    behaviour: RandomParticleBehaviour(
+                      options: _particleOptions,
+                      paint: _particlePaint,
+                    ),
+                    vsync: this,
+                    child: Container(),
                   ),
                 ),
-              ),
-            ),
-            SafeArea(
-              child: Column(
-                children: [
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          DynamicIconButton(
-                            icon: Broken.arrow_down,
-                            backgroundColor: dominantColor,
-                            size: 40,
-                            onPressed: () {
-                              if (_isTempFile) {
-                                _handleSearchAnother();
-                              } else {
-                                ScaffoldMessenger.of(context)
-                                    .hideCurrentSnackBar();
-                                Navigator.pop(context, {
-                                  'song': currentSong,
-                                  'index': currentIndex,
-                                  'dominantColor': dominantColor,
-                                });
-                              }
-                            },
-                          ),
-                          const SizedBox(width: 12),
-                          DynamicIconButton(
-                            icon: Broken.more,
-                            onPressed: () => _isTempFile
-                                ? _showPlayerMenu(context)
-                                : _showPlaylistPopup(context),
-                            backgroundColor: dominantColor,
-                            size: 40,
-                          ),
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: Alignment.topCenter,
+                        radius: 1.8,
+                        colors: [
+                          dominantColor.withValues(alpha: 0.25),
+                          Colors.black,
                         ],
                       ),
                     ),
                   ),
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Transform.translate(
-                      offset: const Offset(0, -20),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                        child: Column(
+                ),
+                SafeArea(
+                  child: Column(
+                    children: [
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              DynamicIconButton(
+                                icon: Broken.arrow_down,
+                                backgroundColor: dominantColor,
+                                size: 40,
+                                onPressed: () {
+                                  if (_isTempFile) {
+                                    _handleSearchAnother();
+                                  } else {
+                                    ScaffoldMessenger.of(context)
+                                        .hideCurrentSnackBar();
+                                    Navigator.pop(context, {
+                                      'song': currentSong,
+                                      'index': currentIndex,
+                                      'dominantColor': dominantColor,
+                                    });
+                                  }
+                                },
+                              ),
+                              const SizedBox(width: 12),
+                              DynamicIconButton(
+                                icon: Broken.more,
+                                onPressed: () => _isTempFile
+                                    ? _showPlayerMenu(context)
+                                    : _showPlaylistPopup(context),
+                                backgroundColor: dominantColor,
+                                size: 40,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Transform.translate(
+                          offset: const Offset(0, -20),
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 32.0),
+                            child: Column(
+                              children: [
+                                GlowText(
+                                  currentSong.title,
+                                  style: TextStyle(
+                                    color:
+                                        dominantColor.computeLuminance() > 0.01
+                                            ? dominantColor
+                                            : Theme.of(context)
+                                                .textTheme
+                                                .bodyLarge
+                                                ?.color,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  currentSong.artist,
+                                  style: TextStyle(
+                                    color: textColor.withValues(alpha: 0.8),
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Stack(
+                          alignment: Alignment.center,
                           children: [
-                            GlowText(
-                              currentSong.title,
-                              style: TextStyle(
-                                color: dominantColor.computeLuminance() > 0.01
-                                    ? dominantColor
-                                    : Theme.of(context)
-                                        .textTheme
-                                        .bodyLarge
-                                        ?.color,
-                                fontSize: 28,
-                                fontWeight: FontWeight.w700,
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 600),
+                              transitionBuilder:
+                                  (Widget child, Animation<double> animation) {
+                                return SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.5, 0.0),
+                                    end: Offset.zero,
+                                  ).animate(CurvedAnimation(
+                                    parent: animation,
+                                    curve: Curves.easeOutCubic,
+                                  )),
+                                  child: FadeTransition(
+                                    opacity: animation,
+                                    child: ScaleTransition(
+                                      scale: Tween<double>(
+                                        begin: 0.8,
+                                        end: 1.0,
+                                      ).animate(CurvedAnimation(
+                                        parent: animation,
+                                        curve: Curves.easeOutBack,
+                                      )),
+                                      child: child,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Hero(
+                                key: ValueKey<String>(
+                                    'albumArt-${currentSong.path}'),
+                                tag: 'albumArt-${currentSong.path}',
+                                flightShuttleBuilder: (
+                                  flightContext,
+                                  animation,
+                                  direction,
+                                  fromHeroContext,
+                                  toHeroContext,
+                                ) {
+                                  return AnimatedBuilder(
+                                    animation: animation,
+                                    builder: (context, child) {
+                                      final scale = Tween<double>(
+                                        begin: 0.5,
+                                        end: 1.0,
+                                      ).evaluate(animation);
+                                      return Transform.scale(
+                                        scale: scale,
+                                        child: child,
+                                      );
+                                    },
+                                    child: toHeroContext.widget,
+                                  );
+                                },
+                                child: (currentSong.path.contains('cdda://') ||
+                                        ((SharedPreferencesService.instance
+                                                    .getBool(
+                                                        'spinningAlbumArt') ??
+                                                false) &&
+                                            currentSong.albumArt != null))
+                                    ? RotationTransition(
+                                        turns: _animation,
+                                        child: NamidaThumbnail(
+                                          image: currentSong.albumArt != null
+                                              ? MemoryImage(
+                                                  currentSong.albumArt!,
+                                                )
+                                              : currentSong.path
+                                                      .contains('cdda://')
+                                                  ? AssetImage(
+                                                      'assets/adiman_cd.png')
+                                                  : null,
+                                          isPlaying: isPlaying,
+                                          currentPeak: currentPeak,
+                                          showBreathingEffect: true,
+                                          isCD: currentSong.path
+                                              .contains('cdda://'),
+                                          sharedBreathingValue:
+                                              _breathingAnimation.value,
+                                        ),
+                                      )
+                                    : NamidaThumbnail(
+                                        image: currentSong.albumArt != null
+                                            ? MemoryImage(
+                                                currentSong.albumArt!,
+                                              )
+                                            : null,
+                                        isPlaying: isPlaying,
+                                        currentPeak: currentPeak,
+                                        showBreathingEffect: true,
+                                        isCD: currentSong.path.contains(
+                                            'cdda://'), // Should be false hardcoded but copy and paste
+                                        sharedBreathingValue:
+                                            _breathingAnimation.value,
+                                      ),
                               ),
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              currentSong.artist,
-                              style: TextStyle(
-                                color: textColor.withValues(alpha: 0.8),
-                                fontSize: 16,
+                            if (_showLyrics &&
+                                _lrcData != null &&
+                                _rupdateLyricsStatus())
+                              Positioned.fill(
+                                child: LyricsOverlay(
+                                  isPlaying: isPlaying,
+                                  key: ValueKey(currentSong.path),
+                                  lrc: _lrcData!,
+                                  currentPosition: Duration(
+                                    seconds: (_currentSliderValue *
+                                            currentSong.duration.inSeconds)
+                                        .toInt(),
+                                  ),
+                                  dominantColor: dominantColor,
+                                  currentPeak: currentPeak,
+                                  entranceScale: _lyricsEntranceScale,
+                                  entranceOpacity: _lyricsEntranceOpacity,
+                                  sharedBreathingValue:
+                                      _breathingAnimation.value,
+                                  onLyricTap: (timestamp) {
+                                    final position =
+                                        timestamp.inSeconds.toDouble();
+                                    final progress = position /
+                                        currentSong.duration.inSeconds;
+                                    _handleSeek(progress.clamp(0.0, 1.0));
+                                  },
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 600),
-                          transitionBuilder:
-                              (Widget child, Animation<double> animation) {
-                            return SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0.5, 0.0),
-                                end: Offset.zero,
-                              ).animate(CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOutCubic,
-                              )),
-                              child: FadeTransition(
-                                opacity: animation,
-                                child: ScaleTransition(
-                                  scale: Tween<double>(
-                                    begin: 0.8,
-                                    end: 1.0,
-                                  ).animate(CurvedAnimation(
-                                    parent: animation,
-                                    curve: Curves.easeOutBack,
-                                  )),
-                                  child: child,
-                                ),
-                              ),
-                            );
-                          },
-                          child: Hero(
-                            key: ValueKey<String>(
-                                'albumArt-${currentSong.path}'),
-                            tag: 'albumArt-${currentSong.path}',
-                            flightShuttleBuilder: (
-                              flightContext,
-                              animation,
-                              direction,
-                              fromHeroContext,
-                              toHeroContext,
-                            ) {
-                              return AnimatedBuilder(
-                                animation: animation,
-                                builder: (context, child) {
-                                  final scale = Tween<double>(
-                                    begin: 0.5,
-                                    end: 1.0,
-                                  ).evaluate(animation);
-                                  return Transform.scale(
-                                    scale: scale,
-                                    child: child,
-                                  );
-                                },
-                                child: toHeroContext.widget,
-                              );
-                            },
-                            child: NamidaThumbnail(
-                              image: currentSong.albumArt != null
-                                  ? MemoryImage(
-                                      currentSong.albumArt!,
-                                    )
-                                  : const AssetImage(
-                                      'assets/default_album.png',
-                                    ) as ImageProvider,
-                              isPlaying: isPlaying,
-                              currentPeak: currentPeak,
-                              showBreathingEffect: true,
-                              sharedBreathingValue: _breathingAnimation.value,
-                            ),
+                      // Waveform Seek Bar.
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24.0,
+                            vertical: 16,
                           ),
-                        ),
-                        if (_showLyrics &&
-                            _lrcData != null &&
-                            _rupdateLyricsStatus())
-                          Positioned.fill(
-                            child: LyricsOverlay(
-                              isPlaying: isPlaying,
-                              key: ValueKey(currentSong.path),
-                              lrc: _lrcData!,
-                              currentPosition: Duration(
-                                seconds: (_currentSliderValue *
-                                        currentSong.duration.inSeconds)
-                                    .toInt(),
-                              ),
-                              dominantColor: dominantColor,
-                              currentPeak: currentPeak,
-                              entranceScale: _lyricsEntranceScale,
-                              entranceOpacity: _lyricsEntranceOpacity,
-                              sharedBreathingValue: _breathingAnimation.value,
-                              onLyricTap: (timestamp) {
-                                final position = timestamp.inSeconds.toDouble();
-                                final progress =
-                                    position / currentSong.duration.inSeconds;
-                                _handleSeek(progress.clamp(0.0, 1.0));
-                              },
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  // Waveform Seek Bar.
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24.0,
-                        vertical: 16,
-                      ),
-                      child: WaveformSeekBar(
-                        waveformData: _waveformData,
-                        progress: _currentSliderValue,
-                        activeColor: dominantColor,
-                        inactiveColor: Colors.grey.withValues(alpha: 0.3),
-                        onSeek: (value) => _handleSeek(value),
-                      ),
-                    ),
-                  ),
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32.0,
-                        vertical: 16,
-                      ),
-                      child: Row(
-                        children: [
-                          // Left-aligned lyrics button
-                          Expanded(
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: DynamicIconButton(
-                                icon: _hasLyrics
-                                    ? (_showLyrics
-                                        ? Broken.card_slash
-                                        : Broken.document)
-                                    : Broken.danger,
-                                onPressed:
-                                    _hasLyrics ? () => _toggleLyrics() : null,
-                                backgroundColor: dominantColor,
-                              ),
-                            ),
-                          ),
-
-                          // Centered playback controls
-                          Expanded(
-                            flex: 2,
-                            child: Center(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Hero(
-                                    tag: 'controls-prev',
-                                    child: DynamicIconButton(
-                                      icon: Broken.previous,
-                                      onPressed: currentIndex > 0
-                                          ? _handleSkipPrevious
-                                          : null,
-                                      backgroundColor: dominantColor,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 24),
-                                  Hero(
-                                    tag: 'controls-playPause',
-                                    child: ParticlePlayButton(
-                                      isPlaying: isPlaying,
-                                      color: dominantColor,
-                                      onPressed: _togglePlayPause,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 24),
-                                  Hero(
-                                    tag: 'controls-next',
-                                    child: DynamicIconButton(
-                                      icon: Broken.next,
-                                      onPressed: currentIndex <
-                                              widget.songList.length - 1
-                                          ? _handleSkipNext
-                                          : null,
-                                      backgroundColor: dominantColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          // Right-aligned volume/repeat controls
-                          Expanded(
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  MouseRegion(
-                                    onEnter: (_) =>
-                                        setState(() => _isHoveringVol = true),
-                                    onExit: (_) =>
-                                        setState(() => _isHoveringVol = false),
-                                    child: AnimatedContainer(
+                          child: currentSong.path.contains('cdda://') || (SharedPreferencesService.instance.getBool('altSeek') ?? true == true)
+                              ? Container(
+                                  height: 32,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  child: MouseRegion(
+                                    onEnter: (_) => setState(
+                                        () => _isHoveringSeekbar = true),
+                                    onExit: (_) => setState(
+                                        () => _isHoveringSeekbar = false),
+                                    child: TweenAnimationBuilder<double>(
                                       duration:
-                                          const Duration(milliseconds: 300),
-                                      curve: Curves.easeOut,
-                                      width: _isHoveringVol ? 150 : 40,
-                                      child: Row(
-                                        children: [
-                                          VolumeIcon(
-                                            volume: _volume,
-                                            dominantColor: dominantColor,
+                                          const Duration(milliseconds: 200),
+                                      curve: Curves.easeOutCubic,
+                                      tween: Tween<double>(
+                                        begin: 0,
+                                        end: _isHoveringSeekbar ? 1 : 0,
+                                      ),
+                                      builder: (context, value, child) {
+                                        return AnimatedContainer(
+                                          duration:
+                                              const Duration(milliseconds: 200),
+                                          curve: Curves.easeOutCubic,
+                                          height: 4 + (12 * value),
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                                2 + (6 * value)),
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                dominantColor.withValues(
+                                                    alpha: 0.3),
+                                                dominantColor.withValues(
+                                                    alpha: 0.1),
+                                              ],
+                                            ),
                                           ),
-                                          if (_isHoveringVol) ...[
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: SliderTheme(
-                                                data: SliderThemeData(
-                                                  trackHeight: 3,
-                                                  thumbShape:
-                                                      const RoundSliderThumbShape(
-                                                          enabledThumbRadius:
-                                                              6),
-                                                ),
-                                                child: Slider(
-                                                  value: _volume,
-                                                  activeColor: dominantColor,
-                                                  inactiveColor: dominantColor
-                                                      .withValues(alpha: 0.3),
-                                                  onChanged: (newVolume) async {
-                                                    await VolumeController()
-                                                        .setVolume(newVolume);
-                                                    setState(() =>
-                                                        _volume = newVolume);
-                                                    await rust_api.setVolume(
-                                                        volume: newVolume);
-                                                  },
-                                                ),
+                                          child: SliderTheme(
+                                            data: SliderThemeData(
+                                              trackHeight: 4 + (12 * value),
+                                              thumbShape:
+                                                  const RoundSliderThumbShape(
+                                                      enabledThumbRadius: 0),
+                                              overlayShape: SliderComponentShape
+                                                  .noOverlay,
+                                              activeTrackColor: dominantColor,
+                                              inactiveTrackColor:
+                                                  Colors.grey.withAlpha(0x30),
+                                              trackShape:
+                                                  CustomRoundedRectSliderTrackShape(
+                                                radius: 2 + (6 * value),
                                               ),
                                             ),
-                                          ],
-                                        ],
-                                      ),
+                                            child: Slider(
+                                              value: _currentSliderValue,
+                                              onChanged: (value) =>
+                                                  _handleSeek(value),
+                                            ),
+                                          ),
+                                        );
+                                      },
                                     ),
                                   ),
-                                  const SizedBox(width: 16),
-                                  DynamicIconButton(
-                                    icon: _repeatMode == RepeatMode.repeatOnce
-                                        ? Broken.repeate_one
-                                        : _repeatMode == RepeatMode.repeatAll
-                                            ? Broken.repeat
-                                            : Broken.arrow_2,
-                                    onPressed: _toggleRepeatMode,
+                                )
+                              : WaveformSeekBar(
+                                  waveformData: _waveformData,
+                                  progress: _currentSliderValue,
+                                  activeColor: dominantColor,
+                                  inactiveColor: Colors.grey.withAlpha(0x30),
+                                  onSeek: (value) => _handleSeek(value),
+                                ),
+                        ),
+                      ),
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32.0,
+                            vertical: 16,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: DynamicIconButton(
+                                    icon: _hasLyrics
+                                        ? (_showLyrics
+                                            ? Broken.card_slash
+                                            : Broken.document)
+                                        : Broken.danger,
+                                    onPressed: _hasLyrics
+                                        ? () => _toggleLyrics()
+                                        : null,
                                     backgroundColor: dominantColor,
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
+                              Expanded(
+                                flex: 2,
+                                child: Center(
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Hero(
+                                        tag: 'controls-prev',
+                                        child: DynamicIconButton(
+                                          icon: Broken.previous,
+                                          onPressed: currentIndex > 0
+                                              ? _handleSkipPrevious
+                                              : null,
+                                          backgroundColor: dominantColor,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 24),
+                                      Hero(
+                                        tag: 'controls-playPause',
+                                        child: ParticlePlayButton(
+                                          isPlaying: isPlaying,
+                                          color: dominantColor,
+                                          onPressed: _togglePlayPause,
+                                          miniP: false,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 24),
+                                      Hero(
+                                        tag: 'controls-next',
+                                        child: DynamicIconButton(
+                                          icon: Broken.next,
+                                          onPressed: currentIndex <
+                                                  widget.songList.length - 1
+                                              ? _handleSkipNext
+                                              : null,
+                                          backgroundColor: dominantColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      MouseRegion(
+                                        onEnter: (_) => setState(
+                                            () => _isHoveringVol = true),
+                                        onExit: (_) => setState(
+                                            () => _isHoveringVol = false),
+                                        child: AnimatedContainer(
+                                          duration:
+                                              const Duration(milliseconds: 300),
+                                          curve: Curves.easeOut,
+                                          width: _isHoveringVol ? 150 : 40,
+                                          child: Row(
+                                            children: [
+                                              Hero(
+                                                tag:
+                                                    'volume-${currentSong.path}',
+                                                child: VolumeIcon(
+                                                  volume: _volume,
+                                                  dominantColor: dominantColor,
+                                                ),
+                                              ),
+                                              if (_isHoveringVol) ...[
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: AdaptiveSlider(
+                                                    dominantColor:
+                                                        dominantColor,
+                                                    value: _volume,
+                                                    onChanged:
+                                                        (newVolume) async {
+                                                      await VolumeController()
+                                                          .setVolume(newVolume);
+                                                      setState(() =>
+                                                          _volume = newVolume);
+                                                      await rust_api.setVolume(
+                                                          volume: newVolume);
+                                                    },
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      DynamicIconButton(
+                                        icon:
+                                            _repeatMode == RepeatMode.repeatOnce
+                                                ? Broken.repeate_one
+                                                : _repeatMode ==
+                                                        RepeatMode.repeatAll
+                                                    ? Broken.repeat
+                                                    : Broken.arrow_2,
+                                        onPressed: _toggleRepeatMode,
+                                        backgroundColor: dominantColor,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  )
-                ],
-              ),
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
+          ),
+        ));
   }
 
   List<double> _generateDummyWaveformData() {
@@ -6888,7 +8024,7 @@ class _DownloadScreenState extends State<DownloadScreen>
   final FocusNode _searchFocus = FocusNode();
   Track? _currentTrack;
   late AnimationController _breathingController;
-  Color _dominantColor = Color(0xFF383770);
+  Color _dominantColor = defaultThemeColorNotifier.value;
   late FocusNode _focusNode;
   bool _isDownloading = false;
   Song? _tempSong;
@@ -6911,12 +8047,14 @@ class _DownloadScreenState extends State<DownloadScreen>
     setState(() => _isDownloading = true);
 
     try {
-      final downloadedPath = await rust_api.downloadToTemp(query: query);
-      final prefs = await SharedPreferences.getInstance();
+      final downloadedPath = await rust_api.downloadToTemp(
+          query: query,
+          flags: SharedPreferencesService.instance.getString('spotdlFlags'));
 
       final metadata = await rust_api.scanMusicDirectory(
         dirPath: path.dirname(downloadedPath),
-        autoConvert: prefs.getBool('autoConvert') ?? true,
+        autoConvert:
+            SharedPreferencesService.instance.getBool('autoConvert') ?? true,
       );
 
       if (metadata.isNotEmpty) {
@@ -6927,13 +8065,14 @@ class _DownloadScreenState extends State<DownloadScreen>
             final colorValue = await color_extractor.getDominantColor(
                 data: _tempSong!.albumArt!);
             setState(() {
-              _dominantColor = Color(colorValue ?? 0xFF383770);
+              _dominantColor = Color(
+                  colorValue ?? defaultThemeColorNotifier.value.toARGB32());
             });
           } catch (e) {
             NamidaSnackbar(
-                backgroundColor: Color(0xFF383770),
+                backgroundColor: defaultThemeColorNotifier.value,
                 content: 'Error generating dominant color: $e');
-            setState(() => _dominantColor = Color(0xFF383770));
+            setState(() => _dominantColor = defaultThemeColorNotifier.value);
           }
         }
 
@@ -6966,164 +8105,168 @@ class _DownloadScreenState extends State<DownloadScreen>
 
   @override
   Widget build(BuildContext context) {
-    return KeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.escape &&
-            !_isDownloading) {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          Navigator.pop(context);
-        }
-      },
-      child: Scaffold(
-        body: Stack(
-          children: [
-            // Blurred Background
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 100, sigmaY: 100),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment.topCenter,
-                      radius: 1.8,
-                      colors: [_dominantColor.withAlpha(30), Colors.black],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            SafeArea(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        DynamicIconButton(
-                          icon: Broken.arrow_left,
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                            Navigator.pop(context);
-                          },
-                          backgroundColor: _dominantColor,
-                          size: 40,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: NamidaTextField(
-                            controller: _searchController,
-                            focusNode: _searchFocus,
-                            hintText: 'Search song or paste URL...',
-                            prefixIcon: Broken.search_normal,
-                            onSubmitted: (_) => _startDownload(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: _currentTrack == null ? _buildEmptyState() : null,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (_isDownloading)
-              Positioned.fill(
-                child: KeyboardListener(
-                  focusNode: FocusNode(),
-                  autofocus: true,
-                  onKeyEvent: (event) {
-                    if (event is KeyDownEvent &&
-                        event.logicalKey == LogicalKeyboardKey.escape) {
-                      setState(() => _isDownloading = false);
-                      rust_api.cancelDownload();
-                      rust_api.stopSong();
-                    }
-                  },
+    return Theme(
+        data: ThemeData.dark(),
+        child: KeyboardListener(
+          focusNode: _focusNode,
+          autofocus: true,
+          onKeyEvent: (event) {
+            if (event is KeyDownEvent &&
+                event.logicalKey == LogicalKeyboardKey.escape &&
+                !_isDownloading) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              Navigator.pop(context);
+            }
+          },
+          child: Scaffold(
+            body: Stack(
+              children: [
+                // Blurred Background
+                Positioned.fill(
                   child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    filter: ui.ImageFilter.blur(sigmaX: 100, sigmaY: 100),
                     child: Container(
-                      color: Colors.black54,
-                      child: Stack(
-                        children: [
-                          Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CircularProgressIndicator(
-                                  valueColor:
-                                      AlwaysStoppedAnimation(_dominantColor),
-                                ),
-                                const SizedBox(height: 16),
-                                GlowText(
-                                  'Downloading...',
-                                  glowColor: _dominantColor,
-                                  style: TextStyle(
-                                      color: Colors.white, fontSize: 18),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Positioned(
-                            top: 10,
-                            left: 10,
-                            child: DynamicIconButton(
-                              icon: Broken.cross,
-                              onPressed: () {
-                                setState(() => _isDownloading = false);
-                                rust_api.cancelDownload();
-                                rust_api.pauseSong();
-                              },
-                              backgroundColor: _dominantColor,
-                              size: 40,
-                            ),
-                          ),
-                        ],
+                      decoration: BoxDecoration(
+                        gradient: RadialGradient(
+                          center: Alignment.topCenter,
+                          radius: 1.8,
+                          colors: [_dominantColor.withAlpha(30), Colors.black],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            if (_tempSong != null)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: MiniPlayer(
-                  onReloadLibrary: widget.onReloadLibrary,
-                  musicFolder: widget.musicFolder,
-                  song: _tempSong!,
-                  songList: [_tempSong!],
-                  service: widget.service,
-                  dominantColor: _dominantColor,
-                  currentIndex: 0,
-                  isTemp: true,
-                  onClose: () {
-                    setState(() {
-                      _tempSong = null;
-                      _dominantColor = Color(0xFF383770);
-                    });
-                    rust_api.stopSong();
-                  },
-                  onUpdate: (newSong, newIndex, newColor) {
-                    setState(() {
-                      _tempSong = newSong;
-                      _dominantColor = newColor;
-                    });
-                  },
-                  isCurrent: true,
+                SafeArea(
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          children: [
+                            DynamicIconButton(
+                              icon: Broken.arrow_left,
+                              onPressed: () {
+                                ScaffoldMessenger.of(context)
+                                    .hideCurrentSnackBar();
+                                Navigator.pop(context);
+                              },
+                              backgroundColor: _dominantColor,
+                              size: 40,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: NamidaTextField(
+                                controller: _searchController,
+                                focusNode: _searchFocus,
+                                hintText: 'Search song or paste URL...',
+                                prefixIcon: Broken.search_normal,
+                                onSubmitted: (_) => _startDownload(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child:
+                              _currentTrack == null ? _buildEmptyState() : null,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-          ],
-        ),
-      ),
-    );
+                if (_isDownloading)
+                  Positioned.fill(
+                    child: KeyboardListener(
+                      focusNode: FocusNode(),
+                      autofocus: true,
+                      onKeyEvent: (event) {
+                        if (event is KeyDownEvent &&
+                            event.logicalKey == LogicalKeyboardKey.escape) {
+                          setState(() => _isDownloading = false);
+                          rust_api.cancelDownload();
+                          rust_api.stopSong();
+                        }
+                      },
+                      child: BackdropFilter(
+                        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          color: Colors.black54,
+                          child: Stack(
+                            children: [
+                              Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation(
+                                          _dominantColor),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    GlowText(
+                                      'Downloading...',
+                                      glowColor: _dominantColor,
+                                      style: TextStyle(
+                                          color: Colors.white, fontSize: 18),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Positioned(
+                                top: 10,
+                                left: 10,
+                                child: DynamicIconButton(
+                                  icon: Broken.cross,
+                                  onPressed: () {
+                                    setState(() => _isDownloading = false);
+                                    rust_api.cancelDownload();
+                                    rust_api.pauseSong();
+                                  },
+                                  backgroundColor: _dominantColor,
+                                  size: 40,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                if (_tempSong != null)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: MiniPlayer(
+                      onReloadLibrary: widget.onReloadLibrary,
+                      musicFolder: widget.musicFolder,
+                      song: _tempSong!,
+                      songList: [_tempSong!],
+                      service: widget.service,
+                      dominantColor: _dominantColor,
+                      currentIndex: 0,
+                      isTemp: true,
+                      onClose: () {
+                        setState(() {
+                          _tempSong = null;
+                          _dominantColor = defaultThemeColorNotifier.value;
+                        });
+                        rust_api.stopSong();
+                      },
+                      onUpdate: (newSong, newIndex, newColor) {
+                        setState(() {
+                          _tempSong = newSong;
+                          _dominantColor = newColor;
+                        });
+                      },
+                      isCurrent: true,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ));
   }
 
   Widget _buildEmptyState() {
@@ -7415,5 +8558,374 @@ class VolumeController {
   Future<void> setVolume(double value) async {
     await rust_api.setVolume(volume: value);
     volume.value = value;
+  }
+}
+
+class AdaptiveSlider extends StatelessWidget {
+  final double value;
+  final ValueChanged<double> onChanged;
+  final Color dominantColor;
+
+  const AdaptiveSlider({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    required this.dominantColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final luminance = dominantColor.computeLuminance();
+    final isDark = luminance < 0.01;
+    final activeColor = isDark ? Colors.white : dominantColor;
+    final inactiveColor = activeColor.withValues(alpha: 0.3);
+
+    return SliderTheme(
+      data: SliderThemeData(
+        trackHeight: 3,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+        overlayShape: SliderComponentShape.noOverlay,
+        activeTrackColor: activeColor,
+        inactiveTrackColor: inactiveColor,
+        thumbColor: activeColor,
+      ),
+      child: Slider(
+        value: value,
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+class SharedPreferencesService {
+  static SharedPreferences? _instance;
+
+  static SharedPreferences get instance {
+    if (_instance == null) {
+      throw Exception('SharedPreferences not initialized!');
+    }
+    return _instance!;
+  }
+
+  static Future<void> init() async {
+    _instance = await SharedPreferences.getInstance();
+  }
+}
+
+class CDLoadingScreen extends StatefulWidget {
+  final Color dominantColor;
+  final VoidCallback onCancel;
+  const CDLoadingScreen({
+    super.key,
+    required this.dominantColor,
+    required this.onCancel,
+  });
+
+  @override
+  State<CDLoadingScreen> createState() => _CDLoadingScreenState();
+}
+
+class _CDLoadingScreenState extends State<CDLoadingScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _rotationController;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _rotationController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+
+    _animation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(_rotationController);
+
+    _rotationController.repeat();
+  }
+
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Background with blur
+        Positioned.fill(
+          child: Container(
+            color: Colors.black.withValues(alpha: 0.85),
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(),
+            ),
+          ),
+        ),
+        // Content
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              RotationTransition(
+                turns: _animation,
+                child: GlowIcon(
+                  Broken.cd,
+                  color: widget.dominantColor,
+                  size: 80,
+                  glowColor: widget.dominantColor.withAlpha(100),
+                  blurRadius: 20,
+                ),
+              ),
+              const SizedBox(height: 30),
+              GlowText(
+                'Loading CD Tracks...',
+                glowColor: widget.dominantColor.withAlpha(80),
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: 200,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    minHeight: 8,
+                    backgroundColor: Colors.black.withAlpha(100),
+                    color: widget.dominantColor,
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(widget.dominantColor),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+              Material(
+                color: Colors.transparent,
+                child: DynamicIconButton(
+                  icon: Broken.close_circle,
+                  onPressed: widget.onCancel,
+                  backgroundColor: Colors.redAccent,
+                  size: 60,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class CustomRoundedRectSliderTrackShape extends RoundedRectSliderTrackShape {
+  final double radius;
+
+  const CustomRoundedRectSliderTrackShape({this.radius = 2});
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset offset, {
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required Animation<double> enableAnimation,
+    required TextDirection textDirection,
+    required Offset thumbCenter,
+    Offset? secondaryOffset,
+    bool isDiscrete = false,
+    bool isEnabled = false,
+    double additionalActiveTrackHeight = 0,
+  }) {
+    assert(sliderTheme.disabledActiveTrackColor != null);
+    assert(sliderTheme.disabledInactiveTrackColor != null);
+    assert(sliderTheme.activeTrackColor != null);
+    assert(sliderTheme.inactiveTrackColor != null);
+    assert(sliderTheme.thumbShape != null);
+
+    if (sliderTheme.trackHeight == null || sliderTheme.trackHeight! <= 0) {
+      return;
+    }
+
+    final activeTrackColorTween = ColorTween(
+      begin: sliderTheme.disabledActiveTrackColor,
+      end: sliderTheme.activeTrackColor,
+    );
+    final inactiveTrackColorTween = ColorTween(
+      begin: sliderTheme.disabledInactiveTrackColor,
+      end: sliderTheme.inactiveTrackColor,
+    );
+    final activePaint = Paint()
+      ..color = activeTrackColorTween.evaluate(enableAnimation)!;
+    final inactivePaint = Paint()
+      ..color = inactiveTrackColorTween.evaluate(enableAnimation)!;
+
+    final trackRect = getPreferredRect(
+      parentBox: parentBox,
+      offset: offset,
+      sliderTheme: sliderTheme,
+      isEnabled: isEnabled,
+      isDiscrete: isDiscrete,
+    );
+    final activeRect = RRect.fromLTRBAndCorners(
+      trackRect.left,
+      trackRect.top,
+      thumbCenter.dx,
+      trackRect.bottom,
+      topLeft: Radius.circular(radius),
+      bottomLeft: Radius.circular(radius),
+    );
+    final inactiveRect = RRect.fromLTRBAndCorners(
+      thumbCenter.dx,
+      trackRect.top,
+      trackRect.right,
+      trackRect.bottom,
+      topRight: Radius.circular(radius),
+      bottomRight: Radius.circular(radius),
+    );
+
+    context.canvas.drawRRect(activeRect, activePaint);
+    context.canvas.drawRRect(inactiveRect, inactivePaint);
+  }
+}
+
+class SettingsTextField extends StatefulWidget {
+  final String title;
+  final String initialValue;
+  final String hintText;
+  final ValueChanged<String> onChanged;
+  final IconData icon;
+  final Color dominantColor;
+
+  const SettingsTextField({
+    super.key,
+    required this.title,
+    required this.initialValue,
+    required this.hintText,
+    required this.onChanged,
+    required this.icon,
+    required this.dominantColor,
+  });
+
+  @override
+  State<SettingsTextField> createState() => _SettingsTextFieldState();
+}
+
+class _SettingsTextFieldState extends State<SettingsTextField> {
+  late TextEditingController _controller;
+  late FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void didUpdateWidget(SettingsTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update controller value if initialValue changes from parent
+    if (oldWidget.initialValue != widget.initialValue && !_focusNode.hasFocus) {
+      _controller.text = widget.initialValue;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = widget.dominantColor.computeLuminance() > 0.01
+        ? widget.dominantColor
+        : Theme.of(context).textTheme.bodyLarge?.color;
+
+    return Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    widget.dominantColor.withValues(alpha: 0.3),
+                    widget.dominantColor.withValues(alpha: 0.1),
+                  ],
+                ),
+              ),
+              child: Icon(widget.icon, color: textColor),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.title,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          widget.dominantColor.withValues(alpha: 0.1),
+                          Colors.black.withValues(alpha: 0.3),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: widget.dominantColor.withValues(alpha: 0.2),
+                        width: 1.0,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      style: TextStyle(color: textColor, fontSize: 14),
+                      cursorColor:
+                          widget.dominantColor.computeLuminance() > 0.01
+                              ? widget.dominantColor
+                              : Theme.of(context).textTheme.bodyLarge?.color,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        hintText: widget.hintText,
+                        hintStyle: TextStyle(
+                          color: textColor!.withValues(alpha: 0.6),
+                        ),
+                        border: InputBorder.none,
+                      ),
+                      onChanged: widget.onChanged,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

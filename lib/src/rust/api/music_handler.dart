@@ -6,14 +6,28 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `background_worker`, `crossfade`, `extract_metadata`, `get_cached_mp3_path`, `get_mp3_cache_dir`, `get_position`, `new`, `parse_lrc_metadata`, `pause`, `play`, `resume`, `seek`, `set_volume`, `stop`
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AudioChunk`, `AudioPlayer`, `PlayerMessage`, `StreamWrapper`, `StreamingBuffer`, `StreamingSource`, `Track`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `channels`, `clone`, `clone`, `clone`, `current_span_len`, `drop`, `fmt`, `fmt`, `fmt`, `fmt`, `next`, `sample_rate`, `total_duration`
+// These functions are ignored because they are not marked as `pub`: `background_worker`, `crossfade`, `extract_metadata`, `fill_buffer`, `get_cached_mp3_path`, `get_mp3_cache_dir`, `get_position`, `new`, `new`, `parse_cd_path`, `parse_lrc_metadata`, `pause`, `play`, `resume`, `seek`, `seek`, `set_volume`, `stop`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AudioChunk`, `AudioPlayer`, `CDStreamSource`, `PlayerMessage`, `SafeSCDStream`, `StreamWrapper`, `StreamingBuffer`, `StreamingSource`, `Track`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `channels`, `channels`, `clone`, `clone`, `clone`, `current_span_len`, `current_span_len`, `drop`, `fmt`, `fmt`, `fmt`, `fmt`, `next`, `next`, `sample_rate`, `sample_rate`, `total_duration`, `total_duration`
+
+Future<int> trackNum({required String device}) =>
+    RustLib.instance.api.crateApiMusicHandlerTrackNum(device: device);
+
+Future<List<String>> listAudioCds() =>
+    RustLib.instance.api.crateApiMusicHandlerListAudioCds();
+
+Future<SongMetadata> getCdTrackMetadata(
+        {required String device, required int track}) =>
+    RustLib.instance.api
+        .crateApiMusicHandlerGetCdTrackMetadata(device: device, track: track);
 
 Future<void> setFadein({required bool value}) =>
     RustLib.instance.api.crateApiMusicHandlerSetFadein(value: value);
 
 Future<double> getCvol() => RustLib.instance.api.crateApiMusicHandlerGetCvol();
+
+Future<List<String>> listAudioDevices() =>
+    RustLib.instance.api.crateApiMusicHandlerListAudioDevices();
 
 Future<bool> initializePlayer() =>
     RustLib.instance.api.crateApiMusicHandlerInitializePlayer();
@@ -94,8 +108,9 @@ Future<void> setSeparators({required List<String> separators}) =>
     RustLib.instance.api
         .crateApiMusicHandlerSetSeparators(separators: separators);
 
-Future<String> downloadToTemp({required String query}) =>
-    RustLib.instance.api.crateApiMusicHandlerDownloadToTemp(query: query);
+Future<String> downloadToTemp({required String query, String? flags}) =>
+    RustLib.instance.api
+        .crateApiMusicHandlerDownloadToTemp(query: query, flags: flags);
 
 Future<void> cancelDownload() =>
     RustLib.instance.api.crateApiMusicHandlerCancelDownload();

@@ -103,6 +103,24 @@ class _WaveformPainter extends CustomPainter {
       ..style = PaintingStyle.fill
       ..strokeCap = StrokeCap.round;
 
+    // Calculate luminance to determine if we need enhancements
+    final luminance = activeColor.computeLuminance();
+    final needsEnhancement = luminance < 0.01;
+
+    // Slightly lighten active color if too dark
+    final enhancedActiveColor = needsEnhancement
+        ? HSLColor.fromColor(activeColor).withLightness(0.4).toColor()
+        : activeColor;
+
+    // Create stroke paint if needed
+    final strokePaint = needsEnhancement
+        ? (Paint()
+          ..style = PaintingStyle.stroke
+          ..color = Colors.white.withValues(alpha: 0.7)
+          ..strokeWidth = 1.0
+          ..strokeCap = StrokeCap.round)
+        : null;
+
     final barWidth = size.width / waveformData.length;
     final progressIndex = (waveformData.length * progress).round();
 
@@ -111,20 +129,30 @@ class _WaveformPainter extends CustomPainter {
           size.height * (waveformData[i] * 0.8 + 0.2) * animationValue;
       final yPos = (size.height - height) / 2;
 
-      paint.color = i < progressIndex ? activeColor : inactiveColor;
-
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(
-            i * barWidth,
-            yPos,
-            barWidth * 0.6,
-            height,
-          ),
-          Radius.circular(barWidth * 0.3),
+      final barRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          i * barWidth,
+          yPos,
+          barWidth * 0.6,
+          height,
         ),
-        paint,
+        Radius.circular(barWidth * 0.3),
       );
+
+      if (i < progressIndex) {
+        paint.color = enhancedActiveColor;
+
+        // Draw stroke first (if needed)
+        if (needsEnhancement) {
+          canvas.drawRRect(barRect, strokePaint!);
+        }
+
+        // Draw filled bar
+        canvas.drawRRect(barRect, paint);
+      } else {
+        paint.color = inactiveColor;
+        canvas.drawRRect(barRect, paint);
+      }
     }
   }
 
@@ -139,12 +167,13 @@ class _WaveformPainter extends CustomPainter {
 }
 
 class NamidaThumbnail extends StatefulWidget {
-  final ImageProvider image;
+  final ImageProvider? image;
   final bool isPlaying;
   final bool showBreathingEffect;
   final double currentPeak;
   final double? sharedBreathingValue;
   final String? heroTag;
+  final bool isCD;
 
   const NamidaThumbnail({
     super.key,
@@ -154,6 +183,7 @@ class NamidaThumbnail extends StatefulWidget {
     this.currentPeak = 0.0,
     this.sharedBreathingValue,
     this.heroTag,
+    required this.isCD,
   });
 
   @override
@@ -219,6 +249,12 @@ class _NamidaThumbnailState extends State<NamidaThumbnail>
     }
   }
 
+  double getMSn() {
+    return SharedPreferencesService.instance.getBool('mSn') ?? false == true
+        ? 0.6
+        : 0.3;
+  }
+
   @override
   void dispose() {
     _breathingController.dispose();
@@ -231,37 +267,94 @@ class _NamidaThumbnailState extends State<NamidaThumbnail>
     final breathingValue =
         widget.sharedBreathingValue ?? _breathingAnimation.value;
     final peakValue = _peakAnimation.value;
+    final spin =
+        SharedPreferencesService.instance.getBool('spinningAlbumArt') ?? false;
+    final borderR = (spin || widget.isCD ? 360 : 16).toDouble();
+
+    final mSnEnabled =
+        SharedPreferencesService.instance.getBool('mSn') ?? false;
+    final breathingEnabled =
+        SharedPreferencesService.instance.getBool('breathe') ?? true;
+
+    // Determine if we should apply breathing effect
+    final bool shouldBreathe =
+        !(widget.image != null && breathingEnabled && !mSnEnabled);
 
     return AnimatedBuilder(
         animation: Listenable.merge([_breathingController, _peakController]),
         builder: (context, _) {
           return LayoutBuilder(
             builder: (context, constraints) {
-              return Transform.scale(
-                scale: breathingValue + (peakValue - 1.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white
-                            .withAlpha((breathingValue * 70).toInt()),
-                        spreadRadius: breathingValue * 6,
-                        blurRadius: 30,
-                        blurStyle: BlurStyle.outer,
+              return shouldBreathe
+                  ? Container(
+                      decoration: widget.image != null
+                          ? BoxDecoration(
+                              borderRadius: BorderRadius.circular(borderR),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.white
+                                      .withAlpha((breathingValue * 70).toInt()),
+                                  spreadRadius: breathingValue * 6,
+                                  blurRadius: 30,
+                                  blurStyle: BlurStyle.outer,
+                                ),
+                              ],
+                            )
+                          : null,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(borderR),
+                        child: widget.image != null
+                            ? Image(
+                                image: widget.image!,
+                                fit: BoxFit.cover,
+                                gaplessPlayback: true,
+                              )
+                            : Center(
+                                child: GlowIcon(
+                                  Broken.adiman,
+                                  color: Colors.white,
+                                  glowColor: Colors.white,
+                                  size: constraints.maxWidth * getMSn(),
+                                ),
+                              ),
                       ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image(
-                      image: widget.image,
-                      fit: BoxFit.cover,
-                      gaplessPlayback: true,
-                    ),
-                  ),
-                ),
-              );
+                    )
+                  : Transform.scale(
+                      scale: breathingValue + (peakValue - 1.0),
+                      child: Container(
+                        decoration: widget.image != null
+                            ? BoxDecoration(
+                                borderRadius: BorderRadius.circular(borderR),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.white.withAlpha(
+                                        (breathingValue * 70).toInt()),
+                                    spreadRadius: breathingValue * 6,
+                                    blurRadius: 30,
+                                    blurStyle: BlurStyle.outer,
+                                  ),
+                                ],
+                              )
+                            : null,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(borderR),
+                          child: widget.image != null
+                              ? Image(
+                                  image: widget.image!,
+                                  fit: BoxFit.cover,
+                                  gaplessPlayback: true,
+                                )
+                              : Center(
+                                  child: GlowIcon(
+                                    Broken.adiman,
+                                    color: Colors.white,
+                                    glowColor: Colors.white,
+                                    size: constraints.maxWidth * getMSn(),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    );
             },
           );
         });
@@ -541,7 +634,7 @@ class _AlbumArt extends StatelessWidget {
   final String heroTag;
 
   const _AlbumArt({
-    required this.image,
+    this.image,
     required this.heroTag,
   });
 
@@ -555,6 +648,7 @@ class _AlbumArt extends StatelessWidget {
           height: 56,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
+            color: Colors.transparent,
             image: image != null
                 ? DecorationImage(
                     image: image!,
@@ -563,7 +657,14 @@ class _AlbumArt extends StatelessWidget {
                 : null,
           ),
           child: image == null
-              ? const Icon(Broken.musicnote, color: Colors.white, size: 32)
+              ? Center(
+                  child: GlowIcon(
+                    Broken.adiman,
+                    color: Colors.white,
+                    glowColor: Colors.white.withValues(alpha: 0.5),
+                    size: 28,
+                  ),
+                )
               : null,
         ),
         Positioned.fill(
@@ -592,8 +693,14 @@ class _AlbumArt extends StatelessWidget {
                             : null,
                       ),
                       child: image == null
-                          ? const Icon(Broken.musicnote,
-                              color: Colors.white, size: 32)
+                          ? Center(
+                              child: GlowIcon(
+                                Broken.adiman,
+                                color: Colors.white,
+                                glowColor: Colors.white,
+                                size: 28,
+                              ),
+                            )
                           : null,
                     ),
                   AnimatedBuilder(
@@ -621,8 +728,15 @@ class _AlbumArt extends StatelessWidget {
                               : null,
                         ),
                         child: image == null
-                            ? const Icon(Broken.musicnote,
-                                color: Colors.white, size: 32)
+                            ? Center(
+                                child: GlowIcon(
+                                  Broken.adiman,
+                                  color: Colors.white,
+                                  glowColor: Colors.white,
+                                  size: Tween<double>(begin: 28, end: 80)
+                                      .evaluate(animation),
+                                ),
+                              )
                             : null,
                       );
                     },
@@ -678,48 +792,140 @@ class DynamicIconButton extends StatelessWidget {
   }
 }
 
-class ParticlePlayButton extends StatelessWidget {
+class ParticlePlayButton extends StatefulWidget {
   final bool isPlaying;
   final Color color;
   final VoidCallback onPressed;
+  final bool miniP;
 
   const ParticlePlayButton({
     super.key,
     required this.isPlaying,
     required this.color,
     required this.onPressed,
+    this.miniP = false,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        AnimatedOpacity(
-          opacity: isPlaying ? 0.3 : 0.0,
-          duration: const Duration(milliseconds: 300),
-          child: Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  color.withValues(alpha: 0.5),
-                  color.withValues(alpha: 0.1),
-                ],
-              ),
-            ),
-          ),
-        ),
-        DynamicIconButton(
-          icon: isPlaying ? Broken.pause : Broken.play,
-          onPressed: onPressed,
-          backgroundColor: color,
-          size: 64,
-        ),
-      ],
+  State<ParticlePlayButton> createState() => _ParticlePlayButtonState();
+}
+
+class _ParticlePlayButtonState extends State<ParticlePlayButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
     );
+    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    );
+
+    // Start with the appropriate state
+    if (widget.isPlaying) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void didUpdateWidget(ParticlePlayButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isPlaying != oldWidget.isPlaying) {
+      if (widget.isPlaying) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.miniP
+        ? SizedBox(
+            width: 48,
+            height: 48,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                AnimatedOpacity(
+                  opacity: widget.isPlaying ? 0.3 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          widget.color.withValues(alpha: 0.5),
+                          widget.color.withValues(alpha: 0.1),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: IconButton(
+                    icon: GlowIcon(
+                      widget.isPlaying ? Broken.pause : Broken.play,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                      glowColor: widget.color.withValues(alpha: 0.3),
+                      size: 48 * 0.6,
+                    ),
+                    onPressed: widget.onPressed,
+                    padding: EdgeInsets.zero,
+                    iconSize: 48 * 0.6,
+                  ),
+                ),
+              ],
+            ),
+          )
+        : Stack(
+            alignment: Alignment.center,
+            children: [
+              AnimatedOpacity(
+                opacity: widget.isPlaying ? 0.3 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        widget.color.withValues(alpha: 0.5),
+                        widget.color.withValues(alpha: 0.1),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              ScaleTransition(
+                scale: _scaleAnimation,
+                child: DynamicIconButton(
+                  icon: widget.isPlaying ? Broken.pause : Broken.play,
+                  onPressed: widget.onPressed,
+                  backgroundColor: widget.color,
+                  size: 64,
+                ),
+              ),
+            ],
+          );
   }
 }
 
@@ -1561,11 +1767,154 @@ class __AnimatedMusicNoteState extends State<_AnimatedMusicNote>
       },
       child: Center(
         child: GlowIcon(
-          Broken.musicnote,
+          Broken.adiman,
           color: Colors.white.withAlpha(widget.isCurrent ? 255 : 200),
           glowColor: Theme.of(context).colorScheme.primary.withAlpha(100),
           size: 40,
         ),
+      ),
+    );
+  }
+}
+
+class EdgeBreathingEffect extends StatelessWidget {
+  final Color dominantColor;
+  final double currentPeak;
+  final bool isPlaying;
+
+  const EdgeBreathingEffect({
+    super.key,
+    required this.dominantColor,
+    required this.currentPeak,
+    required this.isPlaying,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = isPlaying ? currentPeak * 1.5 : 0.0;
+    final palette = _generatePalette(dominantColor);
+
+    return IgnorePointer(
+      child: Stack(
+        children: [
+          // Top edge
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Row(
+              children: [
+                for (final color in palette.firstHalf)
+                  Expanded(
+                    child: _AnimatedShadowBox(
+                      color: color,
+                      scale: scale,
+                      isHorizontal: true,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // Bottom edge
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Row(
+              children: [
+                for (final color in palette.secondHalf)
+                  Expanded(
+                    child: _AnimatedShadowBox(
+                      color: color,
+                      scale: scale,
+                      isHorizontal: true,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // Left edge
+          Positioned(
+            top: 0,
+            bottom: 0,
+            left: 0,
+            child: Column(
+              children: [
+                for (final color in palette.firstHalf)
+                  Expanded(
+                    child: _AnimatedShadowBox(
+                      color: color,
+                      scale: scale,
+                      isHorizontal: false,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // Right edge
+          Positioned(
+            top: 0,
+            bottom: 0,
+            right: 0,
+            child: Column(
+              children: [
+                for (final color in palette.secondHalf)
+                  Expanded(
+                    child: _AnimatedShadowBox(
+                      color: color,
+                      scale: scale,
+                      isHorizontal: false,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  _Palette _generatePalette(Color baseColor) {
+    final firstHalf =
+        List.generate(4, (index) => baseColor.withAlpha(150 ~/ (index + 1)));
+    final secondHalf =
+        List.generate(4, (index) => baseColor.withAlpha(150 ~/ (index + 2)));
+    return _Palette(firstHalf, secondHalf);
+  }
+}
+
+class _Palette {
+  final List<Color> firstHalf;
+  final List<Color> secondHalf;
+
+  _Palette(this.firstHalf, this.secondHalf);
+}
+
+class _AnimatedShadowBox extends StatelessWidget {
+  final Color color;
+  final double scale;
+  final bool isHorizontal;
+
+  const _AnimatedShadowBox({
+    required this.color,
+    required this.scale,
+    required this.isHorizontal,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      height: isHorizontal ? 2 : null,
+      width: isHorizontal ? null : 2,
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: color,
+            spreadRadius: 140 * scale,
+            blurRadius: 10 + (200 * scale),
+          ),
+        ],
       ),
     );
   }

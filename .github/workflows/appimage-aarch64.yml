@@ -13,73 +13,69 @@ jobs:
   build:
     runs-on: ubuntu-24.04-arm
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.inputs.branch || 'master' }}
+      - name: checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
 
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          curl unzip fuse \
-          libgtk-3-0 libgtk-3-dev \
-          libblkid1 liblzma5 \
-          libasound2-dev libpulse-dev \
-          cmake ninja-build clang \
-          libgirepository1.0-dev gir1.2-gtk-3.0
-        sudo modprobe fuse
-        sudo ln -s /usr/lib/aarch64-linux-gnu/libgirepository-1.0.so /usr/lib/libgirepository-1.0.so
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            curl unzip fuse \
+            libgtk-3-0 libgtk-3-dev \
+            libblkid1 liblzma5 \
+            libasound2-dev libpulse-dev \
+            cmake ninja-build clang \
+            libgirepository1.0-dev gir1.2-gtk-3.0 cdparanoia
+          sudo modprobe fuse
+          sudo ln -s /usr/lib/aarch64-linux-gnu/libgirepository-1.0.so /usr/lib/libgirepository-1.0.so
 
-    - name: Setup Flutter 3.29.3
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.29.3'
-        channel: stable
-    - name: 'Checkout Flutter 3.29.3'
-       shell: bash
-       run: |
-         cd $FLUTTER_ROOT;
-         git fetch --tags;
-         git checkout 3.29.3;
-         flutter --version;
+      - name: Setup Flutter
+        shell: bash
+        run: |
+          git clone "https://github.com/flutter/flutter.git";
+          cd flutter;
+          git checkout tags/3.29.3;
+          echo "$PWD/bin" >> $GITHUB_PATH;
+          ./bin/flutter --version;
 
-    - name: Setup Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        components: rustfmt, clippy
-        override: true
-        target: aarch64-unknown-linux-gnu
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt, clippy
+          override: true
+          target: aarch64-unknown-linux-gnu
 
-    - name: Install Rust Deps
-      run: |
-        cargo install cargo-expand flutter_rust_bridge_codegen
+      - name: Install Rust deps
+        run: |
+          cargo install cargo-expand flutter_rust_bridge_codegen
 
-    - name: Install appimagetool
-      run: |
-        wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-aarch64.AppImage
-        chmod +x appimagetool-aarch64.AppImage
+      - name: Install appimagetool
+        run: |
+          wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-aarch64.AppImage
+          chmod +x appimagetool-aarch64.AppImage
 
-    - name: Build project
-      run: |
-        flutter_rust_bridge_codegen generate
-        flutter build linux --release --target-platform=linux-arm64
+      - name: Build Project
+        run: |
+          flutter_rust_bridge_codegen generate
+          flutter build linux --release --target-platform=linux-arm64
 
-    - name: Prepare AppDir
-      run: |
-        mkdir -p Adiman.AppDir
-        cp -r build/linux/arm64/release/bundle/* Adiman.AppDir/
-        cp appimagestuff/{AppRun,Adiman.desktop,Adiman.png} Adiman.AppDir/
-        chmod +x Adiman.AppDir/AppRun
+      - name: Prepare AppDir
+        run: |
+          mkdir -p Adiman.AppDir
+          cp -r build/linux/arm64/release/bundle/* Adiman.AppDir/
+          cp appimagestuff/{AppRun,Adiman.desktop,Adiman.png} Adiman.AppDir/
+          chmod +x Adiman.AppDir/AppRun
 
-    - name: Build AppImage
-      run: |
-        ARCH=aarch64 ./appimagetool-aarch64.AppImage Adiman.AppDir
+      - name: Build AppImage
+        run: |
+          arch=aarch64 ./appimagetool-aarch64.AppImage Adiman.AppDir
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: Adiman-aarch64.AppImage
-        path: Adiman-aarch64.AppImage
+      - name: upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Adiman-aarch64.AppImage
+          path: Adiman-aarch64.AppImage
