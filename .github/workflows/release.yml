@@ -32,6 +32,10 @@ jobs:
             cmake ninja-build clang cdparanoia libcdio-dev libcdio-cdda-dev libcdio-paranoia-dev
           sudo modprobe fuse
 
+      - name: Check for cdda_interface.h
+        run: |
+          find /usr -name "cdda_interface.h" 2>/dev/null || echo "Header not found"
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
