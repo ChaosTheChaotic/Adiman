@@ -4280,7 +4280,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _saveAltSeek(bool value) async {
     await SharedPreferencesService.instance.setBool('altSeek', value);
-    setState(() => _altSeek = value );
+    setState(() => _altSeek = value);
   }
 
   Future<void> _clearCache() async {
@@ -4645,6 +4645,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildSettingsExpansionTile({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+    bool initiallyExpanded = false,
+  }) {
+    return ExpansionTile(
+      initiallyExpanded: initiallyExpanded,
+      leading: Icon(icon, color: _currentColor),
+      title: GlowText(
+        title,
+        glowColor: _currentColor.withAlpha(60),
+        style: TextStyle(
+          color: Theme.of(context).textTheme.bodyLarge?.color,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      children: [
+        Divider(color: _currentColor.withAlpha(80)),
+        ...children,
+        SizedBox(height: 16),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final textColor = _currentColor.computeLuminance() > 0.01
@@ -4703,403 +4729,430 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         16.0, 16.0, 16.0, (_currentSong != null ? 80.0 : 0.0)),
                     child: ListView(
                       children: [
-                        GlowText(
-                          'Music Folder',
-                          glowColor: _currentColor.withValues(alpha: 0.2),
-                          style: TextStyle(
-                            fontSize: 28,
-                            color: textColor,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                _currentColor.withValues(alpha: 0.1),
-                                Colors.black.withValues(alpha: 0.3),
-                              ],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _currentColor.withValues(alpha: 0.2),
-                                blurRadius: 15,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: TextField(
-                            controller: _musicFolderController,
-                            style: TextStyle(color: textColor, fontSize: 16),
-                            cursorColor: _currentColor.computeLuminance() > 0.01
-                                ? _currentColor
-                                : Theme.of(context).textTheme.bodyLarge?.color,
-                            decoration: InputDecoration(
-                              hintText: 'Enter music folder path...',
-                              hintStyle: TextStyle(
-                                color: textColor!.withValues(alpha: 0.6),
-                                fontWeight: FontWeight.w300,
-                              ),
-                              prefixIcon: Icon(
-                                Broken.folder,
-                                color: textColor.withValues(alpha: 0.8),
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
-                              ),
-                              filled: true,
-                              fillColor: Colors.transparent,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 18,
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide(
-                                  color: _currentColor.withValues(alpha: 0.4),
-                                  width: 1.5,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                _currentColor.withAlpha(220),
-                                _currentColor
-                              ],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _currentColor.withAlpha(100),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 16,
-                                horizontal: 24,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            onPressed: () async {
-                              final expandedPath = expandTilde(
-                                _musicFolderController.text,
-                              );
-
-                              await SharedPreferencesService.instance
-                                  .setString('musicFolder', expandedPath);
-
-                              if (widget.onMusicFolderChanged != null) {
-                                await widget
-                                    .onMusicFolderChanged!(expandedPath);
-                              }
-
-                              ScaffoldMessenger.of(context)
-                                  .hideCurrentSnackBar();
-                              Navigator.pop(context, expandedPath);
-                            },
-                            icon: Icon(Broken.save_2, color: buttonTextColor),
-                            label: Text(
-                              'Save Music Folder',
-                              style: TextStyle(
-                                color: buttonTextColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ),
                         const SizedBox(height: 32),
-                        _buildActionButton(
-                          icon: Broken.refresh,
-                          label: 'Reload Music Library',
-                          isLoading: _isReloadingLibrary,
-                          onPressed: _reloadLibrary,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildActionButton(
-                          icon: Broken.text,
-                          label: 'Manage Artist Seperators',
-                          isLoading: _isManagingSeparators,
-                          onPressed: _showSeparatorManagementPopup,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildActionButton(
-                          icon: Broken.colorfilter,
-                          label: 'Default Theme Color',
-                          isLoading: _isChangingColor,
-                          onPressed: _showColorPicker,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildActionButton(
-                          icon: Broken.colors_square,
-                          label: 'Particle base color',
-                          isLoading: _isChangingParticleColor,
-                          onPressed: _showParticleColorPicker,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildActionButton(
-                          icon: Broken.trash,
-                          label: 'Clear Cache',
-                          isLoading: _isClearingCache,
-                          onPressed: _clearCache,
-                        ),
-                        _buildSettingsSwitch(context,
-                            title: 'Vim keybindings',
-                            value: _vimKeybindings,
-                            onChanged: _saveVimKeybindings),
-                        _buildSettingsSwitch(
-                          context,
-                          title: 'Auto-convert non-MP3 files',
-                          value: _autoConvert,
-                          onChanged: _saveAutoConvert,
-                        ),
-                        _buildSettingsSwitch(
-                          context,
-                          title: 'Clear MP3 cache with app cache',
-                          value: _clearMp3Cache,
-                          onChanged: _saveClearMp3Cache,
-                        ),
-                        _buildSettingsSwitch(
-                          context,
-                          title: 'Music fade in on seek and song start',
-                          value: _fadeIn,
-                          onChanged: _saveFadeIn,
-                        ),
-                        _buildSettingsSwitch(
-                          context,
-                          title: 'Breathing animation on the album art',
-                          value: _breathe,
-                          onChanged: _saveBreathe,
-                        ),
-                        _buildSettingsSwitch(
-                          context,
-                          title: 'Alternate default for no album art',
-                          value: _mSn,
-                          onChanged: _saveMSn,
-                        ),
-                        _buildSettingsSwitch(
-                          context,
-                          title: 'Use dominant colors from album art',
-                          value: _useDominantColors,
-                          onChanged: _saveUseDominantColors,
-                        ),
-                        _buildSettingsSwitch(
-                          context,
-                          title: 'Spinning Album Art',
-                          value: _spinningAlbumArt,
-                          onChanged: _saveSpinningAlbumArt,
-                        ),
-                        _buildSettingsSwitch(
-			  context,
-                          title: 'Edge breathing effect',
-                          value: _edgeBreathe,
-                          onChanged: _saveEdgeBreathe
-			),
-			_buildSettingsSwitch(
-			  context, 
-			  title: 'Alt seekbar',
-			  value: _altSeek,
-			  onChanged: _saveAltSeek
-			),
-                        SettingsTextField(
-                          title: 'spotdl Custom Flags',
-                          initialValue: _spotdlFlags,
-                          hintText: 'Enter custom flags for spotdl...',
-                          onChanged: _saveSpotdlFlags,
-                          icon: Broken.setting_4,
-                          dominantColor: _currentColor,
-                        ),
-                        Row(
+                        _buildSettingsExpansionTile(
+                          title: 'Music Library',
+                          icon: Broken.folder,
                           children: [
-                            GlowIcon(
-                              Broken.sound,
-                              color: _currentColor,
-                              glowColor: _currentColor,
-                            ),
-                            const SizedBox(width: 12),
+                            // Music folder settings
                             GlowText(
-                              'Waveform & Particles',
-                              glowColor: _currentColor.withValues(alpha: 0.3),
+                              'Music Folder',
+                              glowColor: _currentColor.withValues(alpha: 0.2),
                               style: TextStyle(
-                                fontSize: 24,
+                                fontSize: 28,
                                 color: textColor,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        ListTile(
-                          title: Text('Waveform Bars Count',
-                              style: TextStyle(color: textColor)),
-                          subtitle: Text('Current: $_waveformBars',
-                              style:
-                                  TextStyle(color: textColor.withAlpha(150))),
-                          trailing: SizedBox(
-                            width: 150,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _waveformBarsController,
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.digitsOnly
-                                    ],
-                                    decoration: InputDecoration(
-                                      hintText: (SharedPreferencesService
-                                                  .instance
-                                                  .getInt('waveformBars') ??
-                                              1000)
-                                          .toString(),
-                                      border: OutlineInputBorder(),
-                                      filled: true,
-                                      fillColor: Colors.black.withAlpha(50),
-                                    ),
-                                    style: TextStyle(color: textColor),
-                                    onSubmitted: (value) {
-                                      if (value.isNotEmpty) {
-                                        final intValue =
-                                            int.tryParse(value) ?? 1000;
-                                        _saveWaveformBars(intValue);
-                                      }
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                _buildResetButton(
-                                  onPressed: () async {
-                                    await _saveWaveformBars(1000);
-                                    setState(() {});
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        ExpansionTile(
-                          title: Text('Particle Settings',
-                              style: TextStyle(color: textColor)),
-                          children: [
-                            _buildParticleSlider(
-                              label: 'Spawn Opacity',
-                              value: _particleSpawnOpacity,
-                              min: 0.0,
-                              max: 1.0,
-                              onChanged: _saveParticleSpawnOpacity,
-                              defaultValue: 0.4,
-                            ),
-                            _buildParticleSlider(
-                              label: 'Opacity Change Rate',
-                              value: _particleOpacityChangeRate,
-                              min: 0.0,
-                              max: 1.0,
-                              onChanged: _saveParticleOpacityChangeRate,
-                              defaultValue: 0.2,
-                            ),
-                            _buildParticleSlider(
-                              label: 'Min Opacity',
-                              value: _particleMinOpacity,
-                              min: 0.0,
-                              max: 1.0,
-                              onChanged: _saveParticleMinOpacity,
-                              defaultValue: 0.1,
-                            ),
-                            _buildParticleSlider(
-                              label: 'Max Opacity',
-                              value: _particleMaxOpacity,
-                              min: 0.0,
-                              max: 1.0,
-                              onChanged: _saveParticleMaxOpacity,
-                              defaultValue: 0.6,
-                            ),
-                            _buildParticleSlider(
-                              label: 'Min Radius',
-                              value: _particleMinRadius,
-                              min: 0.5,
-                              max: 10.0,
-                              onChanged: _saveParticleMinRadius,
-                              defaultValue: 2.0,
-                            ),
-                            _buildParticleSlider(
-                              label: 'Max Radius',
-                              value: _particleMaxRadius,
-                              min: 0.5,
-                              max: 10.0,
-                              onChanged: _saveParticleMaxRadius,
-                              defaultValue: 4.0,
-                            ),
-                            ListTile(
-                              title: Text('Particle Count',
-                                  style: TextStyle(color: textColor)),
-                              subtitle: Text('Current: $_particleCount',
-                                  style: TextStyle(
-                                      color: textColor.withAlpha(150))),
-                              trailing: SizedBox(
-                                width: 150,
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: TextField(
-                                        controller: _particleCountController,
-                                        keyboardType: TextInputType.number,
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter.digitsOnly
-                                        ],
-                                        decoration: InputDecoration(
-                                          hintText: (SharedPreferencesService
-                                                      .instance
-                                                      .getInt(
-                                                          'particleCount') ??
-                                                  50)
-                                              .toString(),
-                                          border: OutlineInputBorder(),
-                                          filled: true,
-                                          fillColor: Colors.black.withAlpha(50),
-                                        ),
-                                        style: TextStyle(color: textColor),
-                                        onSubmitted: (value) {
-                                          if (value.isNotEmpty) {
-                                            final intValue =
-                                                int.tryParse(value) ?? 50;
-                                            _saveParticleCount(intValue);
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _buildResetButton(
-                                      onPressed: () async {
-                                        await _saveParticleCount(50);
-                                        setState(() {});
-                                      },
-                                    ),
+                            const SizedBox(height: 16),
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    _currentColor.withValues(alpha: 0.1),
+                                    Colors.black.withValues(alpha: 0.3),
                                   ],
                                 ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _currentColor.withValues(alpha: 0.2),
+                                    blurRadius: 15,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
                               ),
+                              child: TextField(
+                                controller: _musicFolderController,
+                                style:
+                                    TextStyle(color: textColor, fontSize: 16),
+                                cursorColor:
+                                    _currentColor.computeLuminance() > 0.01
+                                        ? _currentColor
+                                        : Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge
+                                            ?.color,
+                                decoration: InputDecoration(
+                                  hintText: 'Enter music folder path...',
+                                  hintStyle: TextStyle(
+                                    color: textColor?.withValues(alpha: 0.6),
+                                    fontWeight: FontWeight.w300,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Broken.folder,
+                                    color: textColor?.withValues(alpha: 0.8),
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.transparent,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 18,
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(
+                                      color:
+                                          _currentColor.withValues(alpha: 0.4),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    _currentColor.withAlpha(30),
+                                    Colors.black.withAlpha(100),
+                                  ],
+                                ),
+                                border: Border.all(
+                                  color: _currentColor.withAlpha(100),
+                                  width: 1.2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _currentColor.withAlpha(40),
+                                    blurRadius: 20,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(16),
+                                child: InkWell(
+                                  onTap: () async {
+                                    final expandedPath = expandTilde(
+                                        _musicFolderController.text);
+                                    await SharedPreferencesService.instance
+                                        .setString('musicFolder', expandedPath);
+                                    if (widget.onMusicFolderChanged != null) {
+                                      await widget
+                                          .onMusicFolderChanged!(expandedPath);
+                                    }
+                                    ScaffoldMessenger.of(context)
+                                        .hideCurrentSnackBar();
+                                    Navigator.pop(context, expandedPath);
+                                  },
+                                  borderRadius: BorderRadius.circular(16),
+                                  splashColor: _currentColor.withAlpha(30),
+                                  highlightColor: _currentColor.withAlpha(15),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16, horizontal: 24),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        GlowIcon(
+                                          Broken.save_2,
+                                          color: buttonTextColor,
+                                          glowColor:
+                                              _currentColor.withAlpha(80),
+                                          blurRadius: 8,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        GlowText(
+                                          'Save Music Folder',
+                                          glowColor:
+                                              _currentColor.withAlpha(60),
+                                          style: TextStyle(
+                                            color: buttonTextColor,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            _buildActionButton(
+                              icon: Broken.refresh,
+                              label: 'Reload Music Library',
+                              isLoading: _isReloadingLibrary,
+                              onPressed: _reloadLibrary,
+                            ),
+                            _buildActionButton(
+                              icon: Broken.text,
+                              label: 'Manage Artist Separators',
+                              isLoading: _isManagingSeparators,
+                              onPressed: _showSeparatorManagementPopup,
+                            ),
+                          ],
+                        ),
+                        _buildSettingsExpansionTile(
+                          title: 'Playback',
+                          icon: Broken.play_cricle,
+                          children: [
+                            _buildSettingsSwitch(context,
+                                title: 'Music fade in on seek and song start',
+                                value: _fadeIn,
+                                onChanged: _saveFadeIn),
+                            _buildSettingsSwitch(context,
+                                title: 'Breathing animation on the album art',
+                                value: _breathe,
+                                onChanged: _saveBreathe),
+                            _buildSettingsSwitch(context,
+                                title: 'Alternate default for no album art',
+                                value: _mSn,
+                                onChanged: _saveMSn),
+                            _buildSettingsSwitch(context,
+                                title: 'Edge breathing effect',
+                                value: _edgeBreathe,
+                                onChanged: _saveEdgeBreathe),
+                            _buildSettingsSwitch(context,
+                                title: 'Alt seekbar',
+                                value: _altSeek,
+                                onChanged: _saveAltSeek),
+                          ],
+                        ),
+                        _buildSettingsExpansionTile(
+                          title: 'Appearance',
+                          icon: Broken.colorfilter,
+                          children: [
+                            _buildSettingsSwitch(context,
+                                title: 'Use dominant colors from album art',
+                                value: _useDominantColors,
+                                onChanged: _saveUseDominantColors),
+                            _buildSettingsSwitch(context,
+                                title: 'Spinning Album Art',
+                                value: _spinningAlbumArt,
+                                onChanged: _saveSpinningAlbumArt),
+                            _buildActionButton(
+                              icon: Broken.colorfilter,
+                              label: 'Default Theme Color',
+                              isLoading: _isChangingColor,
+                              onPressed: _showColorPicker,
+                            ),
+                            _buildActionButton(
+                              icon: Broken.colors_square,
+                              label: 'Particle base color',
+                              isLoading: _isChangingParticleColor,
+                              onPressed: _showParticleColorPicker,
+                            ),
+                          ],
+                        ),
+                        _buildSettingsExpansionTile(
+                            title: 'Waveform & Particles',
+                            icon: Broken.sound,
+                            initiallyExpanded: false,
+                            children: [
+                              ListTile(
+                                title: Text('Waveform Bars Count',
+                                    style: TextStyle(color: textColor)),
+                                subtitle: Text('Current: $_waveformBars',
+                                    style: TextStyle(
+                                        color: textColor?.withAlpha(150))),
+                                trailing: SizedBox(
+                                  width: 150,
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller: _waveformBarsController,
+                                          keyboardType: TextInputType.number,
+                                          inputFormatters: [
+                                            FilteringTextInputFormatter
+                                                .digitsOnly
+                                          ],
+                                          decoration: InputDecoration(
+                                            hintText: (SharedPreferencesService
+                                                        .instance
+                                                        .getInt(
+                                                            'waveformBars') ??
+                                                    1000)
+                                                .toString(),
+                                            border: OutlineInputBorder(),
+                                            filled: true,
+                                            fillColor:
+                                                Colors.black.withAlpha(50),
+                                          ),
+                                          style: TextStyle(color: textColor),
+                                          onSubmitted: (value) {
+                                            if (value.isNotEmpty) {
+                                              final intValue =
+                                                  int.tryParse(value) ?? 1000;
+                                              _saveWaveformBars(intValue);
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _buildResetButton(
+                                        onPressed: () async {
+                                          await _saveWaveformBars(1000);
+                                          setState(() {});
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              ExpansionTile(
+                                title: Text('Particle Settings',
+                                    style: TextStyle(color: textColor)),
+                                children: [
+                                  _buildParticleSlider(
+                                    label: 'Spawn Opacity',
+                                    value: _particleSpawnOpacity,
+                                    min: 0.0,
+                                    max: 1.0,
+                                    onChanged: _saveParticleSpawnOpacity,
+                                    defaultValue: 0.4,
+                                  ),
+                                  _buildParticleSlider(
+                                    label: 'Opacity Change Rate',
+                                    value: _particleOpacityChangeRate,
+                                    min: 0.0,
+                                    max: 1.0,
+                                    onChanged: _saveParticleOpacityChangeRate,
+                                    defaultValue: 0.2,
+                                  ),
+                                  _buildParticleSlider(
+                                    label: 'Min Opacity',
+                                    value: _particleMinOpacity,
+                                    min: 0.0,
+                                    max: 1.0,
+                                    onChanged: _saveParticleMinOpacity,
+                                    defaultValue: 0.1,
+                                  ),
+                                  _buildParticleSlider(
+                                    label: 'Max Opacity',
+                                    value: _particleMaxOpacity,
+                                    min: 0.0,
+                                    max: 1.0,
+                                    onChanged: _saveParticleMaxOpacity,
+                                    defaultValue: 0.6,
+                                  ),
+                                  _buildParticleSlider(
+                                    label: 'Min Radius',
+                                    value: _particleMinRadius,
+                                    min: 0.5,
+                                    max: 10.0,
+                                    onChanged: _saveParticleMinRadius,
+                                    defaultValue: 2.0,
+                                  ),
+                                  _buildParticleSlider(
+                                    label: 'Max Radius',
+                                    value: _particleMaxRadius,
+                                    min: 0.5,
+                                    max: 10.0,
+                                    onChanged: _saveParticleMaxRadius,
+                                    defaultValue: 4.0,
+                                  ),
+                                  ListTile(
+                                    title: Text('Particle Count',
+                                        style: TextStyle(color: textColor)),
+                                    subtitle: Text('Current: $_particleCount',
+                                        style: TextStyle(
+                                            color: textColor?.withAlpha(150))),
+                                    trailing: SizedBox(
+                                      width: 150,
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: TextField(
+                                              controller:
+                                                  _particleCountController,
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              inputFormatters: [
+                                                FilteringTextInputFormatter
+                                                    .digitsOnly
+                                              ],
+                                              decoration: InputDecoration(
+                                                hintText: (SharedPreferencesService
+                                                            .instance
+                                                            .getInt(
+                                                                'particleCount') ??
+                                                        50)
+                                                    .toString(),
+                                                border: OutlineInputBorder(),
+                                                filled: true,
+                                                fillColor:
+                                                    Colors.black.withAlpha(50),
+                                              ),
+                                              style:
+                                                  TextStyle(color: textColor),
+                                              onSubmitted: (value) {
+                                                if (value.isNotEmpty) {
+                                                  final intValue =
+                                                      int.tryParse(value) ?? 50;
+                                                  _saveParticleCount(intValue);
+                                                }
+                                              },
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          _buildResetButton(
+                                            onPressed: () async {
+                                              await _saveParticleCount(50);
+                                              setState(() {});
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ]),
+                        _buildSettingsExpansionTile(
+                          title: 'Keybindings',
+                          icon: Broken.keyboard,
+                          children: [
+                            _buildSettingsSwitch(context,
+                                title: 'Vim keybindings',
+                                value: _vimKeybindings,
+                                onChanged: _saveVimKeybindings),
+                          ],
+                        ),
+                        _buildSettingsExpansionTile(
+                          title: 'Download',
+                          icon: Broken.document_download,
+                          children: [
+                            SettingsTextField(
+                              title: 'spotdl Custom Flags',
+                              initialValue: _spotdlFlags,
+                              hintText: 'Enter custom flags for spotdl...',
+                              onChanged: _saveSpotdlFlags,
+                              icon: Broken.setting_4,
+                              dominantColor: _currentColor,
+                            ),
+                          ],
+                        ),
+                        _buildSettingsExpansionTile(
+                          title: 'Cache',
+                          icon: Broken.trash,
+                          children: [
+                            _buildActionButton(
+                              icon: Broken.trash,
+                              label: 'Clear Cache',
+                              isLoading: _isClearingCache,
+                              onPressed: _clearCache,
+                            ),
+                            _buildSettingsSwitch(
+                              context,
+                              title: 'Clear MP3 cache with app cache',
+                              value: _clearMp3Cache,
+                              onChanged: _saveClearMp3Cache,
                             ),
                           ],
                         ),
@@ -7533,7 +7586,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                             horizontal: 24.0,
                             vertical: 16,
                           ),
-                          child: currentSong.path.contains('cdda://') || (SharedPreferencesService.instance.getBool('altSeek') ?? true == true)
+                          child: currentSong.path.contains('cdda://') ||
+                                  (SharedPreferencesService.instance
+                                          .getBool('altSeek') ??
+                                      true == true)
                               ? Container(
                                   height: 32,
                                   padding:
