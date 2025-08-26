@@ -57,6 +57,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 - Choosable music folder
 - In-app volume slider
 - Customisable
+- CD Support
 - Auto conversion of non-mp3 songs via ffmpeg (if you have many of these files you might have to wait a bit before reloading the library)
 - Horribly inefficent code
 
@@ -76,6 +77,8 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 - Flutter
 - flutter_rust_bridge_codegen (installed via cargo)
 - cdparanoia (this is required for my cd_audio library to build as it uses cdda_interface.h)
+- libcdio
+- libcdio_cdda
 - git
 - GTK
 - rustup
