@@ -4817,13 +4817,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                   colors: [
-                                    _currentColor.withAlpha(30),
-                                    Colors.black.withAlpha(100),
+                                    Colors.transparent,
+                                    Colors.transparent,
                                   ],
                                 ),
                                 border: Border.all(
                                   color: _currentColor.withAlpha(100),
                                   width: 1.2,
+                                  style: BorderStyle.solid,
+                                  strokeAlign: BorderSide.strokeAlignOutside,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
