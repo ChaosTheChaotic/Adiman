@@ -4714,9 +4714,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Broken.slider_horizontal_1,
                     ),
                   ),
-                  Expanded(
-                      child: _buildSeekbarOption(
-                          'Dynamic', SeekbarType.dyn, Broken.sound))
                 ],
               ),
             ),
@@ -7474,7 +7471,6 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         SharedPreferencesService.instance.getString('seekbarType');
     final useAltSeekbar =
         seekbarTypeString == 'alt' || widget.song.path.contains('cdda://');
-    final useDynamicSeekbar = seekbarTypeString == 'dyn';
     final waveformIndex = (_currentSliderValue * _waveformData.length)
         .clamp(0, _waveformData.length - 1)
         .toInt();
@@ -7832,14 +7828,6 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                       },
                                     ),
                                   ),
-                                );
-                              } else if (useDynamicSeekbar) {
-                                return WaveformSeekBar(
-                                  waveformData: _waveformData,
-                                  progress: _currentSliderValue,
-                                  activeColor: dominantColor,
-                                  inactiveColor: Colors.grey.withAlpha(0x30),
-                                  onSeek: (value) => _handleSeek(value),
                                 );
                               } else {
                                 return WaveformSeekBar(
