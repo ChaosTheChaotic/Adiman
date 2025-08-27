@@ -50,6 +50,7 @@ dependencies:
       url: https://github.com/MSOB7YY/dart_lrc
   dbus: ^0.7.11
   flutter_colorpicker: ^1.1.0
+  audio_visualizer: ^1.1.0
 
 dev_dependencies:
   flutter_test:

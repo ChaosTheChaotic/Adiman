@@ -19,7 +19,6 @@ import 'package:anni_mpris_service/anni_mpris_service.dart';
 import 'package:animated_background/animated_background.dart';
 import 'package:dbus/dbus.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import 'package:flutter_audio_visualizer/flutter_audio_visualizer.dart';
 import 'broken_icons.dart';
 
 final ValueNotifier<Color> defaultThemeColorNotifier =
