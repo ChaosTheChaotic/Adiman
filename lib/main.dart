@@ -556,6 +556,8 @@ enum SortOption {
 
 enum RepeatMode { normal, repeatOnce, repeatAll }
 
+enum SeekbarType { waveform, alt }
+
 late final AdimanService globalService;
 Future<void> main() async {
   await RustLib.init();
@@ -4019,7 +4021,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _breathe = true;
   bool _useDominantColors = false;
   bool _edgeBreathe = true;
-  bool _altSeek = false;
+  SeekbarType _seekbarType = SeekbarType.waveform;
   int _waveformBars = 1000;
   double _particleSpawnOpacity = 0.4;
   double _particleOpacityChangeRate = 0.2;
@@ -4153,7 +4155,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SharedPreferencesService.instance.getString('spotdlFlags') ?? '';
       _edgeBreathe =
           SharedPreferencesService.instance.getBool('edgeBreathe') ?? true;
-      _altSeek = SharedPreferencesService.instance.getBool('altSeek') ?? false;
+      final seekbarTypeString =
+          SharedPreferencesService.instance.getString('seekbarType');
+      _seekbarType =
+          seekbarTypeString == 'alt' ? SeekbarType.alt : SeekbarType.waveform;
     });
     final savedSeparators =
         SharedPreferencesService.instance.getStringList('separators');
@@ -4278,9 +4283,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _edgeBreathe = value);
   }
 
-  Future<void> _saveAltSeek(bool value) async {
-    await SharedPreferencesService.instance.setBool('altSeek', value);
-    setState(() => _altSeek = value);
+  Future<void> _saveSeekbarType(SeekbarType type) async {
+    await SharedPreferencesService.instance.setString('seekbarType', type.name);
+    setState(() => _seekbarType = type);
   }
 
   Future<void> _clearCache() async {
@@ -4645,6 +4650,163 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+Widget _buildSeekbarTypeSelector() {
+  final textColor = _currentColor.computeLuminance() > 0.01
+      ? _currentColor
+      : Theme.of(context).textTheme.bodyLarge?.color;
+
+  return Material(
+    color: Colors.transparent,
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GlowText(
+            'Seekbar Style',
+            glowColor: _currentColor.withAlpha(60),
+            style: TextStyle(
+              color: textColor,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  _currentColor.withAlpha(30),
+                  Colors.black.withAlpha(80),
+                ],
+              ),
+              border: Border.all(
+                color: _currentColor.withAlpha(100),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _currentColor.withAlpha(40),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildSeekbarOption(
+                    'Waveform',
+                    SeekbarType.waveform,
+                    Broken.graph,
+                  ),
+                ),
+                Expanded(
+                  child: _buildSeekbarOption(
+                    'Alt',
+                    SeekbarType.alt,
+                    Broken.slider_horizontal_1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Text(
+              'CDs always use the alt seekbar',
+              style: TextStyle(
+                color: textColor!.withAlpha(150),
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildSeekbarOption(String label, SeekbarType type, IconData icon) {
+  final isSelected = _seekbarType == type;
+  final textColor = isSelected ? Colors.white : _currentColor;
+  final glowColor = _currentColor.withAlpha(80);
+
+  return Material(
+    color: Colors.transparent,
+    borderRadius: BorderRadius.circular(12),
+    child: InkWell(
+      onTap: () => _saveSeekbarType(type),
+      borderRadius: BorderRadius.circular(12),
+      splashColor: _currentColor.withAlpha(30),
+      highlightColor: _currentColor.withAlpha(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isSelected
+                ? [
+                    _currentColor,
+                    _currentColor.withAlpha(220),
+                  ]
+                : [
+                    _currentColor.withAlpha(20),
+                    Colors.transparent,
+                  ],
+          ),
+          border: isSelected
+              ? null
+              : Border.all(
+                  color: _currentColor.withAlpha(80),
+                  width: 1.0,
+                ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: glowColor,
+                    blurRadius: 15,
+                    spreadRadius: 2,
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            GlowIcon(
+              icon,
+              color: textColor,
+              glowColor: glowColor,
+              blurRadius: 8,
+              size: 20,
+            ),
+            const SizedBox(height: 6),
+            GlowText(
+              label,
+              glowColor: glowColor,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
   Widget _buildSettingsExpansionTile({
     required String title,
     required IconData icon,
@@ -4919,10 +5081,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 title: 'Edge breathing effect',
                                 value: _edgeBreathe,
                                 onChanged: _saveEdgeBreathe),
-                            _buildSettingsSwitch(context,
-                                title: 'Alt seekbar',
-                                value: _altSeek,
-                                onChanged: _saveAltSeek),
+                            _buildSeekbarTypeSelector(),
                           ],
                         ),
                         _buildSettingsExpansionTile(
@@ -5158,6 +5317,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ],
                         ),
+                        _buildSettingsExpansionTile(
+                            title: 'Misc',
+                            icon: Broken.square,
+                            children: [
+                              _buildSettingsSwitch(context,
+                                  title: 'Auto Convert',
+                                  value: _autoConvert,
+                                  onChanged: _saveAutoConvert)
+                            ])
                       ],
                     ),
                   ),
@@ -7296,6 +7464,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   @override
   Widget build(BuildContext context) {
+    final seekbarTypeString =
+        SharedPreferencesService.instance.getString('seekbarType');
+    final useAltSeekbar =
+        seekbarTypeString == 'alt' || widget.song.path.contains('cdda://');
     final waveformIndex = (_currentSliderValue * _waveformData.length)
         .clamp(0, _waveformData.length - 1)
         .toInt();
@@ -7588,10 +7760,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                             horizontal: 24.0,
                             vertical: 16,
                           ),
-                          child: currentSong.path.contains('cdda://') ||
-                                  (SharedPreferencesService.instance
-                                          .getBool('altSeek') ??
-                                      true == true)
+                          child: useAltSeekbar
                               ? Container(
                                   height: 32,
                                   padding:
