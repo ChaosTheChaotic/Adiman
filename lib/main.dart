@@ -4704,7 +4704,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: _buildSeekbarOption(
                       'Waveform',
                       SeekbarType.waveform,
-                      Broken.graph,
+                      Broken.sound,
                     ),
                   ),
                   Expanded(
