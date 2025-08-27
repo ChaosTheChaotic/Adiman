@@ -19,6 +19,7 @@ import 'package:anni_mpris_service/anni_mpris_service.dart';
 import 'package:animated_background/animated_background.dart';
 import 'package:dbus/dbus.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:flutter_audio_visualizer/flutter_audio_visualizer.dart';
 import 'broken_icons.dart';
 
 final ValueNotifier<Color> defaultThemeColorNotifier =
@@ -556,7 +557,7 @@ enum SortOption {
 
 enum RepeatMode { normal, repeatOnce, repeatAll }
 
-enum SeekbarType { waveform, alt }
+enum SeekbarType { waveform, alt, dyn }
 
 late final AdimanService globalService;
 Future<void> main() async {
@@ -4157,8 +4158,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SharedPreferencesService.instance.getBool('edgeBreathe') ?? true;
       final seekbarTypeString =
           SharedPreferencesService.instance.getString('seekbarType');
-      _seekbarType =
-          seekbarTypeString == 'alt' ? SeekbarType.alt : SeekbarType.waveform;
+      _seekbarType = seekbarTypeString == 'alt'
+          ? SeekbarType.alt
+          : seekbarTypeString == 'dyn'
+              ? SeekbarType.dyn
+              : SeekbarType.waveform; // Default to waveform
     });
     final savedSeparators =
         SharedPreferencesService.instance.getStringList('separators');
@@ -4650,162 +4654,165 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-Widget _buildSeekbarTypeSelector() {
-  final textColor = _currentColor.computeLuminance() > 0.01
-      ? _currentColor
-      : Theme.of(context).textTheme.bodyLarge?.color;
+  Widget _buildSeekbarTypeSelector() {
+    final textColor = _currentColor.computeLuminance() > 0.01
+        ? _currentColor
+        : Theme.of(context).textTheme.bodyLarge?.color;
 
-  return Material(
-    color: Colors.transparent,
-    child: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GlowText(
-            'Seekbar Style',
-            glowColor: _currentColor.withAlpha(60),
-            style: TextStyle(
-              color: textColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  _currentColor.withAlpha(30),
-                  Colors.black.withAlpha(80),
-                ],
-              ),
-              border: Border.all(
-                color: _currentColor.withAlpha(100),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: _currentColor.withAlpha(40),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildSeekbarOption(
-                    'Waveform',
-                    SeekbarType.waveform,
-                    Broken.graph,
-                  ),
-                ),
-                Expanded(
-                  child: _buildSeekbarOption(
-                    'Alt',
-                    SeekbarType.alt,
-                    Broken.slider_horizontal_1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: Text(
-              'CDs always use the alt seekbar',
-              style: TextStyle(
-                color: textColor!.withAlpha(150),
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-Widget _buildSeekbarOption(String label, SeekbarType type, IconData icon) {
-  final isSelected = _seekbarType == type;
-  final textColor = isSelected ? Colors.white : _currentColor;
-  final glowColor = _currentColor.withAlpha(80);
-
-  return Material(
-    color: Colors.transparent,
-    borderRadius: BorderRadius.circular(12),
-    child: InkWell(
-      onTap: () => _saveSeekbarType(type),
-      borderRadius: BorderRadius.circular(12),
-      splashColor: _currentColor.withAlpha(30),
-      highlightColor: _currentColor.withAlpha(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isSelected
-                ? [
-                    _currentColor,
-                    _currentColor.withAlpha(220),
-                  ]
-                : [
-                    _currentColor.withAlpha(20),
-                    Colors.transparent,
-                  ],
-          ),
-          border: isSelected
-              ? null
-              : Border.all(
-                  color: _currentColor.withAlpha(80),
-                  width: 1.0,
-                ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: glowColor,
-                    blurRadius: 15,
-                    spreadRadius: 2,
-                  ),
-                ]
-              : null,
-        ),
+    return Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GlowIcon(
-              icon,
-              color: textColor,
-              glowColor: glowColor,
-              blurRadius: 8,
-              size: 20,
-            ),
-            const SizedBox(height: 6),
             GlowText(
-              label,
-              glowColor: glowColor,
+              'Seekbar Style',
+              glowColor: _currentColor.withAlpha(60),
               style: TextStyle(
                 color: textColor,
-                fontSize: 12,
+                fontSize: 16,
                 fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    _currentColor.withAlpha(30),
+                    Colors.black.withAlpha(80),
+                  ],
+                ),
+                border: Border.all(
+                  color: _currentColor.withAlpha(100),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _currentColor.withAlpha(40),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildSeekbarOption(
+                      'Waveform',
+                      SeekbarType.waveform,
+                      Broken.graph,
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildSeekbarOption(
+                      'Alt',
+                      SeekbarType.alt,
+                      Broken.slider_horizontal_1,
+                    ),
+                  ),
+                  Expanded(
+                      child: _buildSeekbarOption(
+                          'Dynamic', SeekbarType.dyn, Broken.sound))
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Text(
+                'CDs always use the alt seekbar',
+                style: TextStyle(
+                  color: textColor!.withAlpha(150),
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ),
           ],
         ),
       ),
-    ),
-  );
-}
+    );
+  }
+
+  Widget _buildSeekbarOption(String label, SeekbarType type, IconData icon) {
+    final isSelected = _seekbarType == type;
+    final textColor = isSelected ? Colors.white : _currentColor;
+    final glowColor = _currentColor.withAlpha(80);
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () => _saveSeekbarType(type),
+        borderRadius: BorderRadius.circular(12),
+        splashColor: _currentColor.withAlpha(30),
+        highlightColor: _currentColor.withAlpha(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isSelected
+                  ? [
+                      _currentColor,
+                      _currentColor.withAlpha(220),
+                    ]
+                  : [
+                      _currentColor.withAlpha(20),
+                      Colors.transparent,
+                    ],
+            ),
+            border: isSelected
+                ? null
+                : Border.all(
+                    color: _currentColor.withAlpha(80),
+                    width: 1.0,
+                  ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: glowColor,
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GlowIcon(
+                icon,
+                color: textColor,
+                glowColor: glowColor,
+                blurRadius: 8,
+                size: 20,
+              ),
+              const SizedBox(height: 6),
+              GlowText(
+                label,
+                glowColor: glowColor,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildSettingsExpansionTile({
     required String title,
@@ -7468,6 +7475,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         SharedPreferencesService.instance.getString('seekbarType');
     final useAltSeekbar =
         seekbarTypeString == 'alt' || widget.song.path.contains('cdda://');
+    final useDynamicSeekbar = seekbarTypeString == 'dyn';
     final waveformIndex = (_currentSliderValue * _waveformData.length)
         .clamp(0, _waveformData.length - 1)
         .toInt();
@@ -7756,12 +7764,13 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                       FadeTransition(
                         opacity: _fadeAnimation,
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24.0,
-                            vertical: 16,
-                          ),
-                          child: useAltSeekbar
-                              ? Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24.0,
+                              vertical: 16,
+                            ),
+                            child: Builder(builder: (context) {
+                              if (useAltSeekbar) {
+                                return Container(
                                   height: 32,
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 12),
@@ -7824,15 +7833,98 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                       },
                                     ),
                                   ),
-                                )
-                              : WaveformSeekBar(
+                                );
+                              } else if (useDynamicSeekbar) {
+                                return WaveformSeekBar(
                                   waveformData: _waveformData,
                                   progress: _currentSliderValue,
                                   activeColor: dominantColor,
                                   inactiveColor: Colors.grey.withAlpha(0x30),
                                   onSeek: (value) => _handleSeek(value),
-                                ),
-                        ),
+                                );
+                              } else {
+                                return WaveformSeekBar(
+                                  waveformData: _waveformData,
+                                  progress: _currentSliderValue,
+                                  activeColor: dominantColor,
+                                  inactiveColor: Colors.grey.withAlpha(0x30),
+                                  onSeek: (value) => _handleSeek(value),
+                                );
+                              }
+                            })
+                            //child: useAltSeekbar
+                            //    ? Container(
+                            //        height: 32,
+                            //        padding:
+                            //            const EdgeInsets.symmetric(vertical: 12),
+                            //        child: MouseRegion(
+                            //          onEnter: (_) => setState(
+                            //              () => _isHoveringSeekbar = true),
+                            //          onExit: (_) => setState(
+                            //              () => _isHoveringSeekbar = false),
+                            //          child: TweenAnimationBuilder<double>(
+                            //            duration:
+                            //                const Duration(milliseconds: 200),
+                            //            curve: Curves.easeOutCubic,
+                            //            tween: Tween<double>(
+                            //              begin: 0,
+                            //              end: _isHoveringSeekbar ? 1 : 0,
+                            //            ),
+                            //            builder: (context, value, child) {
+                            //              return AnimatedContainer(
+                            //                duration:
+                            //                    const Duration(milliseconds: 200),
+                            //                curve: Curves.easeOutCubic,
+                            //                height: 4 + (12 * value),
+                            //                decoration: BoxDecoration(
+                            //                  borderRadius: BorderRadius.circular(
+                            //                      2 + (6 * value)),
+                            //                  gradient: LinearGradient(
+                            //                    begin: Alignment.topLeft,
+                            //                    end: Alignment.bottomRight,
+                            //                    colors: [
+                            //                      dominantColor.withValues(
+                            //                          alpha: 0.3),
+                            //                      dominantColor.withValues(
+                            //                          alpha: 0.1),
+                            //                    ],
+                            //                  ),
+                            //                ),
+                            //                child: SliderTheme(
+                            //                  data: SliderThemeData(
+                            //                    trackHeight: 4 + (12 * value),
+                            //                    thumbShape:
+                            //                        const RoundSliderThumbShape(
+                            //                            enabledThumbRadius: 0),
+                            //                    overlayShape: SliderComponentShape
+                            //                        .noOverlay,
+                            //                    activeTrackColor: dominantColor,
+                            //                    inactiveTrackColor:
+                            //                        Colors.grey.withAlpha(0x30),
+                            //                    trackShape:
+                            //                        CustomRoundedRectSliderTrackShape(
+                            //                      radius: 2 + (6 * value),
+                            //                    ),
+                            //                  ),
+                            //                  child: Slider(
+                            //                    value: _currentSliderValue,
+                            //                    onChanged: (value) =>
+                            //                        _handleSeek(value),
+                            //                  ),
+                            //                ),
+                            //              );
+                            //            },
+                            //          ),
+                            //        ),
+                            //      )
+                            //    : WaveformSeekBar(
+                            //        waveformData: _waveformData,
+                            //        progress: _currentSliderValue,
+                            //        activeColor: dominantColor,
+                            //        inactiveColor: Colors.grey.withAlpha(0x30),
+                            //        onSeek: (value) => _handleSeek(value),
+                            //      ),
+                            ),
                       ),
                       FadeTransition(
                         opacity: _fadeAnimation,
