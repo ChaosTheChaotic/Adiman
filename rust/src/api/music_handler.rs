@@ -748,6 +748,8 @@ impl AudioPlayer {
 
                             if should_play {
                                 new_sink.play();
+                            } else {
+                                new_sink.pause();
                             }
                             if let Ok(player_lock) = PLAYER.lock() {
                                 if let Some(player) = player_lock.as_ref() {

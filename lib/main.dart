@@ -7078,12 +7078,12 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           currentSong.duration.inSeconds.toDouble(),
         );
         await rust_api.seekToPosition(position: seekPosition);
-        if (!isPlaying && mounted) {
-          setState(() {
-            isPlaying = true;
-            _playPauseController.forward();
-          });
-        }
+        //if (!isPlaying && mounted) {
+        //  setState(() {
+        //    isPlaying = true;
+        //    _playPauseController.forward();
+        //  });
+        //}
       } catch (e) {
         NamidaSnackbar(
             backgroundColor: dominantColor, content: 'Error seeking: $e');
