@@ -294,7 +294,6 @@ struct AudioPlayer {
     next_buffer: Arc<Mutex<Option<StreamingBuffer>>>,
     next_path: Mutex<Option<String>>,
     preload_monitor: Arc<AtomicBool>,
-    transition_threshold: Arc<AtomicF32>,
 }
 
 impl fmt::Debug for AudioPlayer {
@@ -314,7 +313,7 @@ impl AudioPlayer {
             let buffer_clone = Arc::clone(&buffer);
             let mixer = stream.mixer().clone();
             let preload_monitor = Arc::new(AtomicBool::new(false));
-            let transition_threshold = Arc::new(AtomicF32::new(2.0)); // 2 seconds before end
+            let transition_threshold = Arc::new(AtomicF32::new(0.0)); // 2 seconds before end
             
             // Spawn monitoring thread
             let preload_monitor_clone = Arc::clone(&preload_monitor);
@@ -342,7 +341,6 @@ impl AudioPlayer {
                     next_buffer: Arc::new(Mutex::new(None)),
                     next_path: Mutex::new(Some(String::new())),
                     preload_monitor,
-                    transition_threshold,
                 });
             }
         }
@@ -844,11 +842,6 @@ impl AudioPlayer {
         } else {
             false
         }
-    }
-
-    // Method to set transition threshold
-    fn set_transition_threshold(&self, seconds: f32) {
-        self.transition_threshold.store(seconds.max(0.1), Ordering::SeqCst);
     }
 
     fn position_monitor(
