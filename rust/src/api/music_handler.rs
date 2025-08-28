@@ -291,6 +291,7 @@ struct AudioPlayer {
     is_paused: Mutex<bool>,
     next_sink: Mutex<Option<Arc<Sink>>>,
     next_buffer: Arc<Mutex<Option<StreamingBuffer>>>,
+    next_path: Mutex<Option<String>>,
 }
 
 impl fmt::Debug for AudioPlayer {
@@ -325,6 +326,7 @@ impl AudioPlayer {
                     is_paused: Mutex::new(false),
                     next_sink: Mutex::new(None),
                     next_buffer: Arc::new(Mutex::new(None)),
+                    next_path: Mutex::new(Some(String::new())),
                 });
             }
         }
@@ -1604,6 +1606,7 @@ pub fn search_lyrics(
 
 pub fn preload_next_song(path: String) -> bool {
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
+        *player.next_path.lock().unwrap() = Some(path.clone());
         if let Ok(sender) = player.sender.lock() {
             sender.send(PlayerMessage::PreloadNext { path }).is_ok()
         } else {
