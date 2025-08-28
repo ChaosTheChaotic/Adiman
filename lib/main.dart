@@ -214,7 +214,7 @@ class _MiniPlayerState extends State<MiniPlayer>
 
     if (pos.isFinite) {
       setState(() {});
-      if (pos >= widget.song.duration.inSeconds - 0.1) {
+      if (pos >= widget.song.duration.inSeconds - 0.01) {
         _handleSkip(true);
       }
     }
@@ -7045,7 +7045,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           }
         }
         
-        if (position >= currentSong.duration.inSeconds - 0.1) {
+        if (position >= currentSong.duration.inSeconds - 0.01) {
           await _handleSongFinished();
         }
       }
