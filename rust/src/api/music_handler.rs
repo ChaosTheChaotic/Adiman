@@ -313,7 +313,7 @@ impl AudioPlayer {
             let buffer_clone = Arc::clone(&buffer);
             let mixer = stream.mixer().clone();
             let preload_monitor = Arc::new(AtomicBool::new(false));
-            let transition_threshold = Arc::new(AtomicF32::new(0.2));
+            let transition_threshold = Arc::new(AtomicF32::new(0.15));
             
             // Spawn monitoring thread
             let preload_monitor_clone = Arc::clone(&preload_monitor);
