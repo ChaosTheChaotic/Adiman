@@ -777,9 +777,16 @@ impl AudioPlayer {
                                     let old_sink = player.sink.lock().unwrap().take();
                                     AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
                                     *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
-                                    *player.start_time.lock().unwrap() = Instant::now()
+                                    
+                                    // Update start time to reflect the seek position
+                                    let now = Instant::now();
+                                    *player.start_time.lock().unwrap() = now
                                         .checked_sub(Duration::from_secs_f32(position))
-                                        .unwrap();
+                                        .unwrap_or(now);
+                                    
+                                    // Reset pause state
+                                    *player.is_paused.lock().unwrap() = false;
+                                    *player.paused_position.lock().unwrap() = 0.0;
                                 }
                             }
                         }
@@ -1718,6 +1725,9 @@ pub fn search_lyrics(
 }
 
 pub fn preload_next_song(path: String) -> bool {
+    if path.starts_with("cdda://") {
+        return false;
+    }
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         // Clear any existing preloaded track first
         *player.next_sink.lock().unwrap() = None;

@@ -249,12 +249,17 @@ class _MiniPlayerState extends State<MiniPlayer>
     final newIndex = widget.currentIndex + (next ? 1 : -1);
     if (newIndex < 0 || newIndex >= widget.songList.length) return;
     
-    if (widget.song.path.contains('cdda://')) {
+    if (widget.song.path.contains('cdda://') || widget.songList[newIndex + 1].path.contains('cdda://')) {
       await rust_api.stopSong();
       await rust_api.playSong(path: widget.songList[newIndex].path);
     } else {
       await rust_api.switchToPreloadedNow();
-      await rust_api.preloadNextSong(path: widget.songList[newIndex + 1].path);
+      if (newIndex + 1 < widget.songList.length) {
+        final nextNextSong = widget.songList[newIndex + 1];
+        if (!nextNextSong.path.contains('cdda://')) {
+          await rust_api.preloadNextSong(path: nextNextSong.path);
+        }
+      }
     }
     Color newColor = await _getDominantColor(widget.songList[newIndex]);
     widget.onUpdate(widget.songList[newIndex], newIndex, newColor);
@@ -7230,6 +7235,12 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
       success = await rust_api.playSong(path: currentSong.path);
     } else {
       success = await rust_api.switchToPreloadedNow();
+      if (currentIndex + 1 < widget.songList.length) {
+        final nextNextSong = widget.songList[currentIndex + 1];
+        if (!nextNextSong.path.contains('cdda://')) {
+          await rust_api.preloadNextSong(path: nextNextSong.path);
+        }
+      }
       await rust_api.preloadNextSong(path: widget.songList[currentIndex + 1].path);
     }
     if (success && mounted) {
