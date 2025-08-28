@@ -2496,7 +2496,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       GlowText(
-                        'Playlist Options',
+                        'Song Options',
                         glowColor: dominantColor.withValues(alpha: 0.3),
                         style: TextStyle(
                           fontSize: 22,
