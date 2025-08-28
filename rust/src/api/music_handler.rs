@@ -232,6 +232,7 @@ enum PlayerMessage {
     PreloadNext { path: String },
     Seek(f32),
     Stop,
+    SwitchToPreloaded,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -292,6 +293,8 @@ struct AudioPlayer {
     next_sink: Mutex<Option<Arc<Sink>>>,
     next_buffer: Arc<Mutex<Option<StreamingBuffer>>>,
     next_path: Mutex<Option<String>>,
+    preload_monitor: Arc<AtomicBool>,
+    transition_threshold: Arc<AtomicF32>,
 }
 
 impl fmt::Debug for AudioPlayer {
@@ -310,6 +313,17 @@ impl AudioPlayer {
             let buffer = Arc::new(Mutex::new(None));
             let buffer_clone = Arc::clone(&buffer);
             let mixer = stream.mixer().clone();
+            let preload_monitor = Arc::new(AtomicBool::new(false));
+            let transition_threshold = Arc::new(AtomicF32::new(2.0)); // 2 seconds before end
+            
+            // Spawn monitoring thread
+            let preload_monitor_clone = Arc::clone(&preload_monitor);
+            let transition_threshold_clone = Arc::clone(&transition_threshold);
+            let tx_clone = tx.clone();
+            
+            thread::spawn(move || {
+                Self::position_monitor(preload_monitor_clone, transition_threshold_clone, tx_clone)
+            });
             // Spawn the background worker with a cloned mixer and buffer.
             thread::spawn(move || Self::background_worker(rx, mixer, buffer_clone));
             if let Ok(mut stream_guard) = STREAM.lock() {
@@ -327,6 +341,8 @@ impl AudioPlayer {
                     next_sink: Mutex::new(None),
                     next_buffer: Arc::new(Mutex::new(None)),
                     next_path: Mutex::new(Some(String::new())),
+                    preload_monitor,
+                    transition_threshold,
                 });
             }
         }
@@ -771,11 +787,111 @@ impl AudioPlayer {
                         }
                     }
                 }
+                PlayerMessage::SwitchToPreloaded => {
+                    if let Ok(player_lock) = PLAYER.lock() {
+                        if let Some(player) = player_lock.as_ref() {
+                            player.switch_to_preloaded();
+                        }
+                    }
+                }
                 PlayerMessage::Stop => break,
             }
         }
     }
 
+    fn switch_to_preloaded(&self) -> bool {
+        let (new_sink, new_buffer, new_path) = {
+            let next_sink = self.next_sink.lock().unwrap().take();
+            let next_buffer = self.next_buffer.lock().unwrap().take();
+            let next_path = self.next_path.lock().unwrap().take();
+            (next_sink, next_buffer, next_path)
+        };
+
+        if let (Some(sink), Some(buffer), Some(path)) = (new_sink, new_buffer, new_path) {
+            // Get current volume for seamless transition
+            let current_volume = CUR_VOL.load(Ordering::SeqCst);
+            
+            // Stop monitoring temporarily
+            self.preload_monitor.store(false, Ordering::SeqCst);
+            
+            // Switch to preloaded track
+            let old_sink = self.sink.lock().unwrap().take();
+            
+            // Set volume and start playback
+            sink.set_volume(current_volume);
+            sink.play();
+            
+            // Update player state
+            *self.sink.lock().unwrap() = Some(sink);
+            *self.buffer.lock().unwrap() = Some(buffer);
+            *self.current_file.lock().unwrap() = path;
+            *self.start_time.lock().unwrap() = Instant::now();
+            *self.playing.lock().unwrap() = true;
+            *self.is_paused.lock().unwrap() = false;
+            
+            // Stop old sink after brief overlap for seamless transition
+            if let Some(old) = old_sink {
+                thread::spawn(move || {
+                    thread::sleep(Duration::from_millis(50)); // Brief overlap
+                    old.stop();
+                });
+            }
+            
+            // Restart monitoring for next preload
+            self.preload_monitor.store(true, Ordering::SeqCst);
+            
+            true
+        } else {
+            false
+        }
+    }
+
+    // Method to set transition threshold
+    fn set_transition_threshold(&self, seconds: f32) {
+        self.transition_threshold.store(seconds.max(0.1), Ordering::SeqCst);
+    }
+
+    fn position_monitor(
+        monitor_active: Arc<AtomicBool>,
+        threshold: Arc<AtomicF32>,
+        sender: Sender<PlayerMessage>,
+    ) {
+        loop {
+            if monitor_active.load(Ordering::SeqCst) {
+                if let Ok(player_lock) = PLAYER.lock() {
+                    if let Some(player) = player_lock.as_ref() {
+                        let position = player.get_position();
+                        let has_preloaded = player.next_sink.lock().unwrap().is_some();
+                        
+                        if has_preloaded {
+                            // Get current track duration
+                            let duration = {
+                                if let Ok(buffer_guard) = player.buffer.lock() {
+                                    buffer_guard.as_ref()
+                                        .map(|buf| buf.total_duration.as_secs_f32())
+                                        .unwrap_or(0.0)
+                                } else {
+                                    0.0
+                                }
+                            };
+                            
+                            let threshold_secs = threshold.load(Ordering::SeqCst);
+                            
+                            // Check if we're within threshold of the end
+                            if duration > 0.0 && (duration - position) <= threshold_secs {
+                                let _ = sender.send(PlayerMessage::SwitchToPreloaded);
+                                monitor_active.store(false, Ordering::SeqCst);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            thread::sleep(Duration::from_millis(100)); // Check every 100ms
+        }
+    }
+
+    // Modified play method to start monitoring
     fn play(&self, path: &str) -> bool {
         self.stop();
         {
@@ -785,7 +901,11 @@ impl AudioPlayer {
             *paused = false;
             *self.paused_position.lock().unwrap() = 0.0;
             *self.start_time.lock().unwrap() = Instant::now();
+            
+            // Start position monitoring for preload transitions
+            self.preload_monitor.store(true, Ordering::SeqCst);
         }
+        
         if let Ok(sender) = self.sender.lock() {
             sender
                 .send(PlayerMessage::Load {
@@ -1606,9 +1726,25 @@ pub fn search_lyrics(
 
 pub fn preload_next_song(path: String) -> bool {
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
+        // Clear any existing preloaded track first
+        *player.next_sink.lock().unwrap() = None;
+        *player.next_buffer.lock().unwrap() = None;
         *player.next_path.lock().unwrap() = Some(path.clone());
+        
         if let Ok(sender) = player.sender.lock() {
             sender.send(PlayerMessage::PreloadNext { path }).is_ok()
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+
+pub fn switch_to_preloaded_now() -> bool {
+    if let Some(player) = PLAYER.lock().unwrap().as_ref() {
+        if let Ok(sender) = player.sender.lock() {
+            sender.send(PlayerMessage::SwitchToPreloaded).is_ok()
         } else {
             false
         }
