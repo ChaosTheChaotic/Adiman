@@ -229,6 +229,7 @@ struct AudioChunk {
 
 enum PlayerMessage {
     Load { path: String, position: f32 },
+    PreloadNext { path: String },
     Seek(f32),
     Stop,
 }
@@ -288,6 +289,8 @@ struct AudioPlayer {
     buffer: Arc<Mutex<Option<StreamingBuffer>>>,
     paused_position: Mutex<f32>,
     is_paused: Mutex<bool>,
+    next_sink: Mutex<Option<Arc<Sink>>>,
+    next_buffer: Arc<Mutex<Option<StreamingBuffer>>>,
 }
 
 impl fmt::Debug for AudioPlayer {
@@ -320,6 +323,8 @@ impl AudioPlayer {
                     buffer,
                     paused_position: Mutex::new(0.0),
                     is_paused: Mutex::new(false),
+                    next_sink: Mutex::new(None),
+                    next_buffer: Arc::new(Mutex::new(None)),
                 });
             }
         }
@@ -584,6 +589,101 @@ impl AudioPlayer {
                             println!("Failed to open file: {}", &path);
                         }
                     }
+                }
+                PlayerMessage::PreloadNext { path } => {
+                        if path.starts_with("cdda://") {
+                            break;
+                        }
+                        if let Ok(file) = fs::File::open(&path) {
+                            let mut reader = BufReader::new(file);
+                            let chunks = Arc::new(Mutex::new(Vec::new()));
+                            let mut decoder: Option<Decoder<Cursor<Vec<u8>>>> = None;
+                            let mut sample_rate = 44100;
+                            let mut channels = 2;
+                            let mut total_duration = Duration::from_secs(0);
+                            let mut initial_data = Vec::new();
+                            if reader.read_to_end(&mut initial_data).is_ok()
+                                && !initial_data.is_empty()
+                            {
+                                let cursor = Cursor::new(initial_data.clone());
+                                if let Ok(dec) = Decoder::try_from(cursor) {
+                                    sample_rate = dec.sample_rate();
+                                    channels = dec.channels();
+                                    total_duration =
+                                        dec.total_duration().unwrap_or(Duration::from_secs(0));
+                                    decoder = Some(dec);
+                                }
+                            }
+                            let _ = reader.seek(SeekFrom::Start(0));
+                            {
+                                // Preload a (possibly empty) initial chunk
+                                let mut guard = chunks.lock().unwrap();
+                                if let Some(ref mut dec) = decoder {
+                                    let samples: Vec<f32> = dec.take(0).map(|s| s).collect();
+                                    guard.push(AudioChunk { samples });
+                                }
+                            }
+                            let streaming_buffer = StreamingBuffer {
+                                chunks: Arc::clone(&chunks),
+                                sample_rate,
+                                channels,
+                                total_duration,
+                            };
+                            let stbuf_clone = streaming_buffer.clone();
+                            // Create sink and append a streaming source.
+                            let new_sink = Arc::new(Sink::connect_new(&mixer));
+                            new_sink.set_volume(0.0);
+                            let source = StreamingSource {
+                                buffer: Arc::new(Mutex::new(Some(streaming_buffer))),
+                                current_chunk: 0,
+                                position: 0,
+                                chunks_processed: 0,
+                            };
+                            new_sink.append(source);
+                            new_sink.pause();
+                            if let Ok(player_lock) = PLAYER.lock() {
+                                if let Some(player) = player_lock.as_ref() {
+                                    *player.next_sink.lock().unwrap() = Some(Arc::clone(&new_sink));
+                                    *player.next_buffer.lock().unwrap() = Some(stbuf_clone);
+                                }
+                            }
+                            // Spawn thread to buffer the rest of the audio in chunks.
+                            let chunks_clone = Arc::clone(&chunks);
+                            let file_path = path.clone();
+                            thread::spawn(move || {
+                                if let Ok(file) = fs::File::open(&file_path) {
+                                    let mut reader = BufReader::new(file);
+                                    let mut file_data = Vec::new();
+                                    if reader.read_to_end(&mut file_data).is_ok() {
+                                        let cursor = Cursor::new(file_data);
+                                        if let Ok(decoder) = Decoder::try_from(cursor) {
+                                            let mut samples =
+                                                Vec::with_capacity(sample_rate as usize);
+                                            for sample in decoder {
+                                                samples.push(sample);
+                                                if samples.len()
+                                                    >= (sample_rate as usize * channels as usize)
+                                                {
+                                                    if let Ok(mut guard) = chunks_clone.lock() {
+                                                        guard.push(AudioChunk {
+                                                            samples: samples.clone(),
+                                                        });
+                                                    }
+                                                    samples.clear();
+                                                }
+                                            }
+                                            if !samples.is_empty() {
+                                                if let Ok(mut guard) = chunks_clone.lock() {
+                                                    guard.push(AudioChunk { samples });
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        } else {
+                            println!("Failed to open file: {}", &path);
+                        }
                 }
                 PlayerMessage::Seek(position) => {
                     let current_path = {
@@ -1500,4 +1600,16 @@ pub fn search_lyrics(
         .into_iter()
         .filter(|sm| seen.insert(sm.path.clone()))
         .collect())
+}
+
+pub fn preload_next_song(path: String) -> bool {
+    if let Some(player) = PLAYER.lock().unwrap().as_ref() {
+        if let Ok(sender) = player.sender.lock() {
+            sender.send(PlayerMessage::PreloadNext { path }).is_ok()
+        } else {
+            false
+        }
+    } else {
+        false
+    }
 }

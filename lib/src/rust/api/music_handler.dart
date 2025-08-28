@@ -129,6 +129,9 @@ Future<List<SongMetadata>> searchLyrics(
     RustLib.instance.api.crateApiMusicHandlerSearchLyrics(
         lyricsDir: lyricsDir, query: query, songDir: songDir);
 
+Future<bool> preloadNextSong({required String path}) =>
+    RustLib.instance.api.crateApiMusicHandlerPreloadNextSong(path: path);
+
 class PlayerState {
   final bool initialized;
 

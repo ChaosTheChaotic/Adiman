@@ -251,6 +251,7 @@ class _MiniPlayerState extends State<MiniPlayer>
 
     await rust_api.stopSong();
     await rust_api.playSong(path: widget.songList[newIndex].path);
+    await rust_api.preloadNextSong(path: widget.songList[newIndex + 1].path);
     Color newColor = await _getDominantColor(widget.songList[newIndex]);
     widget.onUpdate(widget.songList[newIndex], newIndex, newColor);
     widget.service.updatePlaylist(widget.songList, newIndex);
@@ -1746,6 +1747,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     shuffled.shuffle();
     Song first = shuffled.first;
     await rust_api.playSong(path: first.path);
+    await rust_api.preloadNextSong(path: shuffled.elementAt(1).path);
     Color newColor = await _getDominantColor(first);
     setState(() {
       songs = shuffled;
@@ -7079,6 +7081,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         return;
       }
       final started = await rust_api.playSong(path: currentSong.path);
+      await rust_api.preloadNextSong(path: widget.songList[currentIndex + 1].path);
       if (started && mounted) {
         widget.service.updatePlaylistStart(widget.songList, currentIndex);
         widget.service._updateMetadata();
@@ -7130,6 +7133,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     );
     await rust_api.seekToPosition(position: seekPosition);
     await rust_api.playSong(path: currentSong.path);
+    await rust_api.preloadNextSong(path: widget.songList[currentIndex + 1].path);
   }
 
   void _generateShuffleOrder() {
@@ -7177,6 +7181,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     await _updateDominantColor();
 
     final success = await rust_api.playSong(path: currentSong.path);
+    await rust_api.preloadNextSong(path: widget.songList[currentIndex + 1].path);
     if (success && mounted) {
       setState(() {
         isPlaying = true;
@@ -7216,6 +7221,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     _loadLyrics();
     await _updateDominantColor();
     final success = await rust_api.playSong(path: currentSong.path);
+    await rust_api.preloadNextSong(path: widget.songList[currentIndex + 1].path);
     if (success && mounted) {
       setState(() {
         isPlaying = true;
@@ -8232,6 +8238,7 @@ class AdimanService extends MPRISService {
       final newIndex = _currentIndex + 1;
       final nextSong = _currentPlaylist[newIndex];
       await rust_api.playSong(path: nextSong.path);
+      await rust_api.preloadNextSong(path: _currentPlaylist[newIndex + 1].path);
       _currentIndex = newIndex;
       _currentSong = nextSong;
       _trackChangeController.add(nextSong);
@@ -8253,6 +8260,7 @@ class AdimanService extends MPRISService {
       final newIndex = _currentIndex - 1;
       final prevSong = _currentPlaylist[newIndex];
       await rust_api.playSong(path: prevSong.path);
+      await rust_api.preloadNextSong(path: _currentPlaylist[newIndex + 1].path);
       _currentIndex = newIndex;
       _currentSong = prevSong;
       _trackChangeController.add(prevSong);
