@@ -7025,6 +7025,27 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           _currentSliderValue =
               (position / currentSong.duration.inSeconds).clamp(0.0, 1.0);
         });
+        
+        // Check if song has changed (Rust auto-advanced)
+        if (position < 1.0) { // Only check if not at beginning of new song
+          final currentPath = await rust_api.getCurrentSongPath();
+          if (currentPath != currentSong.path) {
+            final newIndex = widget.songList.indexWhere((song) => song.path == currentPath);
+            if (newIndex != -1) {
+              setState(() {
+                currentIndex = newIndex;
+                currentSong = widget.songList[newIndex];
+                _currentSliderValue = 0.0;
+              });
+              _initWaveform();
+              _loadLyrics();
+              await _updateDominantColor();
+              widget.service.updatePlaylist(widget.songList, currentIndex);
+              widget.service._updateMetadata();
+            }
+          }
+        }
+        
         if (position >= currentSong.duration.inSeconds - 0.1) {
           await _handleSongFinished();
         }
@@ -7148,9 +7169,29 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   Future<void> _handleSongFinished() async {
     if (_isTransitioning) return;
+    
+    // Check if Rust has already advanced to the next song
+    final currentPath = await rust_api.getCurrentSongPath();
+    if (currentPath != currentSong.path) {
+      // Rust has already advanced, update UI accordingly
+      final newIndex = widget.songList.indexWhere((song) => song.path == currentPath);
+      if (newIndex != -1) {
+        setState(() {
+          currentIndex = newIndex;
+          currentSong = widget.songList[newIndex];
+        });
+        _initWaveform();
+        _loadLyrics();
+        await _updateDominantColor();
+        widget.service.updatePlaylist(widget.songList, currentIndex);
+        widget.service._updateMetadata();
+      }
+      return;
+    }
+  
+    // Original handling for when Rust hasn't advanced
     await rust_api.stopSong();
     if (_repeatMode == RepeatMode.repeatOnce) {
-      // Play once then stop
       if (!_hasRepeated) {
         await _replaySong();
         _hasRepeated = true;
