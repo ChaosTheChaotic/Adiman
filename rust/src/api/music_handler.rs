@@ -738,17 +738,33 @@ impl AudioPlayer {
                                 chunks_processed: current_chunk,
                             };
                             new_sink.append(source);
-                            new_sink.play();
+                            let should_play = {
+                                if let Ok(player_lock) = PLAYER.lock() {
+                                    player_lock.as_ref().map(|p| !*p.is_paused.lock().unwrap()).unwrap_or(true)
+                                } else {
+                                    true
+                                }
+                            };
+
+                            if should_play {
+                                new_sink.play();
+                            }
                             if let Ok(player_lock) = PLAYER.lock() {
                                 if let Some(player) = player_lock.as_ref() {
                                     let old_sink = player.sink.lock().unwrap().take();
                                     AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
                                     *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
-                                    let now = Instant::now();
-                                    let new_start = now
-                                        .checked_sub(Duration::from_secs_f32(position))
-                                        .unwrap_or(now);
-                                    *player.start_time.lock().unwrap() = new_start;
+                                }
+                            }
+                            if should_play {
+                                if let Ok(player_lock) = PLAYER.lock() {
+                                    if let Some(player) = player_lock.as_ref() {
+                                        let now = Instant::now();
+                                        let new_start = now
+                                            .checked_sub(Duration::from_secs_f32(position))
+                                            .unwrap_or(now);
+                                        *player.start_time.lock().unwrap() = new_start;
+                                    }
                                 }
                             }
                         } else if current_path.starts_with("cdda://") {
@@ -925,11 +941,17 @@ impl AudioPlayer {
                     old.stop();
                 }
             }
-            let now = Instant::now();
-            let new_start = now
-                .checked_sub(Duration::from_secs_f32(position))
-                .unwrap_or(now);
-            *self.start_time.lock().unwrap() = new_start;
+            // Update paused position if paused, otherwise update start time
+            let is_paused = *self.is_paused.lock().unwrap();
+            if is_paused {
+                *self.paused_position.lock().unwrap() = position;
+            } else {
+                let now = Instant::now();
+                let new_start = now
+                    .checked_sub(Duration::from_secs_f32(position))
+                    .unwrap_or(now);
+                *self.start_time.lock().unwrap() = new_start;
+            }
         }
         if let Ok(sender) = self.sender.lock() {
             sender.send(PlayerMessage::Seek(position)).is_ok()
