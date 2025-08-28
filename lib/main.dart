@@ -248,9 +248,14 @@ class _MiniPlayerState extends State<MiniPlayer>
   void _handleSkip(bool next) async {
     final newIndex = widget.currentIndex + (next ? 1 : -1);
     if (newIndex < 0 || newIndex >= widget.songList.length) return;
-
-    await rust_api.switchToPreloadedNow();
-    await rust_api.preloadNextSong(path: widget.songList[newIndex + 1].path);
+    
+    if (widget.song.path.contains('cdda://')) {
+      await rust_api.stopSong();
+      await rust_api.playSong(path: widget.songList[newIndex].path);
+    } else {
+      await rust_api.switchToPreloadedNow();
+      await rust_api.preloadNextSong(path: widget.songList[newIndex + 1].path);
+    }
     Color newColor = await _getDominantColor(widget.songList[newIndex]);
     widget.onUpdate(widget.songList[newIndex], newIndex, newColor);
     widget.service.updatePlaylist(widget.songList, newIndex);
@@ -7220,8 +7225,13 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     _loadLyrics();
     await _updateDominantColor();
 
-    final success = await rust_api.switchToPreloadedNow();
-    await rust_api.preloadNextSong(path: widget.songList[currentIndex + 1].path);
+    final bool success;
+    if (currentSong.path.contains('cdda://')) {
+      success = await rust_api.playSong(path: currentSong.path);
+    } else {
+      success = await rust_api.switchToPreloadedNow();
+      await rust_api.preloadNextSong(path: widget.songList[currentIndex + 1].path);
+    }
     if (success && mounted) {
       setState(() {
         isPlaying = true;
