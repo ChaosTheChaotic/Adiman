@@ -19,6 +19,7 @@ import 'package:anni_mpris_service/anni_mpris_service.dart';
 import 'package:animated_background/animated_background.dart';
 import 'package:dbus/dbus.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'broken_icons.dart';
 
 final ValueNotifier<Color> defaultThemeColorNotifier =
@@ -574,6 +575,9 @@ Future<void> main() async {
   await rust_api.initializePlayer();
   globalService = AdimanService();
   VolumeController();
+  sqfliteFfiInit();
+  databaseFactory = databaseFactoryFfi;
+  await PlaylistOrderDatabase().database;
   await SharedPreferencesService.init();
   useDominantColorsNotifier.value =
       SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
@@ -1560,6 +1564,16 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     return count;
   }
 
+  Future<void> _updatePlaylistOrder() async {
+    if (_currentPlaylistName != null) {
+      final songPaths = songs.map((song) => song.path).toList();
+      await PlaylistOrderDatabase().updatePlaylistOrder(
+        _currentPlaylistName!,
+        songPaths,
+      );
+    }
+  }
+
   Future<void> _loadSongs() async {
     setState(() => isLoading = true);
     try {
@@ -1581,6 +1595,41 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
 
         // Sort the songs
         loadedSongs.sort((a, b) => a.title.compareTo(b.title));
+
+	List<String> orderedPaths = [];
+    	if (_currentPlaylistName != null) {
+    	  try {
+    	    orderedPaths = await PlaylistOrderDatabase()
+    	        .getPlaylistOrder(_currentPlaylistName!);
+    	  } catch (e) {
+    	    print('Error getting playlist order: $e');
+    	  }
+    	}
+    	
+    	// Sort songs according to stored order if available
+    	if (orderedPaths.isNotEmpty) {
+    	  final pathToSong = Map.fromIterable(
+    	    loadedSongs,
+    	    key: (song) => song.path,
+    	    value: (song) => song,
+    	  );
+    	  
+    	  final orderedSongs = <Song>[];
+    	  for (final path in orderedPaths) {
+    	    if (pathToSong.containsKey(path)) {
+    	      orderedSongs.add(pathToSong[path]!);
+    	    }
+    	  }
+    	  
+    	  // Add any songs that weren't in the database (newly added)
+    	  for (final song in loadedSongs) {
+    	    if (!orderedPaths.contains(song.path)) {
+    	      orderedSongs.add(song);
+    	    }
+    	  }
+    	  
+    	  loadedSongs = orderedSongs;
+    	}
 
         setState(() {
           songs = loadedSongs;
@@ -4023,6 +4072,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _spinningAlbumArt = false;
   final bool _isChangingColor = false;
   final bool _isManagingSeparators = false;
+  final bool _isClearingDatabase = false;
   bool _autoConvert = false;
   bool _clearMp3Cache = false;
   bool _vimKeybindings = false;
@@ -4847,6 +4897,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _clearPlaylistDatabase() async {
+    await PlaylistOrderDatabase().clearAllPlaylists();
+    ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+      backgroundColor: widget.dominantColor,
+      content: 'Playlist database cleared',
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final textColor = _currentColor.computeLuminance() > 0.01
@@ -5073,6 +5131,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               isLoading: _isManagingSeparators,
                               onPressed: _showSeparatorManagementPopup,
                             ),
+			    _buildActionButton(
+			      icon: Broken.trash,
+			      label: 'Clear Playlist Order Database',
+			      isLoading: _isClearingDatabase,
+			      onPressed: _clearPlaylistDatabase,
+			    ),
                           ],
                         ),
                         _buildSettingsExpansionTile(
@@ -9302,5 +9366,103 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
         ),
       ),
     );
+  }
+}
+
+class PlaylistOrderDatabase {
+  static final PlaylistOrderDatabase _instance = PlaylistOrderDatabase._internal();
+  factory PlaylistOrderDatabase() => _instance;
+  PlaylistOrderDatabase._internal();
+
+  static Database? _db;
+
+  Future<Database> get database async {
+    if (_db != null) return _db!;
+    _db = await _initDatabase();
+    return _db!;
+  }
+
+  Future<Database> _initDatabase() async {
+    final dbPath = await getDatabasesPath();
+    final path = '$dbPath/playlist_orders.db';
+    
+    return await openDatabase(
+      path,
+      version: 1,
+      onCreate: (db, version) async {
+        await db.execute('''
+          CREATE TABLE playlist_orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            playlist_name TEXT NOT NULL,
+            song_path TEXT NOT NULL,
+            position INTEGER NOT NULL,
+            UNIQUE(playlist_name, song_path)
+          )
+        ''');
+        await db.execute('''
+          CREATE INDEX idx_playlist_name ON playlist_orders (playlist_name)
+        ''');
+      },
+    );
+  }
+
+  Future<void> updatePlaylistOrder(String playlistName, List<String> songPaths) async {
+    final db = await database;
+    
+    // Start a transaction to ensure atomic update
+    await db.transaction((txn) async {
+      // Delete existing order for this playlist
+      await txn.delete(
+        'playlist_orders',
+        where: 'playlist_name = ?',
+        whereArgs: [playlistName],
+      );
+      
+      // Insert new order
+      for (int i = 0; i < songPaths.length; i++) {
+        await txn.insert(
+          'playlist_orders',
+          {
+            'playlist_name': playlistName,
+            'song_path': songPaths[i],
+            'position': i,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
+  Future<List<String>> getPlaylistOrder(String playlistName) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'playlist_orders',
+      where: 'playlist_name = ?',
+      whereArgs: [playlistName],
+      orderBy: 'position ASC',
+    );
+    
+    return maps.map((map) => map['song_path'] as String).toList();
+  }
+
+  Future<void> clearPlaylist(String playlistName) async {
+    final db = await database;
+    await db.delete(
+      'playlist_orders',
+      where: 'playlist_name = ?',
+      whereArgs: [playlistName],
+    );
+  }
+
+  Future<void> clearAllPlaylists() async {
+    final db = await database;
+    await db.delete('playlist_orders');
+  }
+
+  Future<void> close() async {
+    if (_db != null) {
+      await _db!.close();
+      _db = null;
+    }
   }
 }
