@@ -249,8 +249,9 @@ class _MiniPlayerState extends State<MiniPlayer>
   void _handleSkip(bool next) async {
     final newIndex = widget.currentIndex + (next ? 1 : -1);
     if (newIndex < 0 || newIndex >= widget.songList.length) return;
-    
-    if (widget.song.path.contains('cdda://') || widget.songList[newIndex + 1].path.contains('cdda://')) {
+
+    if (widget.song.path.contains('cdda://') ||
+        widget.songList[newIndex + 1].path.contains('cdda://')) {
       await rust_api.stopSong();
       await rust_api.playSong(path: widget.songList[newIndex].path);
     } else {
@@ -924,39 +925,37 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     final playlistPath = '$_musicFolder/.adilists/$playlistName';
     final metadata = await rust_api.scanMusicDirectory(
       dirPath: playlistPath,
-      autoConvert: SharedPreferencesService.instance.getBool('autoConvert') ?? false,
+      autoConvert:
+          SharedPreferencesService.instance.getBool('autoConvert') ?? false,
     );
-    
-    List<Song> playlistSongs = metadata.map((m) => Song.fromMetadata(m)).toList();
-    
+
+    List<Song> playlistSongs =
+        metadata.map((m) => Song.fromMetadata(m)).toList();
+
     // Get the stored order if available
-    List<String> orderedPaths = await PlaylistOrderDatabase()
-        .getPlaylistOrder(playlistName);
-    
+    List<String> orderedPaths =
+        await PlaylistOrderDatabase().getPlaylistOrder(playlistName);
+
     if (orderedPaths.isNotEmpty) {
-      final pathToSong = Map.fromIterable(
-        playlistSongs,
-        key: (song) => song.path,
-        value: (song) => song,
-      );
-      
+      final pathToSong = {for (var song in playlistSongs) song.path: song};
+
       final orderedSongs = <Song>[];
       for (final path in orderedPaths) {
         if (pathToSong.containsKey(path)) {
           orderedSongs.add(pathToSong[path]!);
         }
       }
-      
+
       // Add any songs that weren't in the database (newly added)
       for (final song in playlistSongs) {
         if (!orderedPaths.contains(song.path)) {
           orderedSongs.add(song);
         }
       }
-      
+
       playlistSongs = orderedSongs;
     }
-  
+
     Navigator.push(
       context,
       NamidaPageTransitions.createRoute(
@@ -1150,21 +1149,27 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                           }
                                         },
                                       ),
-				      IconButton(
-				        icon: GlowIcon(
-				          Broken.sort,
-				          color: dominantColor.computeLuminance() > 0.01
-				              ? dominantColor
-				              : Theme.of(context).textTheme.bodyLarge?.color,
-				          blurRadius: 8,
-				          size: 20,
-				        ),
-				        onPressed: () {
-				          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-				          Navigator.pop(context);
-				          _showReorderPlaylistScreen(playlist);
-				        },
-				      ),
+                                      IconButton(
+                                        icon: GlowIcon(
+                                          Broken.sort,
+                                          color:
+                                              dominantColor.computeLuminance() >
+                                                      0.01
+                                                  ? dominantColor
+                                                  : Theme.of(context)
+                                                      .textTheme
+                                                      .bodyLarge
+                                                      ?.color,
+                                          blurRadius: 8,
+                                          size: 20,
+                                        ),
+                                        onPressed: () {
+                                          ScaffoldMessenger.of(context)
+                                              .hideCurrentSnackBar();
+                                          Navigator.pop(context);
+                                          _showReorderPlaylistScreen(playlist);
+                                        },
+                                      ),
                                       IconButton(
                                         icon: GlowIcon(
                                           Broken.cross,
@@ -1654,40 +1659,36 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
         // Sort the songs
         loadedSongs.sort((a, b) => a.title.compareTo(b.title));
 
-	List<String> orderedPaths = [];
-    	if (_currentPlaylistName != null) {
-    	  try {
-    	    orderedPaths = await PlaylistOrderDatabase()
-    	        .getPlaylistOrder(_currentPlaylistName!);
-    	  } catch (e) {
-    	    print('Error getting playlist order: $e');
-    	  }
-    	}
-    	
-    	// Sort songs according to stored order if available
-    	if (orderedPaths.isNotEmpty) {
-    	  final pathToSong = Map.fromIterable(
-    	    loadedSongs,
-    	    key: (song) => song.path,
-    	    value: (song) => song,
-    	  );
-    	  
-    	  final orderedSongs = <Song>[];
-    	  for (final path in orderedPaths) {
-    	    if (pathToSong.containsKey(path)) {
-    	      orderedSongs.add(pathToSong[path]!);
-    	    }
-    	  }
-    	  
-    	  // Add any songs that weren't in the database (newly added)
-    	  for (final song in loadedSongs) {
-    	    if (!orderedPaths.contains(song.path)) {
-    	      orderedSongs.add(song);
-    	    }
-    	  }
-    	  
-    	  loadedSongs = orderedSongs;
-    	}
+        List<String> orderedPaths = [];
+        if (_currentPlaylistName != null) {
+          try {
+            orderedPaths = await PlaylistOrderDatabase()
+                .getPlaylistOrder(_currentPlaylistName!);
+          } catch (e) {
+            print('Error getting playlist order: $e');
+          }
+        }
+
+        // Sort songs according to stored order if available
+        if (orderedPaths.isNotEmpty) {
+          final pathToSong = {for (var song in loadedSongs) song.path: song};
+
+          final orderedSongs = <Song>[];
+          for (final path in orderedPaths) {
+            if (pathToSong.containsKey(path)) {
+              orderedSongs.add(pathToSong[path]!);
+            }
+          }
+
+          // Add any songs that weren't in the database (newly added)
+          for (final song in loadedSongs) {
+            if (!orderedPaths.contains(song.path)) {
+              orderedSongs.add(song);
+            }
+          }
+
+          loadedSongs = orderedSongs;
+        }
 
         setState(() {
           songs = loadedSongs;
@@ -5189,12 +5190,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               isLoading: _isManagingSeparators,
                               onPressed: _showSeparatorManagementPopup,
                             ),
-			    _buildActionButton(
-			      icon: Broken.trash,
-			      label: 'Clear Playlist Order Database',
-			      isLoading: _isClearingDatabase,
-			      onPressed: _clearPlaylistDatabase,
-			    ),
+                            _buildActionButton(
+                              icon: Broken.trash,
+                              label: 'Clear Playlist Order Database',
+                              isLoading: _isClearingDatabase,
+                              onPressed: _clearPlaylistDatabase,
+                            ),
                           ],
                         ),
                         _buildSettingsExpansionTile(
@@ -7156,12 +7157,14 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           _currentSliderValue =
               (position / currentSong.duration.inSeconds).clamp(0.0, 1.0);
         });
-        
+
         // Check if song has changed (Rust auto-advanced)
-        if (position < 1.0) { // Only check if not at beginning of new song
+        if (position < 1.0) {
+          // Only check if not at beginning of new song
           final currentPath = await rust_api.getCurrentSongPath();
           if (currentPath != currentSong.path) {
-            final newIndex = widget.songList.indexWhere((song) => song.path == currentPath);
+            final newIndex =
+                widget.songList.indexWhere((song) => song.path == currentPath);
             if (newIndex != -1) {
               setState(() {
                 currentIndex = newIndex;
@@ -7176,7 +7179,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
             }
           }
         }
-        
+
         if (position >= currentSong.duration.inSeconds - 0.0) {
           await _handleSongFinished();
         }
@@ -7233,7 +7236,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         return;
       }
       final started = await rust_api.playSong(path: currentSong.path);
-      await rust_api.preloadNextSong(path: widget.songList[currentIndex + 1].path);
+      await rust_api.preloadNextSong(
+          path: widget.songList[currentIndex + 1].path);
       if (started && mounted) {
         widget.service.updatePlaylistStart(widget.songList, currentIndex);
         widget.service._updateMetadata();
@@ -7285,7 +7289,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     );
     await rust_api.seekToPosition(position: seekPosition);
     await rust_api.playSong(path: currentSong.path);
-    await rust_api.preloadNextSong(path: widget.songList[currentIndex + 1].path);
+    await rust_api.preloadNextSong(
+        path: widget.songList[currentIndex + 1].path);
   }
 
   void _generateShuffleOrder() {
@@ -7300,12 +7305,13 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   Future<void> _handleSongFinished() async {
     if (_isTransitioning) return;
-    
+
     // Check if Rust has already advanced to the next song
     final currentPath = await rust_api.getCurrentSongPath();
     if (currentPath != currentSong.path) {
       // Rust has already advanced, update UI accordingly
-      final newIndex = widget.songList.indexWhere((song) => song.path == currentPath);
+      final newIndex =
+          widget.songList.indexWhere((song) => song.path == currentPath);
       if (newIndex != -1) {
         setState(() {
           currentIndex = newIndex;
@@ -7319,7 +7325,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
       }
       return;
     }
-  
+
     // Original handling for when Rust hasn't advanced
     await rust_api.stopSong();
     if (_repeatMode == RepeatMode.repeatOnce) {
@@ -7363,7 +7369,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           await rust_api.preloadNextSong(path: nextNextSong.path);
         }
       }
-      await rust_api.preloadNextSong(path: widget.songList[currentIndex + 1].path);
+      await rust_api.preloadNextSong(
+          path: widget.songList[currentIndex + 1].path);
     }
     if (success && mounted) {
       setState(() {
@@ -7404,7 +7411,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     _loadLyrics();
     await _updateDominantColor();
     final success = await rust_api.playSong(path: currentSong.path);
-    await rust_api.preloadNextSong(path: widget.songList[currentIndex + 1].path);
+    await rust_api.preloadNextSong(
+        path: widget.songList[currentIndex + 1].path);
     if (success && mounted) {
       setState(() {
         isPlaying = true;
@@ -9428,7 +9436,8 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
 }
 
 class PlaylistOrderDatabase {
-  static final PlaylistOrderDatabase _instance = PlaylistOrderDatabase._internal();
+  static final PlaylistOrderDatabase _instance =
+      PlaylistOrderDatabase._internal();
   factory PlaylistOrderDatabase() => _instance;
   PlaylistOrderDatabase._internal();
 
@@ -9443,7 +9452,7 @@ class PlaylistOrderDatabase {
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
     final path = '$dbPath/playlist_orders.db';
-    
+
     return await openDatabase(
       path,
       version: 1,
@@ -9464,9 +9473,10 @@ class PlaylistOrderDatabase {
     );
   }
 
-  Future<void> updatePlaylistOrder(String playlistName, List<String> songPaths) async {
+  Future<void> updatePlaylistOrder(
+      String playlistName, List<String> songPaths) async {
     final db = await database;
-    
+
     // Start a transaction to ensure atomic update
     await db.transaction((txn) async {
       // Delete existing order for this playlist
@@ -9475,7 +9485,7 @@ class PlaylistOrderDatabase {
         where: 'playlist_name = ?',
         whereArgs: [playlistName],
       );
-      
+
       // Insert new order
       for (int i = 0; i < songPaths.length; i++) {
         await txn.insert(
@@ -9499,7 +9509,7 @@ class PlaylistOrderDatabase {
       whereArgs: [playlistName],
       orderBy: 'position ASC',
     );
-    
+
     return maps.map((map) => map['song_path'] as String).toList();
   }
 
@@ -9566,12 +9576,12 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
       widget.playlistName,
       orderedPaths,
     );
-    
+
     ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
       backgroundColor: _dominantColor,
       content: 'Playlist order saved',
     ));
-    
+
     Navigator.pop(context);
   }
 
@@ -9583,122 +9593,104 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
 
   Widget _buildSongItem(Song song, int index) {
     return Material(
-      key: ValueKey(song.path),
-      color: Colors.transparent,
-      child: ReorderableDragStartListener(
-        index: index,
-        child: GestureDetector(
-          onTap: _ensureFocus, // Ensure focus when tapping items
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  _dominantColor.withAlpha(15),
-                  Colors.black.withAlpha(60),
-                ],
-              ),
-              border: Border.all(
-                color: _dominantColor.withAlpha(50),
-                width: 0.8,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: _dominantColor.withAlpha(20),
-                  blurRadius: 12,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              leading: Hero(
-                tag: 'albumArt-${song.path}',
-                child: Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _dominantColor.withAlpha(40),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: song.albumArt != null
-                        ? Image.memory(
-                            song.albumArt!,
-                            fit: BoxFit.cover,
-                            gaplessPlayback: true,
-                          )
-                        : Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  _dominantColor.withAlpha(60),
-                                  Colors.black.withAlpha(120),
-                                ],
-                              ),
-                            ),
-                            child: Icon(
-                              Broken.musicnote,
-                              color: Colors.white70,
-                              size: 24,
-                            ),
-                          ),
-                  ),
-                ),
-              ),
-              title: GlowText(
-                song.title,
-                glowColor: _dominantColor.withAlpha(40),
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(
-                song.artist,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      _dominantColor.withAlpha(120),
-                      _dominantColor.withAlpha(60),
-                    ],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _dominantColor.withAlpha(40),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    ),
+        key: ValueKey(song.path),
+        color: Colors.transparent,
+        child: ReorderableDragStartListener(
+          index: index,
+          child: GestureDetector(
+            onTap: _ensureFocus, // Ensure focus when tapping items
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    _dominantColor.withAlpha(15),
+                    Colors.black.withAlpha(60),
                   ],
                 ),
-                child: Icon(
+                border: Border.all(
+                  color: _dominantColor.withAlpha(50),
+                  width: 0.8,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _dominantColor.withAlpha(20),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+              child: ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: Hero(
+                  tag: 'albumArt-${song.path}',
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _dominantColor.withAlpha(40),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: song.albumArt != null
+                          ? Image.memory(
+                              song.albumArt!,
+                              fit: BoxFit.cover,
+                              gaplessPlayback: true,
+                            )
+                          : Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    _dominantColor.withAlpha(60),
+                                    Colors.black.withAlpha(120),
+                                  ],
+                                ),
+                              ),
+                              child: Icon(
+                                Broken.musicnote,
+                                color: Colors.white70,
+                                size: 24,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+                title: GlowText(
+                  song.title,
+                  glowColor: _dominantColor.withAlpha(40),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(
+                  song.artist,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: Icon(
                   Broken.double_lines,
                   color: Colors.white,
                   size: 18,
@@ -9706,9 +9698,7 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
               ),
             ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 
   @override
@@ -9717,7 +9707,8 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
       focusNode: _focusNode,
       autofocus: true,
       onKeyEvent: (KeyEvent event) {
-        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.escape) {
           Navigator.pop(context);
         }
       },
