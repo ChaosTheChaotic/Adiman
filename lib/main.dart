@@ -9771,6 +9771,7 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
                     ),
                   )
                 : ReorderableListView(
+		    buildDefaultDragHandles: false,
                     padding: const EdgeInsets.all(16),
                     onReorder: (oldIndex, newIndex) {
                       setState(() {
