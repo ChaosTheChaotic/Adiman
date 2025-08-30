@@ -1257,4 +1257,5 @@ class Broken {
   static const IconData tick = IconData(0xec89, fontFamily: _fontFamily);
   static const IconData cross = IconData(0xec8a, fontFamily: _fontFamily);
   static const IconData adiman = IconData(0xec8b, fontFamily: _fontFamily);
+  static const IconData double_lines = IconData(0xec8c, fontFamily: _fontFamily);
 }
