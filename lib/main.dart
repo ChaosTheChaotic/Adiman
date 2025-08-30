@@ -9682,86 +9682,95 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: ThemeData.dark(),
-      child: Scaffold(
-        appBar: AppBar(
-          leading: DynamicIconButton(
-            icon: Broken.arrow_left,
-            onPressed: () => Navigator.pop(context),
-            backgroundColor: _dominantColor,
-            size: 40,
-          ),
-          title: GlowText(
-            'Reorder ${widget.playlistName}',
-            glowColor: _dominantColor.withAlpha(80),
-            style: TextStyle(
-              fontSize: 24,
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          backgroundColor: Colors.black,
-          surfaceTintColor: _dominantColor,
-          actions: [
-            DynamicIconButton(
-              icon: Broken.tick,
-              onPressed: _saveNewOrder,
+    return KeyboardListener(
+      focusNode: FocusNode(),
+      autofocus: true,
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+          Navigator.pop(context);
+        }
+      },
+      child: Theme(
+        data: ThemeData.dark(),
+        child: Scaffold(
+          appBar: AppBar(
+            leading: DynamicIconButton(
+              icon: Broken.arrow_left,
+              onPressed: () => Navigator.pop(context),
               backgroundColor: _dominantColor,
               size: 40,
             ),
-            const SizedBox(width: 12),
-          ],
-        ),
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment.topCenter,
-              radius: 1.8,
-              colors: [
-                _dominantColor.withAlpha(30),
-                Colors.black,
-              ],
+            title: GlowText(
+              'Reorder ${widget.playlistName}',
+              glowColor: _dominantColor.withAlpha(80),
+              style: TextStyle(
+                fontSize: 24,
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
             ),
+            backgroundColor: Colors.black,
+            surfaceTintColor: _dominantColor,
+            actions: [
+              DynamicIconButton(
+                icon: Broken.tick,
+                onPressed: _saveNewOrder,
+                backgroundColor: _dominantColor,
+                size: 40,
+              ),
+              const SizedBox(width: 12),
+            ],
           ),
-          child: _reorderedSongs.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      GlowIcon(
-                        Broken.music_playlist,
-                        color: _dominantColor.withAlpha(80),
-                        size: 64,
-                      ),
-                      const SizedBox(height: 16),
-                      GlowText(
-                        'No songs in playlist',
-                        glowColor: _dominantColor.withAlpha(60),
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 18,
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.topCenter,
+                radius: 1.8,
+                colors: [
+                  _dominantColor.withAlpha(30),
+                  Colors.black,
+                ],
+              ),
+            ),
+            child: _reorderedSongs.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        GlowIcon(
+                          Broken.music_playlist,
+                          color: _dominantColor.withAlpha(80),
+                          size: 64,
                         ),
-                      ),
+                        const SizedBox(height: 16),
+                        GlowText(
+                          'No songs in playlist',
+                          glowColor: _dominantColor.withAlpha(60),
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ReorderableListView(
+                    padding: const EdgeInsets.all(16),
+                    onReorder: (oldIndex, newIndex) {
+                      setState(() {
+                        if (oldIndex < newIndex) {
+                          newIndex -= 1;
+                        }
+                        final Song item = _reorderedSongs.removeAt(oldIndex);
+                        _reorderedSongs.insert(newIndex, item);
+                      });
+                    },
+                    children: [
+                      for (int i = 0; i < _reorderedSongs.length; i++)
+                        _buildSongItem(_reorderedSongs[i], i),
                     ],
                   ),
-                )
-              : ReorderableListView(
-                  padding: const EdgeInsets.all(16),
-                  onReorder: (oldIndex, newIndex) {
-                    setState(() {
-                      if (oldIndex < newIndex) {
-                        newIndex -= 1;
-                      }
-                      final Song item = _reorderedSongs.removeAt(oldIndex);
-                      _reorderedSongs.insert(newIndex, item);
-                    });
-                  },
-                  children: [
-                    for (int i = 0; i < _reorderedSongs.length; i++)
-                      _buildSongItem(_reorderedSongs[i], i),
-                  ],
-                ),
+          ),
         ),
       ),
     );
