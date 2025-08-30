@@ -919,6 +919,59 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     );
   }
 
+  void _showReorderPlaylistScreen(String playlistName) async {
+    // Load songs for this specific playlist
+    final playlistPath = '$_musicFolder/.adilists/$playlistName';
+    final metadata = await rust_api.scanMusicDirectory(
+      dirPath: playlistPath,
+      autoConvert: SharedPreferencesService.instance.getBool('autoConvert') ?? false,
+    );
+    
+    List<Song> playlistSongs = metadata.map((m) => Song.fromMetadata(m)).toList();
+    
+    // Get the stored order if available
+    List<String> orderedPaths = await PlaylistOrderDatabase()
+        .getPlaylistOrder(playlistName);
+    
+    if (orderedPaths.isNotEmpty) {
+      final pathToSong = Map.fromIterable(
+        playlistSongs,
+        key: (song) => song.path,
+        value: (song) => song,
+      );
+      
+      final orderedSongs = <Song>[];
+      for (final path in orderedPaths) {
+        if (pathToSong.containsKey(path)) {
+          orderedSongs.add(pathToSong[path]!);
+        }
+      }
+      
+      // Add any songs that weren't in the database (newly added)
+      for (final song in playlistSongs) {
+        if (!orderedPaths.contains(song.path)) {
+          orderedSongs.add(song);
+        }
+      }
+      
+      playlistSongs = orderedSongs;
+    }
+  
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PlaylistReorderScreen(
+          playlistName: playlistName,
+          musicFolder: _musicFolder,
+          songs: playlistSongs,
+        ),
+      ),
+    ).then((_) {
+      // Refresh the playlist when returning from reorder screen
+      _loadSongs();
+    });
+  }
+
   Future<void> _showPlaylistSelectionPopup() async {
     List<String> initialPlaylists = await listPlaylists(_musicFolder);
     List<String> localPlaylists = List.from(initialPlaylists);
@@ -1097,6 +1150,21 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                           }
                                         },
                                       ),
+				      IconButton(
+				        icon: GlowIcon(
+				          Broken.sort,
+				          color: dominantColor.computeLuminance() > 0.01
+				              ? dominantColor
+				              : Theme.of(context).textTheme.bodyLarge?.color,
+				          blurRadius: 8,
+				          size: 20,
+				        ),
+				        onPressed: () {
+				          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+				          Navigator.pop(context);
+				          _showReorderPlaylistScreen(playlist);
+				        },
+				      ),
                                       IconButton(
                                         icon: GlowIcon(
                                           Broken.cross,
@@ -1562,16 +1630,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
           content: 'Error counting audio files: $e');
     }
     return count;
-  }
-
-  Future<void> _updatePlaylistOrder() async {
-    if (_currentPlaylistName != null) {
-      final songPaths = songs.map((song) => song.path).toList();
-      await PlaylistOrderDatabase().updatePlaylistOrder(
-        _currentPlaylistName!,
-        songPaths,
-      );
-    }
   }
 
   Future<void> _loadSongs() async {
@@ -9464,5 +9522,194 @@ class PlaylistOrderDatabase {
       await _db!.close();
       _db = null;
     }
+  }
+}
+
+class PlaylistReorderScreen extends StatefulWidget {
+  final String playlistName;
+  final String musicFolder;
+  final List<Song> songs;
+
+  const PlaylistReorderScreen({
+    super.key,
+    required this.playlistName,
+    required this.musicFolder,
+    required this.songs,
+  });
+
+  @override
+  State<PlaylistReorderScreen> createState() => _PlaylistReorderScreenState();
+}
+
+class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
+  late List<Song> _reorderedSongs;
+  late Color _dominantColor;
+
+  @override
+  void initState() {
+    super.initState();
+    _reorderedSongs = List.from(widget.songs);
+    _dominantColor = defaultThemeColorNotifier.value;
+  }
+
+  Future<void> _saveNewOrder() async {
+    final orderedPaths = _reorderedSongs.map((song) => song.path).toList();
+    await PlaylistOrderDatabase().updatePlaylistOrder(
+      widget.playlistName,
+      orderedPaths,
+    );
+    
+    ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+      backgroundColor: _dominantColor,
+      content: 'Playlist order saved',
+    ));
+    
+    Navigator.pop(context);
+  }
+
+  Widget _buildSongItem(Song song, int index) {
+    return Material(
+      key: ValueKey(song.path), // Add unique key here
+      color: Colors.transparent,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              _dominantColor.withAlpha(30),
+              Colors.black.withAlpha(80),
+            ],
+          ),
+          border: Border.all(
+            color: _dominantColor.withAlpha(100),
+            width: 1.0,
+          ),
+        ),
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        child: ListTile(
+          leading: ReorderableDragStartListener(
+            index: index,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    _dominantColor.withAlpha(150),
+                    _dominantColor.withAlpha(50),
+                  ],
+                ),
+              ),
+              child: Icon(
+                Broken.menu,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+          title: Text(
+            song.title,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            song.artist,
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              image: song.albumArt != null
+                  ? DecorationImage(
+                      image: MemoryImage(song.albumArt!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: song.albumArt == null
+                ? Icon(
+                    Broken.musicnote,
+                    color: Colors.white70,
+                  )
+                : null,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Theme(
+      data: ThemeData.dark(),
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: Icon(Broken.arrow_left),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: GlowText(
+            'Reorder ${widget.playlistName}',
+            glowColor: _dominantColor.withAlpha(80),
+            style: TextStyle(
+              fontSize: 24,
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          backgroundColor: Colors.black,
+          actions: [
+            IconButton(
+              icon: Icon(Broken.tick),
+              onPressed: _saveNewOrder,
+            ),
+          ],
+        ),
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.topCenter,
+              radius: 1.5,
+              colors: [_dominantColor.withAlpha(30), Colors.black],
+            ),
+          ),
+          child: _reorderedSongs.isEmpty
+              ? Center(
+                  child: Text(
+                    'No songs in playlist',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                )
+              : ReorderableListView(
+                  padding: const EdgeInsets.all(16),
+                  onReorder: (oldIndex, newIndex) {
+                    setState(() {
+                      if (oldIndex < newIndex) {
+                        newIndex -= 1;
+                      }
+                      final Song item = _reorderedSongs.removeAt(oldIndex);
+                      _reorderedSongs.insert(newIndex, item);
+                    });
+                  },
+                  children: [
+                    for (int i = 0; i < _reorderedSongs.length; i++)
+                      _buildSongItem(_reorderedSongs[i], i),
+                  ],
+                ),
+        ),
+      ),
+    );
   }
 }
