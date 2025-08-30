@@ -9592,113 +9592,111 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
   }
 
   Widget _buildSongItem(Song song, int index) {
-    return Material(
-        key: ValueKey(song.path),
-        color: Colors.transparent,
-        child: ReorderableDragStartListener(
-          index: index,
-          child: GestureDetector(
-            onTap: _ensureFocus, // Ensure focus when tapping items
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    _dominantColor.withAlpha(15),
-                    Colors.black.withAlpha(60),
+    return Container(
+      key: ValueKey(song.path),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _dominantColor.withAlpha(15),
+            Colors.black.withAlpha(60),
+          ],
+        ),
+        border: Border.all(
+          color: _dominantColor.withAlpha(50),
+          width: 0.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _dominantColor.withAlpha(20),
+            blurRadius: 12,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+      child: ReorderableDragStartListener(
+        index: index,
+        child: GestureDetector(
+          onTap: _ensureFocus,
+          child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            leading: Hero(
+              tag: 'albumArt-${song.path}',
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _dominantColor.withAlpha(40),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
                   ],
                 ),
-                border: Border.all(
-                  color: _dominantColor.withAlpha(50),
-                  width: 0.8,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: _dominantColor.withAlpha(20),
-                    blurRadius: 12,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-              child: ListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                leading: Hero(
-                  tag: 'albumArt-${song.path}',
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _dominantColor.withAlpha(40),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: song.albumArt != null
-                          ? Image.memory(
-                              song.albumArt!,
-                              fit: BoxFit.cover,
-                              gaplessPlayback: true,
-                            )
-                          : Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    _dominantColor.withAlpha(60),
-                                    Colors.black.withAlpha(120),
-                                  ],
-                                ),
-                              ),
-                              child: Icon(
-                                Broken.musicnote,
-                                color: Colors.white70,
-                                size: 24,
-                              ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: song.albumArt != null
+                      ? Image.memory(
+                          song.albumArt!,
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                        )
+                      : Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                _dominantColor.withAlpha(60),
+                                Colors.black.withAlpha(120),
+                              ],
                             ),
-                    ),
-                  ),
-                ),
-                title: GlowText(
-                  song.title,
-                  glowColor: _dominantColor.withAlpha(40),
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  song.artist,
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: Icon(
-                  Broken.double_lines,
-                  color: Colors.white,
-                  size: 18,
+                          ),
+                          child: Icon(
+                            Broken.musicnote,
+                            color: Colors.white70,
+                            size: 24,
+                          ),
+                        ),
                 ),
               ),
             ),
+            title: GlowText(
+              song.title,
+              glowColor: _dominantColor.withAlpha(40),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              song.artist,
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: Icon(
+              Broken.double_lines,
+              color: Colors.white,
+              size: 18,
+            ),
           ),
-        ));
+        ),
+      ),
+    );
   }
 
   @override
@@ -9713,9 +9711,15 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
         }
       },
       child: GestureDetector(
-        onTap: _ensureFocus, // Ensure focus when tapping anywhere
+        onTap: _ensureFocus,
         child: Theme(
-          data: ThemeData.dark(),
+          data: ThemeData.dark().copyWith(
+            // Remove drag highlight colors
+            canvasColor: Colors.transparent,
+            cardColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            splashColor: Colors.transparent,
+          ),
           child: Scaffold(
             backgroundColor: Colors.black,
             appBar: AppBar(
@@ -9783,6 +9787,14 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
                   : ReorderableListView(
                       buildDefaultDragHandles: false,
                       padding: const EdgeInsets.all(16),
+                      proxyDecorator: (child, index, animation) {
+                        // Custom proxy decorator to remove highlight during drag
+                        return Material(
+                          color: Colors.transparent,
+                          elevation: 0,
+                          child: child,
+                        );
+                      },
                       onReorder: (oldIndex, newIndex) {
                         setState(() {
                           if (oldIndex < newIndex) {
