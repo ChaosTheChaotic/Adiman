@@ -959,8 +959,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => PlaylistReorderScreen(
+      NamidaPageTransitions.createRoute(
+        PlaylistReorderScreen(
           playlistName: playlistName,
           musicFolder: _musicFolder,
           songs: playlistSongs,
