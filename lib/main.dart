@@ -9699,7 +9699,7 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
                   ],
                 ),
                 child: Icon(
-                  Broken.menu,
+                  Broken.menu_1,
                   color: Colors.white,
                   size: 18,
                 ),
