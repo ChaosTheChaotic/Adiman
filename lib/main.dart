@@ -9571,107 +9571,121 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
     return Material(
       key: ValueKey(song.path),
       color: Colors.transparent,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              _dominantColor.withAlpha(30),
-              Colors.black.withAlpha(80),
+      child: ReorderableDragStartListener(
+        index: index,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                _dominantColor.withAlpha(15),
+                Colors.black.withAlpha(60),
+              ],
+            ),
+            border: Border.all(
+              color: _dominantColor.withAlpha(50),
+              width: 0.8,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _dominantColor.withAlpha(20),
+                blurRadius: 12,
+                spreadRadius: 1,
+              ),
             ],
           ),
-          border: Border.all(
-            color: _dominantColor.withAlpha(100),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: _dominantColor.withAlpha(40),
-              blurRadius: 20,
-              spreadRadius: 2,
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            leading: Hero(
+              tag: 'albumArt-${song.path}',
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _dominantColor.withAlpha(40),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: song.albumArt != null
+                      ? Image.memory(
+                          song.albumArt!,
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                        )
+                      : Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                _dominantColor.withAlpha(60),
+                                Colors.black.withAlpha(120),
+                              ],
+                            ),
+                          ),
+                          child: Icon(
+                            Broken.musicnote,
+                            color: Colors.white70,
+                            size: 24,
+                          ),
+                        ),
+                ),
+              ),
             ),
-          ],
-        ),
-        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-        child: ListTile(
-          leading: ReorderableDragStartListener(
-            index: index,
-            child: Container(
-              width: 40,
-              height: 40,
+            title: GlowText(
+              song.title,
+              glowColor: _dominantColor.withAlpha(40),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              song.artist,
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: Container(
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    _dominantColor.withAlpha(200),
-                    _dominantColor.withAlpha(100),
+                    _dominantColor.withAlpha(120),
+                    _dominantColor.withAlpha(60),
                   ],
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _dominantColor.withAlpha(80),
-                    blurRadius: 10,
-                    spreadRadius: 2,
+                    color: _dominantColor.withAlpha(40),
+                    blurRadius: 8,
+                    spreadRadius: 1,
                   ),
                 ],
               ),
               child: Icon(
                 Broken.menu,
                 color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ),
-          title: GlowText(
-            song.title,
-            glowColor: _dominantColor.withAlpha(60),
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Text(
-            song.artist,
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          trailing: Hero(
-            tag: 'albumArt-${song.path}',
-            child: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: _dominantColor.withAlpha(80),
-                    blurRadius: 12,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: song.albumArt != null
-                    ? Image.memory(
-                        song.albumArt!,
-                        fit: BoxFit.cover,
-                        gaplessPlayback: true,
-                      )
-                    : GlowIcon(
-                        Broken.musicnote,
-                        color: Colors.white70,
-                        glowColor: _dominantColor.withAlpha(40),
-                      ),
+                size: 18,
               ),
             ),
           ),
@@ -9693,6 +9707,7 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
       child: Theme(
         data: ThemeData.dark(),
         child: Scaffold(
+          backgroundColor: Colors.black,
           appBar: AppBar(
             leading: DynamicIconButton(
               icon: Broken.arrow_left,
@@ -9702,7 +9717,7 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
             ),
             title: GlowText(
               'Reorder ${widget.playlistName}',
-              glowColor: _dominantColor.withAlpha(80),
+              glowColor: _dominantColor.withAlpha(60),
               style: TextStyle(
                 fontSize: 24,
                 color: Colors.white,
@@ -9710,7 +9725,8 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
               ),
             ),
             backgroundColor: Colors.black,
-            surfaceTintColor: _dominantColor,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
             actions: [
               DynamicIconButton(
                 icon: Broken.tick,
@@ -9723,12 +9739,12 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
           ),
           body: Container(
             decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment.topCenter,
-                radius: 1.8,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
                 colors: [
-                  _dominantColor.withAlpha(30),
                   Colors.black,
+                  _dominantColor.withAlpha(15),
                 ],
               ),
             ),
