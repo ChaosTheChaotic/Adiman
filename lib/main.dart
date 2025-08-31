@@ -10071,7 +10071,6 @@ class BreathingWaveformPainter extends CustomPainter {
       double barHeight = minBarHeight;
       
       if (isPlaying) {
-        // When playing, bars animate based on waveform
         final distanceFromPlayhead = (barProgress - progress).abs();
         final proximityFactor = math.max(0.0, 1.0 - distanceFromPlayhead * 3);
         
