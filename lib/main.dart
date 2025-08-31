@@ -9933,7 +9933,7 @@ class _BreathingWaveformSeekbarState extends State<BreathingWaveformSeekbar>
           animation: _breathingAnimation,
           builder: (context, child) {
             return Container(
-              height: 120, // Total height for bars + seekbar
+              height: 60,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
@@ -10048,44 +10048,40 @@ class BreathingWaveformPainter extends CustomPainter {
     if (waveformData.isEmpty) return;
 
     final centerY = size.height / 2;
-    final barCount = SharedPreferencesService.instance.getInt('waveformBars') ?? 1000;
+    final barCount = waveformData.length;
     final barWidth = size.width / barCount;
     final barSpacing = barWidth * 0.2;
     final actualBarWidth = barWidth - barSpacing;
     
-    // Base height when not playing (minimal height)
     const minBarHeight = 2.0;
-    // Maximum bar height (from center)
     final maxBarHeight = size.height * 0.35;
+
+    // Calculate the range of bars that should be "active" based on current progress
+    final activeStart = (progress - 0.1).clamp(0.0, 1.0);
+    final activeEnd = (progress + 0.1).clamp(0.0, 1.0);
 
     for (int i = 0; i < barCount; i++) {
       final x = i * barWidth + barSpacing / 2;
-      final dataIndex = (i * waveformData.length / barCount).floor();
-      final waveformValue = waveformData[dataIndex];
-      
-      // Calculate progress for this bar
+      final waveformValue = waveformData[i];
       final barProgress = i / barCount;
-      final isActive = barProgress <= progress;
       
-      // Base height calculation
+      final isActive = barProgress >= activeStart && barProgress <= activeEnd;
+      final distanceFromProgress = (barProgress - progress).abs();
+      
       double barHeight = minBarHeight;
       
       if (isPlaying) {
-        final distanceFromPlayhead = (barProgress - progress).abs();
-        final proximityFactor = math.max(0.0, 1.0 - distanceFromPlayhead * 3);
-        
-        // Combine waveform data with breathing animation
+        // Emphasize bars near current progress
+        final proximityFactor = 1.0 - (distanceFromProgress * 5).clamp(0.0, 1.0);
         final breathingFactor = 0.3 + (breathingValue * 0.7);
-        final peakInfluence = currentPeak * proximityFactor;
         
-        barHeight = minBarHeight + 
-                   (waveformValue * maxBarHeight * breathingFactor) +
-                   (peakInfluence * maxBarHeight * 0.3);
+        barHeight += (waveformValue * maxBarHeight * breathingFactor * proximityFactor) +
+                    (currentPeak * maxBarHeight * 0.3 * proximityFactor);
       } else {
-        // When paused, show static waveform at reduced height
-        barHeight = minBarHeight + (waveformValue * maxBarHeight * 0.2);
+        // Static waveform when paused
+        barHeight += waveformValue * maxBarHeight * 0.2;
       }
-      
+
       // Hover effect
       if (isHovering) {
         final distanceFromHover = (x - hoverX).abs();
@@ -10095,48 +10091,44 @@ class BreathingWaveformPainter extends CustomPainter {
         }
       }
       
-      // Ensure minimum visibility
       barHeight = math.max(minBarHeight, barHeight);
       
-      // Color with gradient
+      // Determine color based on activity
+      final color = isActive ? activeColor : inactiveColor;
       final paint = Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            (isActive ? activeColor : inactiveColor).withValues(alpha: 0.3),
-            (isActive ? activeColor : inactiveColor).withValues(alpha: 0.8),
-            (isActive ? activeColor : inactiveColor).withValues(alpha: 0.8),
-            (isActive ? activeColor : inactiveColor).withValues(alpha: 0.3),
+            color.withValues(alpha: 0.3),
+            color.withValues(alpha: 0.8),
+            color.withValues(alpha: 0.8),
+            color.withValues(alpha: 0.3),
           ],
           stops: const [0.0, 0.4, 0.6, 1.0],
         ).createShader(Rect.fromLTWH(x, centerY - barHeight, actualBarWidth, barHeight * 2));
-      
-      // Draw top bar
+
+      // Draw bars
       final topRect = RRect.fromRectAndRadius(
         Rect.fromLTWH(x, centerY - barHeight - 2, actualBarWidth, barHeight),
         const Radius.circular(1),
       );
       canvas.drawRRect(topRect, paint);
       
-      // Draw bottom bar (mirrored)
       final bottomRect = RRect.fromRectAndRadius(
         Rect.fromLTWH(x, centerY + 2, actualBarWidth, barHeight),
         const Radius.circular(1),
       );
       canvas.drawRRect(bottomRect, paint);
-      
-      // Add glow effect for active bars near playhead
+
+      // Add glow for active bars
       if (isActive && isPlaying) {
-        final distanceFromPlayhead = (barProgress - progress).abs();
-        if (distanceFromPlayhead < 0.05) {
-          final glowPaint = Paint()
-            ..color = activeColor.withValues(alpha: 0.2)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-          
-          canvas.drawRRect(topRect, glowPaint);
-          canvas.drawRRect(bottomRect, glowPaint);
-        }
+        final glowPaint = Paint()
+          ..color = activeColor.withValues(alpha: 0.2)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+        
+        canvas.drawRRect(topRect, glowPaint);
+        canvas.drawRRect(bottomRect, glowPaint);
       }
     }
   }
