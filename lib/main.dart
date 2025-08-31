@@ -4820,64 +4820,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
-              child: Stack(
-                children: [
-                  // Animated background highlight
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    left: (_seekbarType.index) *
-                        (MediaQuery.of(context).size.width - 40) /
-                        3,
-                    child: Container(
-                      width: (MediaQuery.of(context).size.width - 40) / 3,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            _currentColor.withAlpha(100),
-                            _currentColor.withAlpha(60),
-                          ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final optionWidth = constraints.maxWidth / 3;
+                  return Stack(
+                    children: [
+                      // Animated background highlight
+                      AnimatedPositioned(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        left: _seekbarType.index * optionWidth + 4,
+                        child: Container(
+                          width: optionWidth - 8,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                _currentColor.withAlpha(100),
+                                _currentColor.withAlpha(60),
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _currentColor.withAlpha(80),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _currentColor.withAlpha(80),
-                            blurRadius: 10,
-                            spreadRadius: 2,
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSeekbarOption(
+                              'Waveform',
+                              SeekbarType.waveform,
+                              Broken.sound,
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildSeekbarOption(
+                              'Alt',
+                              SeekbarType.alt,
+                              Broken.slider_horizontal_1,
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildSeekbarOption(
+                              'Dynamic',
+                              SeekbarType.dyn,
+                              Broken.sound,
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildSeekbarOption(
-                          'Waveform',
-                          SeekbarType.waveform,
-                          Broken.sound,
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildSeekbarOption(
-                          'Alt',
-                          SeekbarType.alt,
-                          Broken.slider_horizontal_1,
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildSeekbarOption(
-                          'Dynamic',
-                          SeekbarType.dyn,
-                          Broken.sound,
-                        ),
-                      ),
                     ],
-                  ),
-                ],
+                  );
+                },
               ),
             ),
             const SizedBox(height: 8),
