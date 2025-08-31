@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 import 'package:path/path.dart' as path;
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
 import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
@@ -4834,6 +4835,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Broken.slider_horizontal_1,
                     ),
                   ),
+                  Expanded(
+                    child: _buildSeekbarOption(
+                      'Dynamic',
+                      SeekbarType.dyn,
+                      Broken.sound,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -8026,6 +8034,16 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                     ),
                                   ),
                                 );
+                              } else if (seekbarTypeString == 'dyn') {
+				return BreathingWaveformSeekbar(
+        			  waveformData: _waveformData,
+        			  progress: _currentSliderValue,
+        			  activeColor: dominantColor,
+        			  inactiveColor: Colors.grey.withAlpha(0x30),
+        			  onSeek: (value) => _handleSeek(value),
+        			  isPlaying: isPlaying,
+        			  currentPeak: currentPeak,
+        			);
                               } else {
                                 return WaveformSeekBar(
                                   waveformData: _waveformData,
@@ -9818,5 +9836,319 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
         ),
       ),
     );
+  }
+}
+
+class BreathingWaveformSeekbar extends StatefulWidget {
+  final List<double> waveformData;
+  final double progress;
+  final Color activeColor;
+  final Color inactiveColor;
+  final Function(double) onSeek;
+  final bool isPlaying;
+  final double currentPeak;
+
+  const BreathingWaveformSeekbar({
+    super.key,
+    required this.waveformData,
+    required this.progress,
+    required this.activeColor,
+    required this.inactiveColor,
+    required this.onSeek,
+    required this.isPlaying,
+    required this.currentPeak,
+  });
+
+  @override
+  State<BreathingWaveformSeekbar> createState() => _BreathingWaveformSeekbarState();
+}
+
+class _BreathingWaveformSeekbarState extends State<BreathingWaveformSeekbar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _breathingController;
+  late Animation<double> _breathingAnimation;
+  bool _isHovering = false;
+  double _localX = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _breathingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    
+    _breathingAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _breathingController,
+      curve: Curves.easeInOut,
+    ));
+
+    if (widget.isPlaying) {
+      _breathingController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(BreathingWaveformSeekbar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isPlaying != oldWidget.isPlaying) {
+      if (widget.isPlaying) {
+        _breathingController.repeat(reverse: true);
+      } else {
+        _breathingController.stop();
+        _breathingController.animateTo(0.0);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _breathingController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      onHover: (event) => setState(() => _localX = event.localPosition.dx),
+      child: GestureDetector(
+        onTapDown: (details) {
+          final RenderBox box = context.findRenderObject() as RenderBox;
+          final localX = details.localPosition.dx;
+          final progress = (localX / box.size.width).clamp(0.0, 1.0);
+          widget.onSeek(progress);
+        },
+        onHorizontalDragUpdate: (details) {
+          final RenderBox box = context.findRenderObject() as RenderBox;
+          final localX = details.localPosition.dx;
+          final progress = (localX / box.size.width).clamp(0.0, 1.0);
+          widget.onSeek(progress);
+        },
+        child: AnimatedBuilder(
+          animation: _breathingAnimation,
+          builder: (context, child) {
+            return Container(
+              height: 120, // Total height for bars + seekbar
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Waveform bars
+                  CustomPaint(
+                    size: Size(double.infinity, 120),
+                    painter: BreathingWaveformPainter(
+                      waveformData: widget.waveformData,
+                      progress: widget.progress,
+                      activeColor: widget.activeColor,
+                      inactiveColor: widget.inactiveColor,
+                      breathingValue: _breathingAnimation.value,
+                      currentPeak: widget.currentPeak,
+                      isHovering: _isHovering,
+                      hoverX: _localX,
+                      isPlaying: widget.isPlaying,
+                    ),
+                  ),
+                  // Seekbar track
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 4,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(2),
+                        color: widget.inactiveColor,
+                      ),
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: widget.progress,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(2),
+                            gradient: LinearGradient(
+                              colors: [
+                                widget.activeColor,
+                                widget.activeColor.withValues(alpha: 0.8),
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: widget.activeColor.withValues(alpha: 0.4),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Progress indicator (thumb)
+                  if (_isHovering)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      child: Align(
+                        alignment: Alignment(widget.progress * 2 - 1, 0),
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: widget.activeColor,
+                            boxShadow: [
+                              BoxShadow(
+                                color: widget.activeColor.withValues(alpha: 0.6),
+                                blurRadius: 12,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class BreathingWaveformPainter extends CustomPainter {
+  final List<double> waveformData;
+  final double progress;
+  final Color activeColor;
+  final Color inactiveColor;
+  final double breathingValue;
+  final double currentPeak;
+  final bool isHovering;
+  final double hoverX;
+  final bool isPlaying;
+
+  BreathingWaveformPainter({
+    required this.waveformData,
+    required this.progress,
+    required this.activeColor,
+    required this.inactiveColor,
+    required this.breathingValue,
+    required this.currentPeak,
+    required this.isHovering,
+    required this.hoverX,
+    required this.isPlaying,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (waveformData.isEmpty) return;
+
+    final centerY = size.height / 2;
+    final barCount = SharedPreferencesService.instance.getInt('waveformBars') ?? 1000;
+    final barWidth = size.width / barCount;
+    final barSpacing = barWidth * 0.2;
+    final actualBarWidth = barWidth - barSpacing;
+    
+    // Base height when not playing (minimal height)
+    const minBarHeight = 2.0;
+    // Maximum bar height (from center)
+    final maxBarHeight = size.height * 0.35;
+
+    for (int i = 0; i < barCount; i++) {
+      final x = i * barWidth + barSpacing / 2;
+      final dataIndex = (i * waveformData.length / barCount).floor();
+      final waveformValue = waveformData[dataIndex];
+      
+      // Calculate progress for this bar
+      final barProgress = i / barCount;
+      final isActive = barProgress <= progress;
+      
+      // Base height calculation
+      double barHeight = minBarHeight;
+      
+      if (isPlaying) {
+        // When playing, bars animate based on waveform
+        final distanceFromPlayhead = (barProgress - progress).abs();
+        final proximityFactor = math.max(0.0, 1.0 - distanceFromPlayhead * 3);
+        
+        // Combine waveform data with breathing animation
+        final breathingFactor = 0.3 + (breathingValue * 0.7);
+        final peakInfluence = currentPeak * proximityFactor;
+        
+        barHeight = minBarHeight + 
+                   (waveformValue * maxBarHeight * breathingFactor) +
+                   (peakInfluence * maxBarHeight * 0.3);
+      } else {
+        // When paused, show static waveform at reduced height
+        barHeight = minBarHeight + (waveformValue * maxBarHeight * 0.2);
+      }
+      
+      // Hover effect
+      if (isHovering) {
+        final distanceFromHover = (x - hoverX).abs();
+        if (distanceFromHover < 50) {
+          final hoverFactor = 1.0 - (distanceFromHover / 50);
+          barHeight *= (1.0 + hoverFactor * 0.3);
+        }
+      }
+      
+      // Ensure minimum visibility
+      barHeight = math.max(minBarHeight, barHeight);
+      
+      // Color with gradient
+      final paint = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            (isActive ? activeColor : inactiveColor).withValues(alpha: 0.3),
+            (isActive ? activeColor : inactiveColor).withValues(alpha: 0.8),
+            (isActive ? activeColor : inactiveColor).withValues(alpha: 0.8),
+            (isActive ? activeColor : inactiveColor).withValues(alpha: 0.3),
+          ],
+          stops: const [0.0, 0.4, 0.6, 1.0],
+        ).createShader(Rect.fromLTWH(x, centerY - barHeight, actualBarWidth, barHeight * 2));
+      
+      // Draw top bar
+      final topRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x, centerY - barHeight - 2, actualBarWidth, barHeight),
+        const Radius.circular(1),
+      );
+      canvas.drawRRect(topRect, paint);
+      
+      // Draw bottom bar (mirrored)
+      final bottomRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x, centerY + 2, actualBarWidth, barHeight),
+        const Radius.circular(1),
+      );
+      canvas.drawRRect(bottomRect, paint);
+      
+      // Add glow effect for active bars near playhead
+      if (isActive && isPlaying) {
+        final distanceFromPlayhead = (barProgress - progress).abs();
+        if (distanceFromPlayhead < 0.05) {
+          final glowPaint = Paint()
+            ..color = activeColor.withValues(alpha: 0.2)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+          
+          canvas.drawRRect(topRect, glowPaint);
+          canvas.drawRRect(bottomRect, glowPaint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(BreathingWaveformPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+           oldDelegate.breathingValue != breathingValue ||
+           oldDelegate.currentPeak != currentPeak ||
+           oldDelegate.isHovering != isHovering ||
+           oldDelegate.hoverX != hoverX ||
+           oldDelegate.isPlaying != isPlaying;
   }
 }
