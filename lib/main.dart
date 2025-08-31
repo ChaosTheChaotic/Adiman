@@ -6933,8 +6933,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   void _updateParticleOptions() {
     final peakSpeed = (_waveformData.isNotEmpty
-                ? _waveformData[
-                    (_currentSliderValue * _waveformData.length).clamp(0, _waveformData.length - 1).toInt()]
+                ? _waveformData[(_currentSliderValue * _waveformData.length)
+                    .clamp(0, _waveformData.length - 1)
+                    .toInt()]
                 : 0.0) *
             150 +
         50;
@@ -8035,15 +8036,15 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                   ),
                                 );
                               } else if (seekbarTypeString == 'dyn') {
-				return BreathingWaveformSeekbar(
-        			  waveformData: _waveformData,
-        			  progress: _currentSliderValue,
-        			  activeColor: dominantColor,
-        			  inactiveColor: Colors.grey.withAlpha(0x30),
-        			  onSeek: (value) => _handleSeek(value),
-        			  isPlaying: isPlaying,
-        			  currentPeak: currentPeak,
-        			);
+                                return BreathingWaveformSeekbar(
+                                  waveformData: _waveformData,
+                                  progress: _currentSliderValue,
+                                  activeColor: dominantColor,
+                                  inactiveColor: Colors.grey.withAlpha(0x30),
+                                  onSeek: (value) => _handleSeek(value),
+                                  isPlaying: isPlaying,
+                                  currentPeak: currentPeak,
+                                );
                               } else {
                                 return WaveformSeekBar(
                                   waveformData: _waveformData,
@@ -9860,7 +9861,8 @@ class BreathingWaveformSeekbar extends StatefulWidget {
   });
 
   @override
-  State<BreathingWaveformSeekbar> createState() => _BreathingWaveformSeekbarState();
+  State<BreathingWaveformSeekbar> createState() =>
+      _BreathingWaveformSeekbarState();
 }
 
 class _BreathingWaveformSeekbarState extends State<BreathingWaveformSeekbar>
@@ -9877,7 +9879,7 @@ class _BreathingWaveformSeekbarState extends State<BreathingWaveformSeekbar>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    
+
     _breathingAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -9976,7 +9978,8 @@ class _BreathingWaveformSeekbarState extends State<BreathingWaveformSeekbar>
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: widget.activeColor.withValues(alpha: 0.4),
+                                color:
+                                    widget.activeColor.withValues(alpha: 0.4),
                                 blurRadius: 8,
                                 spreadRadius: 1,
                               ),
@@ -10001,7 +10004,8 @@ class _BreathingWaveformSeekbarState extends State<BreathingWaveformSeekbar>
                             color: widget.activeColor,
                             boxShadow: [
                               BoxShadow(
-                                color: widget.activeColor.withValues(alpha: 0.6),
+                                color:
+                                    widget.activeColor.withValues(alpha: 0.6),
                                 blurRadius: 12,
                                 spreadRadius: 2,
                               ),
@@ -10052,7 +10056,7 @@ class BreathingWaveformPainter extends CustomPainter {
     final barWidth = size.width / barCount;
     final barSpacing = barWidth * 0.2;
     final actualBarWidth = barWidth - barSpacing;
-    
+
     const minBarHeight = 2.0;
     final maxBarHeight = size.height * 0.35;
 
@@ -10064,19 +10068,21 @@ class BreathingWaveformPainter extends CustomPainter {
       final x = i * barWidth + barSpacing / 2;
       final waveformValue = waveformData[i];
       final barProgress = i / barCount;
-      
+
       final isActive = barProgress >= activeStart && barProgress <= activeEnd;
       final distanceFromProgress = (barProgress - progress).abs();
-      
+
       double barHeight = minBarHeight;
-      
+
       if (isPlaying) {
         // Emphasize bars near current progress
-        final proximityFactor = 1.0 - (distanceFromProgress * 5).clamp(0.0, 1.0);
+        final proximityFactor =
+            1.0 - (distanceFromProgress * 5).clamp(0.0, 1.0);
         final breathingFactor = 0.3 + (breathingValue * 0.7);
-        
-        barHeight += (waveformValue * maxBarHeight * breathingFactor * proximityFactor) +
-                    (currentPeak * maxBarHeight * 0.3 * proximityFactor);
+
+        barHeight +=
+            (waveformValue * maxBarHeight * breathingFactor * proximityFactor) +
+                (currentPeak * maxBarHeight * 0.3 * proximityFactor);
       } else {
         // Static waveform when paused
         barHeight += waveformValue * maxBarHeight * 0.2;
@@ -10090,9 +10096,9 @@ class BreathingWaveformPainter extends CustomPainter {
           barHeight *= (1.0 + hoverFactor * 0.3);
         }
       }
-      
+
       barHeight = math.max(minBarHeight, barHeight);
-      
+
       // Determine color based on activity
       final color = isActive ? activeColor : inactiveColor;
       final paint = Paint()
@@ -10106,7 +10112,8 @@ class BreathingWaveformPainter extends CustomPainter {
             color.withValues(alpha: 0.3),
           ],
           stops: const [0.0, 0.4, 0.6, 1.0],
-        ).createShader(Rect.fromLTWH(x, centerY - barHeight, actualBarWidth, barHeight * 2));
+        ).createShader(Rect.fromLTWH(
+            x, centerY - barHeight, actualBarWidth, barHeight * 2));
 
       // Draw bars
       final topRect = RRect.fromRectAndRadius(
@@ -10114,7 +10121,7 @@ class BreathingWaveformPainter extends CustomPainter {
         const Radius.circular(1),
       );
       canvas.drawRRect(topRect, paint);
-      
+
       final bottomRect = RRect.fromRectAndRadius(
         Rect.fromLTWH(x, centerY + 2, actualBarWidth, barHeight),
         const Radius.circular(1),
@@ -10126,7 +10133,7 @@ class BreathingWaveformPainter extends CustomPainter {
         final glowPaint = Paint()
           ..color = activeColor.withValues(alpha: 0.2)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-        
+
         canvas.drawRRect(topRect, glowPaint);
         canvas.drawRRect(bottomRect, glowPaint);
       }
@@ -10136,10 +10143,10 @@ class BreathingWaveformPainter extends CustomPainter {
   @override
   bool shouldRepaint(BreathingWaveformPainter oldDelegate) {
     return oldDelegate.progress != progress ||
-           oldDelegate.breathingValue != breathingValue ||
-           oldDelegate.currentPeak != currentPeak ||
-           oldDelegate.isHovering != isHovering ||
-           oldDelegate.hoverX != hoverX ||
-           oldDelegate.isPlaying != isPlaying;
+        oldDelegate.breathingValue != breathingValue ||
+        oldDelegate.currentPeak != currentPeak ||
+        oldDelegate.isHovering != isHovering ||
+        oldDelegate.hoverX != hoverX ||
+        oldDelegate.isPlaying != isPlaying;
   }
 }
