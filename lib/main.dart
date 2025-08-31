@@ -4827,7 +4827,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeInOut,
                     left: (_seekbarType.index) *
-                        (MediaQuery.of(context).size.width - 32) /
+                        (MediaQuery.of(context).size.width - 40) /
                         3,
                     child: Container(
                       width: (MediaQuery.of(context).size.width - 40) / 3,
