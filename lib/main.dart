@@ -6926,7 +6926,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   void _updateParticleOptions() {
     final peakSpeed = (_waveformData.isNotEmpty
                 ? _waveformData[
-                    (_currentSliderValue * _waveformData.length).toInt()]
+                    (_currentSliderValue * _waveformData.length).clamp(0, _waveformData.length - 1).toInt()]
                 : 0.0) *
             150 +
         50;
