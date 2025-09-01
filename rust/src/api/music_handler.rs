@@ -229,8 +229,10 @@ struct AudioChunk {
 
 enum PlayerMessage {
     Load { path: String, position: f32 },
+    PreloadNext { path: String },
     Seek(f32),
     Stop,
+    SwitchToPreloaded,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -288,6 +290,10 @@ struct AudioPlayer {
     buffer: Arc<Mutex<Option<StreamingBuffer>>>,
     paused_position: Mutex<f32>,
     is_paused: Mutex<bool>,
+    next_sink: Mutex<Option<Arc<Sink>>>,
+    next_buffer: Arc<Mutex<Option<StreamingBuffer>>>,
+    next_path: Mutex<Option<String>>,
+    preload_monitor: Arc<AtomicBool>,
 }
 
 impl fmt::Debug for AudioPlayer {
@@ -306,6 +312,17 @@ impl AudioPlayer {
             let buffer = Arc::new(Mutex::new(None));
             let buffer_clone = Arc::clone(&buffer);
             let mixer = stream.mixer().clone();
+            let preload_monitor = Arc::new(AtomicBool::new(false));
+            let transition_threshold = Arc::new(AtomicF32::new(0.0));
+
+            // Spawn monitoring thread
+            let preload_monitor_clone = Arc::clone(&preload_monitor);
+            let transition_threshold_clone = Arc::clone(&transition_threshold);
+            let tx_clone = tx.clone();
+
+            thread::spawn(move || {
+                Self::position_monitor(preload_monitor_clone, transition_threshold_clone, tx_clone)
+            });
             // Spawn the background worker with a cloned mixer and buffer.
             thread::spawn(move || Self::background_worker(rx, mixer, buffer_clone));
             if let Ok(mut stream_guard) = STREAM.lock() {
@@ -320,6 +337,10 @@ impl AudioPlayer {
                     buffer,
                     paused_position: Mutex::new(0.0),
                     is_paused: Mutex::new(false),
+                    next_sink: Mutex::new(None),
+                    next_buffer: Arc::new(Mutex::new(None)),
+                    next_path: Mutex::new(Some(String::new())),
+                    preload_monitor,
                 });
             }
         }
@@ -585,6 +606,99 @@ impl AudioPlayer {
                         }
                     }
                 }
+                PlayerMessage::PreloadNext { path } => {
+                    if path.starts_with("cdda://") {
+                        break;
+                    }
+                    if let Ok(file) = fs::File::open(&path) {
+                        let mut reader = BufReader::new(file);
+                        let chunks = Arc::new(Mutex::new(Vec::new()));
+                        let mut decoder: Option<Decoder<Cursor<Vec<u8>>>> = None;
+                        let mut sample_rate = 44100;
+                        let mut channels = 2;
+                        let mut total_duration = Duration::from_secs(0);
+                        let mut initial_data = Vec::new();
+                        if reader.read_to_end(&mut initial_data).is_ok() && !initial_data.is_empty()
+                        {
+                            let cursor = Cursor::new(initial_data.clone());
+                            if let Ok(dec) = Decoder::try_from(cursor) {
+                                sample_rate = dec.sample_rate();
+                                channels = dec.channels();
+                                total_duration =
+                                    dec.total_duration().unwrap_or(Duration::from_secs(0));
+                                decoder = Some(dec);
+                            }
+                        }
+                        let _ = reader.seek(SeekFrom::Start(0));
+                        {
+                            // Preload a (possibly empty) initial chunk
+                            let mut guard = chunks.lock().unwrap();
+                            if let Some(ref mut dec) = decoder {
+                                let samples: Vec<f32> = dec.take(0).map(|s| s).collect();
+                                guard.push(AudioChunk { samples });
+                            }
+                        }
+                        let streaming_buffer = StreamingBuffer {
+                            chunks: Arc::clone(&chunks),
+                            sample_rate,
+                            channels,
+                            total_duration,
+                        };
+                        let stbuf_clone = streaming_buffer.clone();
+                        // Create sink and append a streaming source.
+                        let new_sink = Arc::new(Sink::connect_new(&mixer));
+                        new_sink.set_volume(0.0);
+                        let source = StreamingSource {
+                            buffer: Arc::new(Mutex::new(Some(streaming_buffer))),
+                            current_chunk: 0,
+                            position: 0,
+                            chunks_processed: 0,
+                        };
+                        new_sink.append(source);
+                        new_sink.pause();
+                        if let Ok(player_lock) = PLAYER.lock() {
+                            if let Some(player) = player_lock.as_ref() {
+                                *player.next_sink.lock().unwrap() = Some(Arc::clone(&new_sink));
+                                *player.next_buffer.lock().unwrap() = Some(stbuf_clone);
+                            }
+                        }
+                        // Spawn thread to buffer the rest of the audio in chunks.
+                        let chunks_clone = Arc::clone(&chunks);
+                        let file_path = path.clone();
+                        thread::spawn(move || {
+                            if let Ok(file) = fs::File::open(&file_path) {
+                                let mut reader = BufReader::new(file);
+                                let mut file_data = Vec::new();
+                                if reader.read_to_end(&mut file_data).is_ok() {
+                                    let cursor = Cursor::new(file_data);
+                                    if let Ok(decoder) = Decoder::try_from(cursor) {
+                                        let mut samples = Vec::with_capacity(sample_rate as usize);
+                                        for sample in decoder {
+                                            samples.push(sample);
+                                            if samples.len()
+                                                >= (sample_rate as usize * channels as usize)
+                                            {
+                                                if let Ok(mut guard) = chunks_clone.lock() {
+                                                    guard.push(AudioChunk {
+                                                        samples: samples.clone(),
+                                                    });
+                                                }
+                                                samples.clear();
+                                            }
+                                        }
+                                        if !samples.is_empty() {
+                                            if let Ok(mut guard) = chunks_clone.lock() {
+                                                guard.push(AudioChunk { samples });
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        println!("Failed to open file: {}", &path);
+                    }
+                }
                 PlayerMessage::Seek(position) => {
                     let current_path = {
                         if let Ok(player_lock) = PLAYER.lock() {
@@ -622,17 +736,38 @@ impl AudioPlayer {
                                 chunks_processed: current_chunk,
                             };
                             new_sink.append(source);
-                            new_sink.play();
+                            let should_play = {
+                                if let Ok(player_lock) = PLAYER.lock() {
+                                    player_lock
+                                        .as_ref()
+                                        .map(|p| !*p.is_paused.lock().unwrap())
+                                        .unwrap_or(true)
+                                } else {
+                                    true
+                                }
+                            };
+
+                            if should_play {
+                                new_sink.play();
+                            } else {
+                                new_sink.pause();
+                            }
                             if let Ok(player_lock) = PLAYER.lock() {
                                 if let Some(player) = player_lock.as_ref() {
                                     let old_sink = player.sink.lock().unwrap().take();
                                     AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
                                     *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
-                                    let now = Instant::now();
-                                    let new_start = now
-                                        .checked_sub(Duration::from_secs_f32(position))
-                                        .unwrap_or(now);
-                                    *player.start_time.lock().unwrap() = new_start;
+                                }
+                            }
+                            if should_play {
+                                if let Ok(player_lock) = PLAYER.lock() {
+                                    if let Some(player) = player_lock.as_ref() {
+                                        let now = Instant::now();
+                                        let new_start = now
+                                            .checked_sub(Duration::from_secs_f32(position))
+                                            .unwrap_or(now);
+                                        *player.start_time.lock().unwrap() = new_start;
+                                    }
                                 }
                             }
                         } else if current_path.starts_with("cdda://") {
@@ -661,11 +796,25 @@ impl AudioPlayer {
                                     let old_sink = player.sink.lock().unwrap().take();
                                     AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
                                     *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
-                                    *player.start_time.lock().unwrap() = Instant::now()
+
+                                    // Update start time to reflect the seek position
+                                    let now = Instant::now();
+                                    *player.start_time.lock().unwrap() = now
                                         .checked_sub(Duration::from_secs_f32(position))
-                                        .unwrap();
+                                        .unwrap_or(now);
+
+                                    // Reset pause state
+                                    *player.is_paused.lock().unwrap() = false;
+                                    *player.paused_position.lock().unwrap() = 0.0;
                                 }
                             }
+                        }
+                    }
+                }
+                PlayerMessage::SwitchToPreloaded => {
+                    if let Ok(player_lock) = PLAYER.lock() {
+                        if let Some(player) = player_lock.as_ref() {
+                            player.switch_to_preloaded();
                         }
                     }
                 }
@@ -674,6 +823,95 @@ impl AudioPlayer {
         }
     }
 
+    fn switch_to_preloaded(&self) -> bool {
+        let (new_sink, new_buffer, new_path) = {
+            let next_sink = self.next_sink.lock().unwrap().take();
+            let next_buffer = self.next_buffer.lock().unwrap().take();
+            let next_path = self.next_path.lock().unwrap().take();
+            (next_sink, next_buffer, next_path)
+        };
+
+        if let (Some(sink), Some(buffer), Some(path)) = (new_sink, new_buffer, new_path) {
+            // Get current volume for seamless transition
+            let current_volume = CUR_VOL.load(Ordering::SeqCst);
+
+            // Stop monitoring temporarily
+            self.preload_monitor.store(false, Ordering::SeqCst);
+
+            // Switch to preloaded track
+            let old_sink = self.sink.lock().unwrap().take();
+
+            // Set volume and start playback
+            sink.set_volume(current_volume);
+            sink.play();
+
+            // Update player state
+            *self.sink.lock().unwrap() = Some(sink);
+            *self.buffer.lock().unwrap() = Some(buffer);
+            *self.current_file.lock().unwrap() = path;
+            *self.start_time.lock().unwrap() = Instant::now();
+            *self.playing.lock().unwrap() = true;
+            *self.is_paused.lock().unwrap() = false;
+
+            // Stop old sink after brief overlap for seamless transition
+            if let Some(old) = old_sink {
+                thread::spawn(move || {
+                    thread::sleep(Duration::from_millis(50)); // Brief overlap
+                    old.stop();
+                });
+            }
+
+            // Restart monitoring for next preload
+            self.preload_monitor.store(true, Ordering::SeqCst);
+
+            true
+        } else {
+            false
+        }
+    }
+
+    fn position_monitor(
+        monitor_active: Arc<AtomicBool>,
+        threshold: Arc<AtomicF32>,
+        sender: Sender<PlayerMessage>,
+    ) {
+        loop {
+            if monitor_active.load(Ordering::SeqCst) {
+                if let Ok(player_lock) = PLAYER.lock() {
+                    if let Some(player) = player_lock.as_ref() {
+                        let position = player.get_position();
+                        let has_preloaded = player.next_sink.lock().unwrap().is_some();
+
+                        if has_preloaded {
+                            // Get current track duration
+                            let duration = {
+                                if let Ok(buffer_guard) = player.buffer.lock() {
+                                    buffer_guard
+                                        .as_ref()
+                                        .map(|buf| buf.total_duration.as_secs_f32())
+                                        .unwrap_or(0.0)
+                                } else {
+                                    0.0
+                                }
+                            };
+
+                            let threshold_secs = threshold.load(Ordering::SeqCst);
+
+                            // Check if we're within threshold of the end
+                            if duration > 0.0 && (duration - position) <= threshold_secs {
+                                let _ = sender.send(PlayerMessage::SwitchToPreloaded);
+                                monitor_active.store(false, Ordering::SeqCst);
+                            }
+                        }
+                    }
+                }
+            }
+
+            thread::sleep(Duration::from_millis(100)); // Check every 100ms
+        }
+    }
+
+    // Modified play method to start monitoring
     fn play(&self, path: &str) -> bool {
         self.stop();
         {
@@ -683,7 +921,11 @@ impl AudioPlayer {
             *paused = false;
             *self.paused_position.lock().unwrap() = 0.0;
             *self.start_time.lock().unwrap() = Instant::now();
+
+            // Start position monitoring for preload transitions
+            self.preload_monitor.store(true, Ordering::SeqCst);
         }
+
         if let Ok(sender) = self.sender.lock() {
             sender
                 .send(PlayerMessage::Load {
@@ -703,11 +945,17 @@ impl AudioPlayer {
                     old.stop();
                 }
             }
-            let now = Instant::now();
-            let new_start = now
-                .checked_sub(Duration::from_secs_f32(position))
-                .unwrap_or(now);
-            *self.start_time.lock().unwrap() = new_start;
+            // Update paused position if paused, otherwise update start time
+            let is_paused = *self.is_paused.lock().unwrap();
+            if is_paused {
+                *self.paused_position.lock().unwrap() = position;
+            } else {
+                let now = Instant::now();
+                let new_start = now
+                    .checked_sub(Duration::from_secs_f32(position))
+                    .unwrap_or(now);
+                *self.start_time.lock().unwrap() = new_start;
+            }
         }
         if let Ok(sender) = self.sender.lock() {
             sender.send(PlayerMessage::Seek(position)).is_ok()
@@ -1500,4 +1748,36 @@ pub fn search_lyrics(
         .into_iter()
         .filter(|sm| seen.insert(sm.path.clone()))
         .collect())
+}
+
+pub fn preload_next_song(path: String) -> bool {
+    if path.starts_with("cdda://") {
+        return false;
+    }
+    if let Some(player) = PLAYER.lock().unwrap().as_ref() {
+        // Clear any existing preloaded track first
+        *player.next_sink.lock().unwrap() = None;
+        *player.next_buffer.lock().unwrap() = None;
+        *player.next_path.lock().unwrap() = Some(path.clone());
+
+        if let Ok(sender) = player.sender.lock() {
+            sender.send(PlayerMessage::PreloadNext { path }).is_ok()
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+
+pub fn switch_to_preloaded_now() -> bool {
+    if let Some(player) = PLAYER.lock().unwrap().as_ref() {
+        if let Ok(sender) = player.sender.lock() {
+            sender.send(PlayerMessage::SwitchToPreloaded).is_ok()
+        } else {
+            false
+        }
+    } else {
+        false
+    }
 }

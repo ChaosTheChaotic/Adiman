@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 import 'package:path/path.dart' as path;
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
 import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
@@ -19,6 +20,7 @@ import 'package:anni_mpris_service/anni_mpris_service.dart';
 import 'package:animated_background/animated_background.dart';
 import 'package:dbus/dbus.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'broken_icons.dart';
 
 final ValueNotifier<Color> defaultThemeColorNotifier =
@@ -214,7 +216,7 @@ class _MiniPlayerState extends State<MiniPlayer>
 
     if (pos.isFinite) {
       setState(() {});
-      if (pos >= widget.song.duration.inSeconds - 0.1) {
+      if (pos >= widget.song.duration.inSeconds - 0.0) {
         _handleSkip(true);
       }
     }
@@ -249,8 +251,19 @@ class _MiniPlayerState extends State<MiniPlayer>
     final newIndex = widget.currentIndex + (next ? 1 : -1);
     if (newIndex < 0 || newIndex >= widget.songList.length) return;
 
-    await rust_api.stopSong();
-    await rust_api.playSong(path: widget.songList[newIndex].path);
+    if (widget.song.path.contains('cdda://') ||
+        widget.songList[newIndex + 1].path.contains('cdda://')) {
+      await rust_api.stopSong();
+      await rust_api.playSong(path: widget.songList[newIndex].path);
+    } else {
+      await rust_api.switchToPreloadedNow();
+      if (newIndex + 1 < widget.songList.length) {
+        final nextNextSong = widget.songList[newIndex + 1];
+        if (!nextNextSong.path.contains('cdda://')) {
+          await rust_api.preloadNextSong(path: nextNextSong.path);
+        }
+      }
+    }
     Color newColor = await _getDominantColor(widget.songList[newIndex]);
     widget.onUpdate(widget.songList[newIndex], newIndex, newColor);
     widget.service.updatePlaylist(widget.songList, newIndex);
@@ -556,12 +569,17 @@ enum SortOption {
 
 enum RepeatMode { normal, repeatOnce, repeatAll }
 
+enum SeekbarType { waveform, alt, dyn }
+
 late final AdimanService globalService;
 Future<void> main() async {
   await RustLib.init();
   await rust_api.initializePlayer();
   globalService = AdimanService();
   VolumeController();
+  sqfliteFfiInit();
+  databaseFactory = databaseFactoryFfi;
+  await PlaylistOrderDatabase().database;
   await SharedPreferencesService.init();
   useDominantColorsNotifier.value =
       SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
@@ -903,6 +921,57 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     );
   }
 
+  void _showReorderPlaylistScreen(String playlistName) async {
+    // Load songs for this specific playlist
+    final playlistPath = '$_musicFolder/.adilists/$playlistName';
+    final metadata = await rust_api.scanMusicDirectory(
+      dirPath: playlistPath,
+      autoConvert:
+          SharedPreferencesService.instance.getBool('autoConvert') ?? false,
+    );
+
+    List<Song> playlistSongs =
+        metadata.map((m) => Song.fromMetadata(m)).toList();
+
+    // Get the stored order if available
+    List<String> orderedPaths =
+        await PlaylistOrderDatabase().getPlaylistOrder(playlistName);
+
+    if (orderedPaths.isNotEmpty) {
+      final pathToSong = {for (var song in playlistSongs) song.path: song};
+
+      final orderedSongs = <Song>[];
+      for (final path in orderedPaths) {
+        if (pathToSong.containsKey(path)) {
+          orderedSongs.add(pathToSong[path]!);
+        }
+      }
+
+      // Add any songs that weren't in the database (newly added)
+      for (final song in playlistSongs) {
+        if (!orderedPaths.contains(song.path)) {
+          orderedSongs.add(song);
+        }
+      }
+
+      playlistSongs = orderedSongs;
+    }
+
+    Navigator.push(
+      context,
+      NamidaPageTransitions.createRoute(
+        PlaylistReorderScreen(
+          playlistName: playlistName,
+          musicFolder: _musicFolder,
+          songs: playlistSongs,
+        ),
+      ),
+    ).then((_) {
+      // Refresh the playlist when returning from reorder screen
+      _loadSongs();
+    });
+  }
+
   Future<void> _showPlaylistSelectionPopup() async {
     List<String> initialPlaylists = await listPlaylists(_musicFolder);
     List<String> localPlaylists = List.from(initialPlaylists);
@@ -1079,6 +1148,27 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                                       'Error renaming playlist: $e'));
                                             }
                                           }
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: GlowIcon(
+                                          Broken.sort,
+                                          color:
+                                              dominantColor.computeLuminance() >
+                                                      0.01
+                                                  ? dominantColor
+                                                  : Theme.of(context)
+                                                      .textTheme
+                                                      .bodyLarge
+                                                      ?.color,
+                                          blurRadius: 8,
+                                          size: 20,
+                                        ),
+                                        onPressed: () {
+                                          ScaffoldMessenger.of(context)
+                                              .hideCurrentSnackBar();
+                                          Navigator.pop(context);
+                                          _showReorderPlaylistScreen(playlist);
                                         },
                                       ),
                                       IconButton(
@@ -1570,6 +1660,37 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
         // Sort the songs
         loadedSongs.sort((a, b) => a.title.compareTo(b.title));
 
+        List<String> orderedPaths = [];
+        if (_currentPlaylistName != null) {
+          try {
+            orderedPaths = await PlaylistOrderDatabase()
+                .getPlaylistOrder(_currentPlaylistName!);
+          } catch (e) {
+            print('Error getting playlist order: $e');
+          }
+        }
+
+        // Sort songs according to stored order if available
+        if (orderedPaths.isNotEmpty) {
+          final pathToSong = {for (var song in loadedSongs) song.path: song};
+
+          final orderedSongs = <Song>[];
+          for (final path in orderedPaths) {
+            if (pathToSong.containsKey(path)) {
+              orderedSongs.add(pathToSong[path]!);
+            }
+          }
+
+          // Add any songs that weren't in the database (newly added)
+          for (final song in loadedSongs) {
+            if (!orderedPaths.contains(song.path)) {
+              orderedSongs.add(song);
+            }
+          }
+
+          loadedSongs = orderedSongs;
+        }
+
         setState(() {
           songs = loadedSongs;
           if (_searchController.text.isEmpty) {
@@ -1744,6 +1865,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     shuffled.shuffle();
     Song first = shuffled.first;
     await rust_api.playSong(path: first.path);
+    await rust_api.preloadNextSong(path: shuffled.elementAt(1).path);
     Color newColor = await _getDominantColor(first);
     setState(() {
       songs = shuffled;
@@ -2483,7 +2605,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       GlowText(
-                        'Playlist Options',
+                        'Song Options',
                         glowColor: dominantColor.withValues(alpha: 0.3),
                         style: TextStyle(
                           fontSize: 22,
@@ -4010,6 +4132,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _spinningAlbumArt = false;
   final bool _isChangingColor = false;
   final bool _isManagingSeparators = false;
+  final bool _isClearingDatabase = false;
   bool _autoConvert = false;
   bool _clearMp3Cache = false;
   bool _vimKeybindings = false;
@@ -4019,7 +4142,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _breathe = true;
   bool _useDominantColors = false;
   bool _edgeBreathe = true;
-  bool _altSeek = false;
+  SeekbarType _seekbarType = SeekbarType.waveform;
   int _waveformBars = 1000;
   double _particleSpawnOpacity = 0.4;
   double _particleOpacityChangeRate = 0.2;
@@ -4153,7 +4276,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SharedPreferencesService.instance.getString('spotdlFlags') ?? '';
       _edgeBreathe =
           SharedPreferencesService.instance.getBool('edgeBreathe') ?? true;
-      _altSeek = SharedPreferencesService.instance.getBool('altSeek') ?? false;
+      final seekbarTypeString =
+          SharedPreferencesService.instance.getString('seekbarType');
+      _seekbarType = seekbarTypeString == 'alt'
+          ? SeekbarType.alt
+          : seekbarTypeString == 'dyn'
+              ? SeekbarType.dyn
+              : SeekbarType.waveform; // Default to waveform
     });
     final savedSeparators =
         SharedPreferencesService.instance.getStringList('separators');
@@ -4278,9 +4407,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _edgeBreathe = value);
   }
 
-  Future<void> _saveAltSeek(bool value) async {
-    await SharedPreferencesService.instance.setBool('altSeek', value);
-    setState(() => _altSeek = value);
+  Future<void> _saveSeekbarType(SeekbarType type) async {
+    await SharedPreferencesService.instance.setString('seekbarType', type.name);
+    setState(() => _seekbarType = type);
   }
 
   Future<void> _clearCache() async {
@@ -4645,6 +4774,208 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildSeekbarTypeSelector() {
+    final textColor = _currentColor.computeLuminance() > 0.01
+        ? _currentColor
+        : Theme.of(context).textTheme.bodyLarge?.color;
+
+    return Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GlowText(
+              'Seekbar Style',
+              glowColor: _currentColor.withAlpha(60),
+              style: TextStyle(
+                color: textColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 80,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    _currentColor.withAlpha(30),
+                    Colors.black.withAlpha(80),
+                  ],
+                ),
+                border: Border.all(
+                  color: _currentColor.withAlpha(100),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _currentColor.withAlpha(40),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final optionWidth = constraints.maxWidth / 3;
+                  return Stack(
+                    children: [
+                      // Animated background highlight
+                      AnimatedPositioned(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        left: _seekbarType.index * optionWidth + 4,
+                        child: Container(
+                          width: optionWidth - 8,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                _currentColor.withAlpha(100),
+                                _currentColor.withAlpha(60),
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _currentColor.withAlpha(80),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSeekbarOption(
+                              'Waveform',
+                              SeekbarType.waveform,
+                              Broken.sound,
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildSeekbarOption(
+                              'Alt',
+                              SeekbarType.alt,
+                              Broken.slider_horizontal_1,
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildSeekbarOption(
+                              'Dynamic',
+                              SeekbarType.dyn,
+                              Broken.sound,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Text(
+                'CDs always use the alt seekbar',
+                style: TextStyle(
+                  color: textColor!.withAlpha(150),
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSeekbarOption(String label, SeekbarType type, IconData icon) {
+    final isSelected = _seekbarType == type;
+    final textColor = isSelected ? Colors.white : _currentColor;
+    final glowColor = _currentColor.withAlpha(80);
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () => _saveSeekbarType(type),
+        borderRadius: BorderRadius.circular(12),
+        splashColor: _currentColor.withAlpha(30),
+        highlightColor: _currentColor.withAlpha(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isSelected
+                  ? [
+                      _currentColor,
+                      _currentColor.withAlpha(220),
+                    ]
+                  : [
+                      _currentColor.withAlpha(20),
+                      Colors.transparent,
+                    ],
+            ),
+            border: isSelected
+                ? null
+                : Border.all(
+                    color: _currentColor.withAlpha(80),
+                    width: 1.0,
+                  ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: glowColor,
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GlowIcon(
+                icon,
+                color: textColor,
+                glowColor: glowColor,
+                blurRadius: 8,
+                size: 20,
+              ),
+              const SizedBox(height: 6),
+              GlowText(
+                label,
+                glowColor: glowColor,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSettingsExpansionTile({
     required String title,
     required IconData icon,
@@ -4669,6 +5000,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         SizedBox(height: 16),
       ],
     );
+  }
+
+  Future<void> _clearPlaylistDatabase() async {
+    await PlaylistOrderDatabase().clearAllPlaylists();
+    ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+      backgroundColor: widget.dominantColor,
+      content: 'Playlist database cleared',
+    ));
   }
 
   @override
@@ -4897,6 +5236,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               isLoading: _isManagingSeparators,
                               onPressed: _showSeparatorManagementPopup,
                             ),
+                            _buildActionButton(
+                              icon: Broken.trash,
+                              label: 'Clear Playlist Order Database',
+                              isLoading: _isClearingDatabase,
+                              onPressed: _clearPlaylistDatabase,
+                            ),
                           ],
                         ),
                         _buildSettingsExpansionTile(
@@ -4919,10 +5264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 title: 'Edge breathing effect',
                                 value: _edgeBreathe,
                                 onChanged: _saveEdgeBreathe),
-                            _buildSettingsSwitch(context,
-                                title: 'Alt seekbar',
-                                value: _altSeek,
-                                onChanged: _saveAltSeek),
+                            _buildSeekbarTypeSelector(),
                           ],
                         ),
                         _buildSettingsExpansionTile(
@@ -5158,6 +5500,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ],
                         ),
+                        _buildSettingsExpansionTile(
+                            title: 'Misc',
+                            icon: Broken.square,
+                            children: [
+                              _buildSettingsSwitch(context,
+                                  title: 'Auto Convert',
+                                  value: _autoConvert,
+                                  onChanged: _saveAutoConvert)
+                            ])
                       ],
                     ),
                   ),
@@ -6620,8 +6971,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   void _updateParticleOptions() {
     final peakSpeed = (_waveformData.isNotEmpty
-                ? _waveformData[
-                    (_currentSliderValue * _waveformData.length).toInt()]
+                ? _waveformData[(_currentSliderValue * _waveformData.length)
+                    .clamp(0, _waveformData.length - 1)
+                    .toInt()]
                 : 0.0) *
             150 +
         50;
@@ -6852,7 +7204,30 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           _currentSliderValue =
               (position / currentSong.duration.inSeconds).clamp(0.0, 1.0);
         });
-        if (position >= currentSong.duration.inSeconds - 0.1) {
+
+        // Check if song has changed (Rust auto-advanced)
+        if (position < 1.0) {
+          // Only check if not at beginning of new song
+          final currentPath = await rust_api.getCurrentSongPath();
+          if (currentPath != currentSong.path) {
+            final newIndex =
+                widget.songList.indexWhere((song) => song.path == currentPath);
+            if (newIndex != -1) {
+              setState(() {
+                currentIndex = newIndex;
+                currentSong = widget.songList[newIndex];
+                _currentSliderValue = 0.0;
+              });
+              _initWaveform();
+              _loadLyrics();
+              await _updateDominantColor();
+              widget.service.updatePlaylist(widget.songList, currentIndex);
+              widget.service._updateMetadata();
+            }
+          }
+        }
+
+        if (position >= currentSong.duration.inSeconds - 0.0) {
           await _handleSongFinished();
         }
       }
@@ -6875,12 +7250,12 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           currentSong.duration.inSeconds.toDouble(),
         );
         await rust_api.seekToPosition(position: seekPosition);
-        if (!isPlaying && mounted) {
-          setState(() {
-            isPlaying = true;
-            _playPauseController.forward();
-          });
-        }
+        //if (!isPlaying && mounted) {
+        //  setState(() {
+        //    isPlaying = true;
+        //    _playPauseController.forward();
+        //  });
+        //}
       } catch (e) {
         NamidaSnackbar(
             backgroundColor: dominantColor, content: 'Error seeking: $e');
@@ -6908,6 +7283,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         return;
       }
       final started = await rust_api.playSong(path: currentSong.path);
+      await rust_api.preloadNextSong(
+          path: widget.songList[currentIndex + 1].path);
       if (started && mounted) {
         widget.service.updatePlaylistStart(widget.songList, currentIndex);
         widget.service._updateMetadata();
@@ -6959,6 +7336,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     );
     await rust_api.seekToPosition(position: seekPosition);
     await rust_api.playSong(path: currentSong.path);
+    await rust_api.preloadNextSong(
+        path: widget.songList[currentIndex + 1].path);
   }
 
   void _generateShuffleOrder() {
@@ -6973,9 +7352,30 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   Future<void> _handleSongFinished() async {
     if (_isTransitioning) return;
+
+    // Check if Rust has already advanced to the next song
+    final currentPath = await rust_api.getCurrentSongPath();
+    if (currentPath != currentSong.path) {
+      // Rust has already advanced, update UI accordingly
+      final newIndex =
+          widget.songList.indexWhere((song) => song.path == currentPath);
+      if (newIndex != -1) {
+        setState(() {
+          currentIndex = newIndex;
+          currentSong = widget.songList[newIndex];
+        });
+        _initWaveform();
+        _loadLyrics();
+        await _updateDominantColor();
+        widget.service.updatePlaylist(widget.songList, currentIndex);
+        widget.service._updateMetadata();
+      }
+      return;
+    }
+
+    // Original handling for when Rust hasn't advanced
     await rust_api.stopSong();
     if (_repeatMode == RepeatMode.repeatOnce) {
-      // Play once then stop
       if (!_hasRepeated) {
         await _replaySong();
         _hasRepeated = true;
@@ -7005,7 +7405,20 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     _loadLyrics();
     await _updateDominantColor();
 
-    final success = await rust_api.playSong(path: currentSong.path);
+    final bool success;
+    if (currentSong.path.contains('cdda://')) {
+      success = await rust_api.playSong(path: currentSong.path);
+    } else {
+      success = await rust_api.switchToPreloadedNow();
+      if (currentIndex + 1 < widget.songList.length) {
+        final nextNextSong = widget.songList[currentIndex + 1];
+        if (!nextNextSong.path.contains('cdda://')) {
+          await rust_api.preloadNextSong(path: nextNextSong.path);
+        }
+      }
+      await rust_api.preloadNextSong(
+          path: widget.songList[currentIndex + 1].path);
+    }
     if (success && mounted) {
       setState(() {
         isPlaying = true;
@@ -7045,6 +7458,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     _loadLyrics();
     await _updateDominantColor();
     final success = await rust_api.playSong(path: currentSong.path);
+    await rust_api.preloadNextSong(
+        path: widget.songList[currentIndex + 1].path);
     if (success && mounted) {
       setState(() {
         isPlaying = true;
@@ -7296,6 +7711,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   @override
   Widget build(BuildContext context) {
+    final seekbarTypeString =
+        SharedPreferencesService.instance.getString('seekbarType');
+    final useAltSeekbar =
+        seekbarTypeString == 'alt' || widget.song.path.contains('cdda://');
     final waveformIndex = (_currentSliderValue * _waveformData.length)
         .clamp(0, _waveformData.length - 1)
         .toInt();
@@ -7584,15 +8003,13 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                       FadeTransition(
                         opacity: _fadeAnimation,
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24.0,
-                            vertical: 16,
-                          ),
-                          child: currentSong.path.contains('cdda://') ||
-                                  (SharedPreferencesService.instance
-                                          .getBool('altSeek') ??
-                                      true == true)
-                              ? Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24.0,
+                              vertical: 16,
+                            ),
+                            child: Builder(builder: (context) {
+                              if (useAltSeekbar) {
+                                return Container(
                                   height: 32,
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 12),
@@ -7655,15 +8072,27 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                       },
                                     ),
                                   ),
-                                )
-                              : WaveformSeekBar(
+                                );
+                              } else if (seekbarTypeString == 'dyn') {
+                                return BreathingWaveformSeekbar(
                                   waveformData: _waveformData,
                                   progress: _currentSliderValue,
                                   activeColor: dominantColor,
                                   inactiveColor: Colors.grey.withAlpha(0x30),
                                   onSeek: (value) => _handleSeek(value),
-                                ),
-                        ),
+                                  isPlaying: isPlaying,
+                                  currentPeak: currentPeak,
+                                );
+                              } else {
+                                return WaveformSeekBar(
+                                  waveformData: _waveformData,
+                                  progress: _currentSliderValue,
+                                  activeColor: dominantColor,
+                                  inactiveColor: Colors.grey.withAlpha(0x30),
+                                  onSeek: (value) => _handleSeek(value),
+                                );
+                              }
+                            })),
                       ),
                       FadeTransition(
                         opacity: _fadeAnimation,
@@ -7984,6 +8413,7 @@ class AdimanService extends MPRISService {
       final newIndex = _currentIndex + 1;
       final nextSong = _currentPlaylist[newIndex];
       await rust_api.playSong(path: nextSong.path);
+      await rust_api.preloadNextSong(path: _currentPlaylist[newIndex + 1].path);
       _currentIndex = newIndex;
       _currentSong = nextSong;
       _trackChangeController.add(nextSong);
@@ -8005,6 +8435,7 @@ class AdimanService extends MPRISService {
       final newIndex = _currentIndex - 1;
       final prevSong = _currentPlaylist[newIndex];
       await rust_api.playSong(path: prevSong.path);
+      await rust_api.preloadNextSong(path: _currentPlaylist[newIndex + 1].path);
       _currentIndex = newIndex;
       _currentSong = prevSong;
       _trackChangeController.add(prevSong);
@@ -8985,5 +9416,702 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
         ),
       ),
     );
+  }
+}
+
+class PlaylistOrderDatabase {
+  static final PlaylistOrderDatabase _instance =
+      PlaylistOrderDatabase._internal();
+  factory PlaylistOrderDatabase() => _instance;
+  PlaylistOrderDatabase._internal();
+
+  static Database? _db;
+
+  Future<Database> get database async {
+    if (_db != null) return _db!;
+    _db = await _initDatabase();
+    return _db!;
+  }
+
+  Future<Database> _initDatabase() async {
+    final dbPath = await getDatabasesPath();
+    final path = '$dbPath/playlist_orders.db';
+
+    return await openDatabase(
+      path,
+      version: 1,
+      onCreate: (db, version) async {
+        await db.execute('''
+          CREATE TABLE playlist_orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            playlist_name TEXT NOT NULL,
+            song_path TEXT NOT NULL,
+            position INTEGER NOT NULL,
+            UNIQUE(playlist_name, song_path)
+          )
+        ''');
+        await db.execute('''
+          CREATE INDEX idx_playlist_name ON playlist_orders (playlist_name)
+        ''');
+      },
+    );
+  }
+
+  Future<void> updatePlaylistOrder(
+      String playlistName, List<String> songPaths) async {
+    final db = await database;
+
+    // Start a transaction to ensure atomic update
+    await db.transaction((txn) async {
+      // Delete existing order for this playlist
+      await txn.delete(
+        'playlist_orders',
+        where: 'playlist_name = ?',
+        whereArgs: [playlistName],
+      );
+
+      // Insert new order
+      for (int i = 0; i < songPaths.length; i++) {
+        await txn.insert(
+          'playlist_orders',
+          {
+            'playlist_name': playlistName,
+            'song_path': songPaths[i],
+            'position': i,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
+  Future<List<String>> getPlaylistOrder(String playlistName) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'playlist_orders',
+      where: 'playlist_name = ?',
+      whereArgs: [playlistName],
+      orderBy: 'position ASC',
+    );
+
+    return maps.map((map) => map['song_path'] as String).toList();
+  }
+
+  Future<void> clearPlaylist(String playlistName) async {
+    final db = await database;
+    await db.delete(
+      'playlist_orders',
+      where: 'playlist_name = ?',
+      whereArgs: [playlistName],
+    );
+  }
+
+  Future<void> clearAllPlaylists() async {
+    final db = await database;
+    await db.delete('playlist_orders');
+  }
+
+  Future<void> close() async {
+    if (_db != null) {
+      await _db!.close();
+      _db = null;
+    }
+  }
+}
+
+class PlaylistReorderScreen extends StatefulWidget {
+  final String playlistName;
+  final String musicFolder;
+  final List<Song> songs;
+
+  const PlaylistReorderScreen({
+    super.key,
+    required this.playlistName,
+    required this.musicFolder,
+    required this.songs,
+  });
+
+  @override
+  State<PlaylistReorderScreen> createState() => _PlaylistReorderScreenState();
+}
+
+class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
+  late List<Song> _reorderedSongs;
+  late Color _dominantColor;
+  late FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _reorderedSongs = List.from(widget.songs);
+    _dominantColor = defaultThemeColorNotifier.value;
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveNewOrder() async {
+    final orderedPaths = _reorderedSongs.map((song) => song.path).toList();
+    await PlaylistOrderDatabase().updatePlaylistOrder(
+      widget.playlistName,
+      orderedPaths,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
+      backgroundColor: _dominantColor,
+      content: 'Playlist order saved',
+    ));
+
+    Navigator.pop(context);
+  }
+
+  void _ensureFocus() {
+    if (!_focusNode.hasFocus) {
+      _focusNode.requestFocus();
+    }
+  }
+
+  Widget _buildSongItem(Song song, int index) {
+    return Container(
+      key: ValueKey(song.path),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _dominantColor.withAlpha(15),
+            Colors.black.withAlpha(60),
+          ],
+        ),
+        border: Border.all(
+          color: _dominantColor.withAlpha(50),
+          width: 0.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _dominantColor.withAlpha(20),
+            blurRadius: 12,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+      child: ReorderableDragStartListener(
+        index: index,
+        child: GestureDetector(
+          onTap: _ensureFocus,
+          child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            leading: Hero(
+              tag: 'albumArt-${song.path}',
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _dominantColor.withAlpha(40),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: song.albumArt != null
+                      ? Image.memory(
+                          song.albumArt!,
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                        )
+                      : Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                _dominantColor.withAlpha(60),
+                                Colors.black.withAlpha(120),
+                              ],
+                            ),
+                          ),
+                          child: Icon(
+                            Broken.musicnote,
+                            color: Colors.white70,
+                            size: 24,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+            title: GlowText(
+              song.title,
+              glowColor: _dominantColor.withAlpha(40),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              song.artist,
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: Icon(
+              Broken.double_lines,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyboardListener(
+      focusNode: _focusNode,
+      autofocus: true,
+      onKeyEvent: (KeyEvent event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.escape) {
+          Navigator.pop(context);
+        }
+      },
+      child: GestureDetector(
+        onTap: _ensureFocus,
+        child: Theme(
+          data: ThemeData.dark().copyWith(
+            // Remove drag highlight colors
+            canvasColor: Colors.transparent,
+            cardColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            splashColor: Colors.transparent,
+          ),
+          child: Scaffold(
+            backgroundColor: Colors.black,
+            appBar: AppBar(
+              leading: DynamicIconButton(
+                icon: Broken.arrow_left,
+                onPressed: () => Navigator.pop(context),
+                backgroundColor: _dominantColor,
+                size: 40,
+              ),
+              title: GlowText(
+                'Reorder ${widget.playlistName}',
+                glowColor: _dominantColor.withAlpha(60),
+                style: TextStyle(
+                  fontSize: 24,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              backgroundColor: Colors.black,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              actions: [
+                DynamicIconButton(
+                  icon: Broken.tick,
+                  onPressed: _saveNewOrder,
+                  backgroundColor: _dominantColor,
+                  size: 40,
+                ),
+                const SizedBox(width: 12),
+              ],
+            ),
+            body: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black,
+                    _dominantColor.withAlpha(15),
+                  ],
+                ),
+              ),
+              child: _reorderedSongs.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          GlowIcon(
+                            Broken.music_playlist,
+                            color: _dominantColor.withAlpha(80),
+                            size: 64,
+                          ),
+                          const SizedBox(height: 16),
+                          GlowText(
+                            'No songs in playlist',
+                            glowColor: _dominantColor.withAlpha(60),
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ReorderableListView(
+                      buildDefaultDragHandles: false,
+                      padding: const EdgeInsets.all(16),
+                      proxyDecorator: (child, index, animation) {
+                        // Custom proxy decorator to remove highlight during drag
+                        return Material(
+                          color: Colors.transparent,
+                          elevation: 0,
+                          child: child,
+                        );
+                      },
+                      onReorder: (oldIndex, newIndex) {
+                        setState(() {
+                          if (oldIndex < newIndex) {
+                            newIndex -= 1;
+                          }
+                          final Song item = _reorderedSongs.removeAt(oldIndex);
+                          _reorderedSongs.insert(newIndex, item);
+                        });
+                        // Re-request focus after reordering
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _ensureFocus();
+                        });
+                      },
+                      children: [
+                        for (int i = 0; i < _reorderedSongs.length; i++)
+                          _buildSongItem(_reorderedSongs[i], i),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class BreathingWaveformSeekbar extends StatefulWidget {
+  final List<double> waveformData;
+  final double progress;
+  final Color activeColor;
+  final Color inactiveColor;
+  final Function(double) onSeek;
+  final bool isPlaying;
+  final double currentPeak;
+
+  const BreathingWaveformSeekbar({
+    super.key,
+    required this.waveformData,
+    required this.progress,
+    required this.activeColor,
+    required this.inactiveColor,
+    required this.onSeek,
+    required this.isPlaying,
+    required this.currentPeak,
+  });
+
+  @override
+  State<BreathingWaveformSeekbar> createState() =>
+      _BreathingWaveformSeekbarState();
+}
+
+class _BreathingWaveformSeekbarState extends State<BreathingWaveformSeekbar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _breathingController;
+  late Animation<double> _breathingAnimation;
+  bool _isHovering = false;
+  double _localX = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _breathingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    _breathingAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _breathingController,
+      curve: Curves.easeInOut,
+    ));
+
+    if (widget.isPlaying) {
+      _breathingController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(BreathingWaveformSeekbar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isPlaying != oldWidget.isPlaying) {
+      if (widget.isPlaying) {
+        _breathingController.repeat(reverse: true);
+      } else {
+        _breathingController.stop();
+        _breathingController.animateTo(0.0);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _breathingController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      onHover: (event) => setState(() => _localX = event.localPosition.dx),
+      child: GestureDetector(
+        onTapDown: (details) {
+          final RenderBox box = context.findRenderObject() as RenderBox;
+          final localX = details.localPosition.dx;
+          final progress = (localX / box.size.width).clamp(0.0, 1.0);
+          widget.onSeek(progress);
+        },
+        onHorizontalDragUpdate: (details) {
+          final RenderBox box = context.findRenderObject() as RenderBox;
+          final localX = details.localPosition.dx;
+          final progress = (localX / box.size.width).clamp(0.0, 1.0);
+          widget.onSeek(progress);
+        },
+        child: AnimatedBuilder(
+          animation: _breathingAnimation,
+          builder: (context, child) {
+            return SizedBox(
+              height: 60,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Waveform bars
+                  CustomPaint(
+                    size: Size(double.infinity, 120),
+                    painter: BreathingWaveformPainter(
+                      waveformData: widget.waveformData,
+                      progress: widget.progress,
+                      activeColor: widget.activeColor,
+                      inactiveColor: widget.inactiveColor,
+                      breathingValue: _breathingAnimation.value,
+                      currentPeak: widget.currentPeak,
+                      isHovering: _isHovering,
+                      hoverX: _localX,
+                      isPlaying: widget.isPlaying,
+                    ),
+                  ),
+                  // Seekbar track
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 4,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(2),
+                        color: widget.inactiveColor,
+                      ),
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: widget.progress,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(2),
+                            gradient: LinearGradient(
+                              colors: [
+                                widget.activeColor,
+                                widget.activeColor.withValues(alpha: 0.8),
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color:
+                                    widget.activeColor.withValues(alpha: 0.4),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Progress indicator (thumb)
+                  if (_isHovering)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      child: Align(
+                        alignment: Alignment(widget.progress * 2 - 1, 0),
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: widget.activeColor,
+                            boxShadow: [
+                              BoxShadow(
+                                color:
+                                    widget.activeColor.withValues(alpha: 0.6),
+                                blurRadius: 12,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class BreathingWaveformPainter extends CustomPainter {
+  final List<double> waveformData;
+  final double progress;
+  final Color activeColor;
+  final Color inactiveColor;
+  final double breathingValue;
+  final double currentPeak;
+  final bool isHovering;
+  final double hoverX;
+  final bool isPlaying;
+
+  BreathingWaveformPainter({
+    required this.waveformData,
+    required this.progress,
+    required this.activeColor,
+    required this.inactiveColor,
+    required this.breathingValue,
+    required this.currentPeak,
+    required this.isHovering,
+    required this.hoverX,
+    required this.isPlaying,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (waveformData.isEmpty) return;
+
+    final centerY = size.height / 2;
+    final barCount = waveformData.length;
+    final barWidth = size.width / barCount;
+    final barSpacing = barWidth * 0.2;
+    final actualBarWidth = barWidth - barSpacing;
+
+    const minBarHeight = 2.0;
+    final maxBarHeight = size.height * 0.35;
+
+    // Calculate the range of bars that should be "active" based on current progress
+    final activeStart = (progress - 0.1).clamp(0.0, 1.0);
+    final activeEnd = (progress + 0.1).clamp(0.0, 1.0);
+
+    for (int i = 0; i < barCount; i++) {
+      final x = i * barWidth + barSpacing / 2;
+      final waveformValue = waveformData[i];
+      final barProgress = i / barCount;
+
+      final isActive = barProgress >= activeStart && barProgress <= activeEnd;
+      final distanceFromProgress = (barProgress - progress).abs();
+
+      double barHeight = minBarHeight;
+
+      if (isPlaying) {
+        // Emphasize bars near current progress
+        final proximityFactor =
+            1.0 - (distanceFromProgress * 5).clamp(0.0, 1.0);
+        final breathingFactor = 0.3 + (breathingValue * 0.7);
+
+        barHeight +=
+            (waveformValue * maxBarHeight * breathingFactor * proximityFactor) +
+                (currentPeak * maxBarHeight * 0.3 * proximityFactor);
+      } else {
+        // Static waveform when paused
+        barHeight += waveformValue * maxBarHeight * 0.2;
+      }
+
+      // Hover effect
+      if (isHovering) {
+        final distanceFromHover = (x - hoverX).abs();
+        if (distanceFromHover < 50) {
+          final hoverFactor = 1.0 - (distanceFromHover / 50);
+          barHeight *= (1.0 + hoverFactor * 0.3);
+        }
+      }
+
+      barHeight = math.max(minBarHeight, barHeight);
+
+      // Determine color based on activity
+      final color = isActive ? activeColor : inactiveColor;
+      final paint = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            color.withValues(alpha: 0.3),
+            color.withValues(alpha: 0.8),
+            color.withValues(alpha: 0.8),
+            color.withValues(alpha: 0.3),
+          ],
+          stops: const [0.0, 0.4, 0.6, 1.0],
+        ).createShader(Rect.fromLTWH(
+            x, centerY - barHeight, actualBarWidth, barHeight * 2));
+
+      // Draw bars
+      final topRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x, centerY - barHeight - 2, actualBarWidth, barHeight),
+        const Radius.circular(1),
+      );
+      canvas.drawRRect(topRect, paint);
+
+      final bottomRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x, centerY + 2, actualBarWidth, barHeight),
+        const Radius.circular(1),
+      );
+      canvas.drawRRect(bottomRect, paint);
+
+      // Add glow for active bars
+      if (isActive && isPlaying) {
+        final glowPaint = Paint()
+          ..color = activeColor.withValues(alpha: 0.2)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+
+        canvas.drawRRect(topRect, glowPaint);
+        canvas.drawRRect(bottomRect, glowPaint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(BreathingWaveformPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.breathingValue != breathingValue ||
+        oldDelegate.currentPeak != currentPeak ||
+        oldDelegate.isHovering != isHovering ||
+        oldDelegate.hoverX != hoverX ||
+        oldDelegate.isPlaying != isPlaying;
   }
 }

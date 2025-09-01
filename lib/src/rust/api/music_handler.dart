@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `background_worker`, `crossfade`, `extract_metadata`, `fill_buffer`, `get_cached_mp3_path`, `get_mp3_cache_dir`, `get_position`, `new`, `new`, `parse_cd_path`, `parse_lrc_metadata`, `pause`, `play`, `resume`, `seek`, `seek`, `set_volume`, `stop`
+// These functions are ignored because they are not marked as `pub`: `background_worker`, `crossfade`, `extract_metadata`, `fill_buffer`, `get_cached_mp3_path`, `get_mp3_cache_dir`, `get_position`, `new`, `new`, `parse_cd_path`, `parse_lrc_metadata`, `pause`, `play`, `position_monitor`, `resume`, `seek`, `seek`, `set_volume`, `stop`, `switch_to_preloaded`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AudioChunk`, `AudioPlayer`, `CDStreamSource`, `PlayerMessage`, `SafeSCDStream`, `StreamWrapper`, `StreamingBuffer`, `StreamingSource`, `Track`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `channels`, `channels`, `clone`, `clone`, `clone`, `current_span_len`, `current_span_len`, `drop`, `fmt`, `fmt`, `fmt`, `fmt`, `next`, `next`, `sample_rate`, `sample_rate`, `total_duration`, `total_duration`
 
@@ -128,6 +128,12 @@ Future<List<SongMetadata>> searchLyrics(
         required String songDir}) =>
     RustLib.instance.api.crateApiMusicHandlerSearchLyrics(
         lyricsDir: lyricsDir, query: query, songDir: songDir);
+
+Future<bool> preloadNextSong({required String path}) =>
+    RustLib.instance.api.crateApiMusicHandlerPreloadNextSong(path: path);
+
+Future<bool> switchToPreloadedNow() =>
+    RustLib.instance.api.crateApiMusicHandlerSwitchToPreloadedNow();
 
 class PlayerState {
   final bool initialized;
