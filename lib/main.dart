@@ -8092,80 +8092,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                   onSeek: (value) => _handleSeek(value),
                                 );
                               }
-                            })
-                            //child: useAltSeekbar
-                            //    ? Container(
-                            //        height: 32,
-                            //        padding:
-                            //            const EdgeInsets.symmetric(vertical: 12),
-                            //        child: MouseRegion(
-                            //          onEnter: (_) => setState(
-                            //              () => _isHoveringSeekbar = true),
-                            //          onExit: (_) => setState(
-                            //              () => _isHoveringSeekbar = false),
-                            //          child: TweenAnimationBuilder<double>(
-                            //            duration:
-                            //                const Duration(milliseconds: 200),
-                            //            curve: Curves.easeOutCubic,
-                            //            tween: Tween<double>(
-                            //              begin: 0,
-                            //              end: _isHoveringSeekbar ? 1 : 0,
-                            //            ),
-                            //            builder: (context, value, child) {
-                            //              return AnimatedContainer(
-                            //                duration:
-                            //                    const Duration(milliseconds: 200),
-                            //                curve: Curves.easeOutCubic,
-                            //                height: 4 + (12 * value),
-                            //                decoration: BoxDecoration(
-                            //                  borderRadius: BorderRadius.circular(
-                            //                      2 + (6 * value)),
-                            //                  gradient: LinearGradient(
-                            //                    begin: Alignment.topLeft,
-                            //                    end: Alignment.bottomRight,
-                            //                    colors: [
-                            //                      dominantColor.withValues(
-                            //                          alpha: 0.3),
-                            //                      dominantColor.withValues(
-                            //                          alpha: 0.1),
-                            //                    ],
-                            //                  ),
-                            //                ),
-                            //                child: SliderTheme(
-                            //                  data: SliderThemeData(
-                            //                    trackHeight: 4 + (12 * value),
-                            //                    thumbShape:
-                            //                        const RoundSliderThumbShape(
-                            //                            enabledThumbRadius: 0),
-                            //                    overlayShape: SliderComponentShape
-                            //                        .noOverlay,
-                            //                    activeTrackColor: dominantColor,
-                            //                    inactiveTrackColor:
-                            //                        Colors.grey.withAlpha(0x30),
-                            //                    trackShape:
-                            //                        CustomRoundedRectSliderTrackShape(
-                            //                      radius: 2 + (6 * value),
-                            //                    ),
-                            //                  ),
-                            //                  child: Slider(
-                            //                    value: _currentSliderValue,
-                            //                    onChanged: (value) =>
-                            //                        _handleSeek(value),
-                            //                  ),
-                            //                ),
-                            //              );
-                            //            },
-                            //          ),
-                            //        ),
-                            //      )
-                            //    : WaveformSeekBar(
-                            //        waveformData: _waveformData,
-                            //        progress: _currentSliderValue,
-                            //        activeColor: dominantColor,
-                            //        inactiveColor: Colors.grey.withAlpha(0x30),
-                            //        onSeek: (value) => _handleSeek(value),
-                            //      ),
-                            ),
+                            })),
                       ),
                       FadeTransition(
                         opacity: _fadeAnimation,
@@ -9972,7 +9899,7 @@ class _BreathingWaveformSeekbarState extends State<BreathingWaveformSeekbar>
         child: AnimatedBuilder(
           animation: _breathingAnimation,
           builder: (context, child) {
-            return Container(
+            return SizedBox(
               height: 60,
               child: Stack(
                 alignment: Alignment.center,
