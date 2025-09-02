@@ -42,22 +42,26 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 # Features
 
 - Can play music (duh)
-- Adaptive ui
+- Customisable
+- Adaptive UI
+- Intuitive UI
 - Smooth animations
 - Playlists
-- Downloading songs via spotdl command line (this takes a while due to all the rate limits so unfortunately you just have to wait it out)
+- Downloading songs via spotdl command line tool (requires spotdl installed and this takes a while due to all the rate limits so unfortunately you just have to wait it out)
 - Waveform seekbar
 - Lyrics from online source ([lrclib](https://lrclib.net/))
 - Shuffle option (mostly untested due to me not using it that often)
-- Mpris support
+- Mpris support (app is recognised by playerctl)
 - Shuffling
-- Sorting searching
+- Sorting
+- Searching
 - Artist separators (Also untested due to me not using it that often)
 - Caching
 - Choosable music folder
 - In-app volume slider
-- Customisable
 - CD Support
+- Playlist sorting
+- Customisable seekbar
 - Auto conversion of non-mp3 songs via ffmpeg (if you have many of these files you might have to wait a bit before reloading the library)
 - Horribly inefficent code
 
