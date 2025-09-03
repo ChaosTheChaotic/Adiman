@@ -72,7 +72,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
   <img src="images/music-player.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
   <img src="images/settings.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
   <img src="images/download.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-  <img src="images/playlists.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+  <img src="images/song-opts.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
   <img src="images/multi-select.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
 </div>
 
