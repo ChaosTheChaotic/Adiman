@@ -791,7 +791,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     _getVimBindings();
 
     _searchController.addListener(_updateSearchResults);
-    _selectedSortOption = (_currentPlaylistName == null) ? SortOption.title : SortOption.playlist;
+    _selectedSortOption =
+        (_currentPlaylistName == null) ? SortOption.title : SortOption.playlist;
     _sortSongs(_selectedSortOption);
   }
 
@@ -1885,9 +1886,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     setState(() {
       _selectedSortOption = option;
       switch (option) {
-	case SortOption.playlist:
-	  _loadSongs();
-	  break;
+        case SortOption.playlist:
+          _loadSongs();
+          break;
         case SortOption.title:
           songs.sort(
             (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
@@ -3752,8 +3753,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 onSelected: (option) => _sortSongs(option),
                                 itemBuilder: (context) =>
                                     <PopupMenuEntry<SortOption>>[
-				  if (_currentPlaylistName != null) ...[
-				    PopupMenuItem(
+                                  if (_currentPlaylistName != null) ...[
+                                    PopupMenuItem(
                                       value: SortOption.playlist,
                                       child: Row(
                                         children: [
@@ -3778,7 +3779,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         ],
                                       ),
                                     ),
-				  ],
+                                  ],
                                   PopupMenuItem(
                                     value: SortOption.title,
                                     child: Row(
