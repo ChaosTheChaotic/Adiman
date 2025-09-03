@@ -559,6 +559,7 @@ class _MiniPlayerState extends State<MiniPlayer>
 }
 
 enum SortOption {
+  playlist,
   title,
   titleReversed,
   artist,
@@ -730,7 +731,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   bool _isLoadingCD = false;
   bool _cdLoadingCancelled = false;
 
-  SortOption _selectedSortOption = SortOption.title;
+  late SortOption _selectedSortOption;
 
   bool _isSearchExpanded = false;
   final TextEditingController _searchController = TextEditingController();
@@ -790,6 +791,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     _getVimBindings();
 
     _searchController.addListener(_updateSearchResults);
+    _selectedSortOption = (_currentPlaylistName == null) ? SortOption.title : SortOption.playlist;
+    _sortSongs(_selectedSortOption);
   }
 
   void _updateDominantColor() {
@@ -1882,6 +1885,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     setState(() {
       _selectedSortOption = option;
       switch (option) {
+	case SortOption.playlist:
+	  _loadSongs();
+	  break;
         case SortOption.title:
           songs.sort(
             (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
@@ -3746,6 +3752,33 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 onSelected: (option) => _sortSongs(option),
                                 itemBuilder: (context) =>
                                     <PopupMenuEntry<SortOption>>[
+				  if (_currentPlaylistName != null) ...[
+				    PopupMenuItem(
+                                      value: SortOption.playlist,
+                                      child: Row(
+                                        children: [
+                                          if (_selectedSortOption ==
+                                              SortOption.playlist)
+                                            Icon(
+                                              Broken.tick,
+                                              color: dominantColor
+                                                          .computeLuminance() >
+                                                      0.01
+                                                  ? dominantColor
+                                                  : Theme.of(context)
+                                                      .textTheme
+                                                      .bodyLarge
+                                                      ?.color,
+                                              size: 18,
+                                            ),
+                                          if (_selectedSortOption ==
+                                              SortOption.playlist)
+                                            const SizedBox(width: 8),
+                                          const Text('Playlist order'),
+                                        ],
+                                      ),
+                                    ),
+				  ],
                                   PopupMenuItem(
                                     value: SortOption.title,
                                     child: Row(
