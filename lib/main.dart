@@ -1045,6 +1045,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                     _currentPlaylistName = playlist;
                                     currentMusicDirectory =
                                         '$_musicFolder/.adilists/$playlist';
+				    _selectedSortOption = SortOption.playlist;
                                   });
                                   _playPlaylistTransition();
                                   _loadSongs();
@@ -1308,6 +1309,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 setState(() {
                                   _currentPlaylistName = null;
                                   currentMusicDirectory = _musicFolder;
+				  _selectedSortOption = SortOption.title;
                                 });
                                 ScaffoldMessenger.of(context)
                                     .hideCurrentSnackBar();
