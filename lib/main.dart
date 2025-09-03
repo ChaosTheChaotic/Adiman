@@ -3774,7 +3774,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                           if (_selectedSortOption ==
                                               SortOption.playlist)
                                             const SizedBox(width: 8),
-                                          const Text('Playlist order'),
+                                          const Text('Playlist set order'),
                                         ],
                                       ),
                                     ),
