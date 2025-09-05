@@ -1059,6 +1059,7 @@ unsafe impl Send for AudioPlayer {}
 unsafe impl Sync for AudioPlayer {}
 
 pub fn initialize_player() -> bool {
+    println!("{}", std::env::current_exe().unwrap_or_default().to_string_lossy().to_string());
     let mut state = PLAYER_STATE.lock().unwrap();
     if !state.initialized {
         let mut player = PLAYER.lock().unwrap();
