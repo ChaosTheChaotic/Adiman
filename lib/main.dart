@@ -7319,8 +7319,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         return;
       }
       final started = await rust_api.playSong(path: currentSong.path);
-      await rust_api.preloadNextSong(
-          path: widget.songList[currentIndex + 1].path);
+      if (currentIndex + 1 < widget.songList.length) {
+        await rust_api.preloadNextSong(
+            path: widget.songList[currentIndex + 1].path);
+      }
       if (started && mounted) {
         widget.service.updatePlaylistStart(widget.songList, currentIndex);
         widget.service._updateMetadata();
