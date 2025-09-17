@@ -250,23 +250,30 @@ class _MiniPlayerState extends State<MiniPlayer>
   void _handleSkip(bool next) async {
     final newIndex = widget.currentIndex + (next ? 1 : -1);
     if (newIndex < 0 || newIndex >= widget.songList.length) return;
-
-    if (widget.song.path.contains('cdda://') ||
-        widget.songList[newIndex + 1].path.contains('cdda://')) {
-      await rust_api.stopSong();
-      await rust_api.playSong(path: widget.songList[newIndex].path);
-    } else {
-      await rust_api.switchToPreloadedNow();
-      if (newIndex + 1 < widget.songList.length) {
-        final nextNextSong = widget.songList[newIndex + 1];
-        if (!nextNextSong.path.contains('cdda://')) {
-          await rust_api.preloadNextSong(path: nextNextSong.path);
+  
+    try {
+      if (widget.song.path.contains('cdda://') ||
+          widget.songList[newIndex].path.contains('cdda://')) {
+        await rust_api.stopSong();
+        await rust_api.playSong(path: widget.songList[newIndex].path);
+      } else {
+        await rust_api.switchToPreloadedNow();
+        if (newIndex + 1 < widget.songList.length) {
+          final nextNextSong = widget.songList[newIndex + 1];
+          if (!nextNextSong.path.contains('cdda://')) {
+            await rust_api.preloadNextSong(path: nextNextSong.path);
+          }
         }
       }
+      // Add delay to ensure backend has processed the change
+      await Future.delayed(Duration(milliseconds: 100));
+      
+      Color newColor = await _getDominantColor(widget.songList[newIndex]);
+      widget.onUpdate(widget.songList[newIndex], newIndex, newColor);
+      widget.service.updatePlaylist(widget.songList, newIndex);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(content: "Error skipping song $e"));
     }
-    Color newColor = await _getDominantColor(widget.songList[newIndex]);
-    widget.onUpdate(widget.songList[newIndex], newIndex, newColor);
-    widget.service.updatePlaylist(widget.songList, newIndex);
   }
 
   Future<Color> _getDominantColor(Song song) async {
@@ -7441,37 +7448,46 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
       return;
     }
   
-    currentIndex = (currentIndex + 1) % widget.songList.length;
-    currentSong = widget.songList[currentIndex];
+    final int newIndex = (currentIndex + 1) % widget.songList.length;
+    final Song newSong = widget.songList[newIndex];
   
-    _initWaveform();
-    _loadLyrics();
-    await _updateDominantColor();
-  
-    final bool success;
-    if (currentSong.path.contains('cdda://')) {
-      success = await rust_api.playSong(path: currentSong.path);
-    } else {
-      success = await rust_api.switchToPreloadedNow();
-      if (currentIndex + 1 < widget.songList.length) {
-        final nextNextSong = widget.songList[currentIndex + 1];
-        if (!nextNextSong.path.contains('cdda://')) {
-          await rust_api.preloadNextSong(path: nextNextSong.path);
+    try {
+      final bool success;
+      if (newSong.path.contains('cdda://')) {
+        success = await rust_api.playSong(path: newSong.path);
+      } else {
+        success = await rust_api.switchToPreloadedNow();
+        if (success && newIndex + 1 < widget.songList.length) {
+          final nextNextSong = widget.songList[newIndex + 1];
+          if (!nextNextSong.path.contains('cdda://')) {
+            await rust_api.preloadNextSong(path: nextNextSong.path);
+          }
         }
       }
-    }
-    
-    if (success && mounted) {
-      setState(() {
-        isPlaying = true;
-        _currentSliderValue = 0.0;
-        _playPauseController.forward();
-      });
-      widget.service.updatePlaylist(widget.songList, currentIndex);
-      widget.service._updateMetadata();
-    }
   
-    setState(() => _isTransitioning = false);
+      if (success) {
+        final currentPath = await rust_api.getCurrentSongPath();
+        if (currentPath == newSong.path) {
+          setState(() {
+            currentIndex = newIndex;
+            currentSong = newSong;
+            isPlaying = true;
+            _currentSliderValue = 0.0;
+          });
+          _initWaveform();
+          _loadLyrics();
+          await _updateDominantColor();
+          widget.service.updatePlaylist(widget.songList, currentIndex);
+          widget.service._updateMetadata();
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(content: "Error skipping song $e"));
+    } finally {
+      if (mounted) {
+        setState(() => _isTransitioning = false);
+      }
+    }
   }
 
   Future<void> _handleSkipPrevious() async {
