@@ -7435,18 +7435,19 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     if (_isTransitioning) return;
     setState(() => _isTransitioning = true);
     _hasRepeated = false;
-
-    if (currentIndex >= widget.songList.length - 1) {
-      currentIndex = 0;
-    } else {
-      currentIndex++;
+  
+    if (widget.songList.isEmpty) {
+      setState(() => _isTransitioning = false);
+      return;
     }
-
+  
+    currentIndex = (currentIndex + 1) % widget.songList.length;
     currentSong = widget.songList[currentIndex];
+  
     _initWaveform();
     _loadLyrics();
     await _updateDominantColor();
-
+  
     final bool success;
     if (currentSong.path.contains('cdda://')) {
       success = await rust_api.playSong(path: currentSong.path);
@@ -7458,9 +7459,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           await rust_api.preloadNextSong(path: nextNextSong.path);
         }
       }
-      await rust_api.preloadNextSong(
-          path: widget.songList[currentIndex + 1].path);
     }
+    
     if (success && mounted) {
       setState(() {
         isPlaying = true;
@@ -7470,7 +7470,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
       widget.service.updatePlaylist(widget.songList, currentIndex);
       widget.service._updateMetadata();
     }
-
+  
     setState(() => _isTransitioning = false);
   }
 
