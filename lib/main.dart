@@ -1755,6 +1755,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
         metadataSongs = [];
         lyricsSongs = [];
         displayedSongs = songs;
+	if (currentSong != null) {
+      	  currentIndex = songs.indexWhere((s) => s.path == currentSong!.path);
+      	  if (currentIndex == -1) currentIndex = 0;
+      	}
         Future.delayed(Duration(milliseconds: 100), () {
           if (mounted) {
             setState(() {
