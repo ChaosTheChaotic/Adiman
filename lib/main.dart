@@ -250,7 +250,7 @@ class _MiniPlayerState extends State<MiniPlayer>
   void _handleSkip(bool next) async {
     final newIndex = widget.currentIndex + (next ? 1 : -1);
     if (newIndex < 0 || newIndex >= widget.songList.length) return;
-  
+
     try {
       if (widget.song.path.contains('cdda://') ||
           widget.songList[newIndex].path.contains('cdda://')) {
@@ -267,12 +267,13 @@ class _MiniPlayerState extends State<MiniPlayer>
       }
       // Add delay to ensure backend has processed the change
       await Future.delayed(Duration(milliseconds: 100));
-      
+
       Color newColor = await _getDominantColor(widget.songList[newIndex]);
       widget.onUpdate(widget.songList[newIndex], newIndex, newColor);
       widget.service.updatePlaylist(widget.songList, newIndex);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(content: "Error skipping song $e"));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(NamidaSnackbar(content: "Error skipping song $e"));
     }
   }
 
@@ -1052,7 +1053,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                     _currentPlaylistName = playlist;
                                     currentMusicDirectory =
                                         '$_musicFolder/.adilists/$playlist';
-				    _selectedSortOption = SortOption.playlist;
+                                    _selectedSortOption = SortOption.playlist;
                                   });
                                   _playPlaylistTransition();
                                   _loadSongs();
@@ -1316,7 +1317,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 setState(() {
                                   _currentPlaylistName = null;
                                   currentMusicDirectory = _musicFolder;
-				  _selectedSortOption = SortOption.title;
+                                  _selectedSortOption = SortOption.title;
                                 });
                                 ScaffoldMessenger.of(context)
                                     .hideCurrentSnackBar();
@@ -1762,10 +1763,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
         metadataSongs = [];
         lyricsSongs = [];
         displayedSongs = songs;
-	if (currentSong != null) {
-      	  currentIndex = songs.indexWhere((s) => s.path == currentSong!.path);
-      	  if (currentIndex == -1) currentIndex = 0;
-      	}
+        if (currentSong != null) {
+          currentIndex = songs.indexWhere((s) => s.path == currentSong!.path);
+          if (currentIndex == -1) currentIndex = 0;
+        }
         Future.delayed(Duration(milliseconds: 100), () {
           if (mounted) {
             setState(() {
@@ -7442,15 +7443,15 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     if (_isTransitioning) return;
     setState(() => _isTransitioning = true);
     _hasRepeated = false;
-  
+
     if (widget.songList.isEmpty) {
       setState(() => _isTransitioning = false);
       return;
     }
-  
+
     final int newIndex = (currentIndex + 1) % widget.songList.length;
     final Song newSong = widget.songList[newIndex];
-  
+
     try {
       final bool success;
       if (newSong.path.contains('cdda://')) {
@@ -7464,7 +7465,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           }
         }
       }
-  
+
       if (success) {
         final currentPath = await rust_api.getCurrentSongPath();
         if (currentPath == newSong.path) {
@@ -7482,7 +7483,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(content: "Error skipping song $e"));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(NamidaSnackbar(content: "Error skipping song $e"));
     } finally {
       if (mounted) {
         setState(() => _isTransitioning = false);
