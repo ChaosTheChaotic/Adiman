@@ -407,7 +407,7 @@ dependencies = [
 [[package]]
 name = "cd_audio"
 version = "0.1.0"
-source = "git+https://github.com/ChaosTheChaotic/cd_audio.git#6c8c5bcfe114201900b40466e320692500ee4ad9"
+source = "git+https://github.com/ChaosTheChaotic/cd_audio.git#c3ea979e13b190b82750438f2a9de51ed3da69a8"
 dependencies = [
  "cmake",
  "once_cell",
