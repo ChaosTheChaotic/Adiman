@@ -7722,16 +7722,32 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
       final musicFolder =
           SharedPreferencesService.instance.getString('musicFolder') ??
               '~/Music';
-      final expandedPath = musicFolder.replaceFirst(
-        '~',
-        Platform.environment['HOME'] ?? '',
-      );
+      final expandedPath =
+          musicFolder.replaceFirst('~', Platform.environment['HOME'] ?? '');
 
       final sourceFile = File(widget.tempPath!);
-      final destPath = path.join(expandedPath, path.basename(widget.tempPath!));
+      final fileName = path.basename(widget.tempPath!);
+      final destPath = path.join(expandedPath, fileName);
 
       await sourceFile.copy(destPath);
       await sourceFile.delete();
+
+      final newSong = Song(
+        title: currentSong.title,
+        artist: currentSong.artist,
+        artists: currentSong.artists,
+        album: currentSong.album,
+        path: destPath,
+        albumArt: currentSong.albumArt,
+        duration: currentSong.duration,
+        genre: currentSong.genre,
+      );
+
+      setState(() {
+        currentSong = newSong;
+      });
+
+      widget.service.updatePlaylist([newSong], widget.currentIndex);
 
       ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
           backgroundColor: dominantColor, content: 'Song saved to library!'));
