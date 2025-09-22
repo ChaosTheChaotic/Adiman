@@ -9510,7 +9510,8 @@ class PlaylistOrderDatabase {
   }
 
   Future<Database> _initDatabase() async {
-    final dbPath = await getDatabasesPath();
+    final home = Platform.environment['HOME'] ?? '';
+    final dbPath = '$home/.local/share/adiman';
     final path = '$dbPath/playlist_orders.db';
 
     return await openDatabase(
