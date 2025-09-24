@@ -251,22 +251,30 @@ class _MiniPlayerState extends State<MiniPlayer>
     final newIndex = widget.currentIndex + (next ? 1 : -1);
     if (newIndex < 0 || newIndex >= widget.songList.length) return;
 
-    if (widget.song.path.contains('cdda://') ||
-        widget.songList[newIndex + 1].path.contains('cdda://')) {
-      await rust_api.stopSong();
-      await rust_api.playSong(path: widget.songList[newIndex].path);
-    } else {
-      await rust_api.switchToPreloadedNow();
-      if (newIndex + 1 < widget.songList.length) {
-        final nextNextSong = widget.songList[newIndex + 1];
-        if (!nextNextSong.path.contains('cdda://')) {
-          await rust_api.preloadNextSong(path: nextNextSong.path);
+    try {
+      if (widget.song.path.contains('cdda://') ||
+          widget.songList[newIndex].path.contains('cdda://')) {
+        await rust_api.stopSong();
+        await rust_api.playSong(path: widget.songList[newIndex].path);
+      } else {
+        await rust_api.switchToPreloadedNow();
+        if (newIndex + 1 < widget.songList.length) {
+          final nextNextSong = widget.songList[newIndex + 1];
+          if (!nextNextSong.path.contains('cdda://')) {
+            await rust_api.preloadNextSong(path: nextNextSong.path);
+          }
         }
       }
+      // Add delay to ensure backend has processed the change
+      await Future.delayed(Duration(milliseconds: 100));
+
+      Color newColor = await _getDominantColor(widget.songList[newIndex]);
+      widget.onUpdate(widget.songList[newIndex], newIndex, newColor);
+      widget.service.updatePlaylist(widget.songList, newIndex);
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(NamidaSnackbar(content: "Error skipping song $e"));
     }
-    Color newColor = await _getDominantColor(widget.songList[newIndex]);
-    widget.onUpdate(widget.songList[newIndex], newIndex, newColor);
-    widget.service.updatePlaylist(widget.songList, newIndex);
   }
 
   Future<Color> _getDominantColor(Song song) async {
@@ -559,6 +567,7 @@ class _MiniPlayerState extends State<MiniPlayer>
 }
 
 enum SortOption {
+  playlist,
   title,
   titleReversed,
   artist,
@@ -730,7 +739,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   bool _isLoadingCD = false;
   bool _cdLoadingCancelled = false;
 
-  SortOption _selectedSortOption = SortOption.title;
+  late SortOption _selectedSortOption;
 
   bool _isSearchExpanded = false;
   final TextEditingController _searchController = TextEditingController();
@@ -790,6 +799,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     _getVimBindings();
 
     _searchController.addListener(_updateSearchResults);
+    _selectedSortOption =
+        (_currentPlaylistName == null) ? SortOption.title : SortOption.playlist;
+    _sortSongs(_selectedSortOption);
   }
 
   void _updateDominantColor() {
@@ -1041,6 +1053,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                     _currentPlaylistName = playlist;
                                     currentMusicDirectory =
                                         '$_musicFolder/.adilists/$playlist';
+                                    _selectedSortOption = SortOption.playlist;
                                   });
                                   _playPlaylistTransition();
                                   _loadSongs();
@@ -1304,6 +1317,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 setState(() {
                                   _currentPlaylistName = null;
                                   currentMusicDirectory = _musicFolder;
+                                  _selectedSortOption = SortOption.title;
                                 });
                                 ScaffoldMessenger.of(context)
                                     .hideCurrentSnackBar();
@@ -1749,6 +1763,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
         metadataSongs = [];
         lyricsSongs = [];
         displayedSongs = songs;
+        if (currentSong != null) {
+          currentIndex = songs.indexWhere((s) => s.path == currentSong!.path);
+          if (currentIndex == -1) currentIndex = 0;
+        }
         Future.delayed(Duration(milliseconds: 100), () {
           if (mounted) {
             setState(() {
@@ -1882,6 +1900,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     setState(() {
       _selectedSortOption = option;
       switch (option) {
+        case SortOption.playlist:
+          _loadSongs();
+          break;
         case SortOption.title:
           songs.sort(
             (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
@@ -3746,6 +3767,33 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 onSelected: (option) => _sortSongs(option),
                                 itemBuilder: (context) =>
                                     <PopupMenuEntry<SortOption>>[
+                                  if (_currentPlaylistName != null) ...[
+                                    PopupMenuItem(
+                                      value: SortOption.playlist,
+                                      child: Row(
+                                        children: [
+                                          if (_selectedSortOption ==
+                                              SortOption.playlist)
+                                            Icon(
+                                              Broken.tick,
+                                              color: dominantColor
+                                                          .computeLuminance() >
+                                                      0.01
+                                                  ? dominantColor
+                                                  : Theme.of(context)
+                                                      .textTheme
+                                                      .bodyLarge
+                                                      ?.color,
+                                              size: 18,
+                                            ),
+                                          if (_selectedSortOption ==
+                                              SortOption.playlist)
+                                            const SizedBox(width: 8),
+                                          const Text('Playlist set order'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                   PopupMenuItem(
                                     value: SortOption.title,
                                     child: Row(
@@ -7283,8 +7331,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         return;
       }
       final started = await rust_api.playSong(path: currentSong.path);
-      await rust_api.preloadNextSong(
-          path: widget.songList[currentIndex + 1].path);
+      if (currentIndex + 1 < widget.songList.length) {
+        await rust_api.preloadNextSong(
+            path: widget.songList[currentIndex + 1].path);
+      }
       if (started && mounted) {
         widget.service.updatePlaylistStart(widget.songList, currentIndex);
         widget.service._updateMetadata();
@@ -7394,42 +7444,52 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     setState(() => _isTransitioning = true);
     _hasRepeated = false;
 
-    if (currentIndex >= widget.songList.length - 1) {
-      currentIndex = 0;
-    } else {
-      currentIndex++;
+    if (widget.songList.isEmpty) {
+      setState(() => _isTransitioning = false);
+      return;
     }
 
-    currentSong = widget.songList[currentIndex];
-    _initWaveform();
-    _loadLyrics();
-    await _updateDominantColor();
+    final int newIndex = (currentIndex + 1) % widget.songList.length;
+    final Song newSong = widget.songList[newIndex];
 
-    final bool success;
-    if (currentSong.path.contains('cdda://')) {
-      success = await rust_api.playSong(path: currentSong.path);
-    } else {
-      success = await rust_api.switchToPreloadedNow();
-      if (currentIndex + 1 < widget.songList.length) {
-        final nextNextSong = widget.songList[currentIndex + 1];
-        if (!nextNextSong.path.contains('cdda://')) {
-          await rust_api.preloadNextSong(path: nextNextSong.path);
+    try {
+      final bool success;
+      if (newSong.path.contains('cdda://')) {
+        success = await rust_api.playSong(path: newSong.path);
+      } else {
+        success = await rust_api.switchToPreloadedNow();
+        if (success && newIndex + 1 < widget.songList.length) {
+          final nextNextSong = widget.songList[newIndex + 1];
+          if (!nextNextSong.path.contains('cdda://')) {
+            await rust_api.preloadNextSong(path: nextNextSong.path);
+          }
         }
       }
-      await rust_api.preloadNextSong(
-          path: widget.songList[currentIndex + 1].path);
-    }
-    if (success && mounted) {
-      setState(() {
-        isPlaying = true;
-        _currentSliderValue = 0.0;
-        _playPauseController.forward();
-      });
-      widget.service.updatePlaylist(widget.songList, currentIndex);
-      widget.service._updateMetadata();
-    }
 
-    setState(() => _isTransitioning = false);
+      if (success) {
+        final currentPath = await rust_api.getCurrentSongPath();
+        if (currentPath == newSong.path) {
+          setState(() {
+            currentIndex = newIndex;
+            currentSong = newSong;
+            isPlaying = true;
+            _currentSliderValue = 0.0;
+          });
+          _initWaveform();
+          _loadLyrics();
+          await _updateDominantColor();
+          widget.service.updatePlaylist(widget.songList, currentIndex);
+          widget.service._updateMetadata();
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(NamidaSnackbar(content: "Error skipping song $e"));
+    } finally {
+      if (mounted) {
+        setState(() => _isTransitioning = false);
+      }
+    }
   }
 
   Future<void> _handleSkipPrevious() async {
@@ -7662,16 +7722,32 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
       final musicFolder =
           SharedPreferencesService.instance.getString('musicFolder') ??
               '~/Music';
-      final expandedPath = musicFolder.replaceFirst(
-        '~',
-        Platform.environment['HOME'] ?? '',
-      );
+      final expandedPath =
+          musicFolder.replaceFirst('~', Platform.environment['HOME'] ?? '');
 
       final sourceFile = File(widget.tempPath!);
-      final destPath = path.join(expandedPath, path.basename(widget.tempPath!));
+      final fileName = path.basename(widget.tempPath!);
+      final destPath = path.join(expandedPath, fileName);
 
       await sourceFile.copy(destPath);
       await sourceFile.delete();
+
+      final newSong = Song(
+        title: currentSong.title,
+        artist: currentSong.artist,
+        artists: currentSong.artists,
+        album: currentSong.album,
+        path: destPath,
+        albumArt: currentSong.albumArt,
+        duration: currentSong.duration,
+        genre: currentSong.genre,
+      );
+
+      setState(() {
+        currentSong = newSong;
+      });
+
+      widget.service.updatePlaylist([newSong], widget.currentIndex);
 
       ScaffoldMessenger.of(context).showSnackBar(NamidaSnackbar(
           backgroundColor: dominantColor, content: 'Song saved to library!'));
@@ -9434,7 +9510,8 @@ class PlaylistOrderDatabase {
   }
 
   Future<Database> _initDatabase() async {
-    final dbPath = await getDatabasesPath();
+    final home = Platform.environment['HOME'] ?? '';
+    final dbPath = '$home/.local/share/adiman';
     final path = '$dbPath/playlist_orders.db';
 
     return await openDatabase(

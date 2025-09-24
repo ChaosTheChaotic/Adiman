@@ -42,22 +42,28 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 # Features
 
 - Can play music (duh)
-- Adaptive ui
+- Customisable
+- Adaptive UI
+- Intuitive UI
+- Non-intrusive UI
 - Smooth animations
 - Playlists
-- Downloading songs via spotdl command line (this takes a while due to all the rate limits so unfortunately you just have to wait it out)
+- Downloading songs via spotdl command line tool (requires spotdl installed and this takes a while due to all the rate limits so unfortunately you just have to wait it out)
 - Waveform seekbar
 - Lyrics from online source ([lrclib](https://lrclib.net/))
 - Shuffle option (mostly untested due to me not using it that often)
-- Mpris support
+- Mpris support (app is recognised by playerctl etc)
 - Shuffling
-- Sorting searching
+- Sorting
+- Searching
 - Artist separators (Also untested due to me not using it that often)
 - Caching
 - Choosable music folder
 - In-app volume slider
-- Customisable
 - CD Support
+- Playlist sorting
+- Playlist merging
+- Customisable seekbar
 - Auto conversion of non-mp3 songs via ffmpeg (if you have many of these files you might have to wait a bit before reloading the library)
 - Horribly inefficent code
 
@@ -68,7 +74,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
   <img src="images/music-player.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
   <img src="images/settings.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
   <img src="images/download.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-  <img src="images/playlists.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+  <img src="images/song-opts.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
   <img src="images/multi-select.png" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
 </div>
 
@@ -98,5 +104,5 @@ build/linux/<your_architecture>/release/bundle/adiman
 ```
 
 # Helpful people
-- MSOB7Y (the creator of namida) for the inspiration and motivation for this and where I got the icons from
+- MSOB7Y (the creator of namida) for the inspiration and motivation for this and where I got the original icons from
 - DuckTheCrowolf (thevietnamesecrow on discord) for making the logo
