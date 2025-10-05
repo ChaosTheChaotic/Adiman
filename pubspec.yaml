@@ -45,6 +45,7 @@ dependencies:
   animated_background: ^2.0.0
   anni_mpris_service: ^0.1.0
   path: ^1.9.1
+  freezed_annotation: ^3.1.0
   lrc:
     git:
       url: https://github.com/MSOB7YY/dart_lrc
@@ -53,6 +54,8 @@ dependencies:
   sqflite_common_ffi: ^2.3.6
 
 dev_dependencies:
+  freezed: ^3.2.3
+  build_runner: ^2.9.0
   flutter_test:
     sdk: flutter
 

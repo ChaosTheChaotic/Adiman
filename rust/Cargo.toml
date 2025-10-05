@@ -21,6 +21,7 @@ image = "0.25.6"
 atomic_float = "1.1.0"
 rodio = "0.21.1"
 cd_audio = { git = "https://github.com/ChaosTheChaotic/cd_audio.git" }
+extism = "1.12.0"
 
 [build-dependencies]
 flutter_rust_bridge_codegen = "=2.11.1"

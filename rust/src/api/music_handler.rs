@@ -2,17 +2,17 @@ use crate::api::utils::fpre;
 use atomic_float::AtomicF32;
 use audiotags::Tag;
 use cd_audio::{
-    sget_cd_stream_first_sector, sget_cd_stream_last_sector, sget_devices, sget_track_meta,
-    sopen_cd_stream, sread_cd_stream, sseek_cd_stream, strack_duration, strack_num, sverify_audio,
-    SCDStream,
+    SCDStream, sget_cd_stream_first_sector, sget_cd_stream_last_sector, sget_devices,
+    sget_track_meta, sopen_cd_stream, sread_cd_stream, sseek_cd_stream, strack_duration,
+    strack_num, sverify_audio,
 };
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use regex::Regex;
 use rodio::{
-    cpal::traits::{DeviceTrait, HostTrait},
     Decoder, OutputStream, OutputStreamBuilder, Sink, Source,
+    cpal::traits::{DeviceTrait, HostTrait},
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -26,9 +26,9 @@ use std::{
     path::{Path, PathBuf},
     process::{Child, Command},
     sync::{
+        Arc, Mutex, RwLock,
         atomic::{AtomicBool, Ordering},
         mpsc::{self, Receiver, Sender},
-        Arc, Mutex, RwLock,
     },
     thread,
     time::{Duration, Instant},
@@ -467,7 +467,9 @@ impl AudioPlayer {
 
                             // Warn about seek position
                             if position != 0.0 {
-                                println!("Warning: Seeking in CD tracks is not supported (yet). Starting from beginning.");
+                                println!(
+                                    "Warning: Seeking in CD tracks is not supported (yet). Starting from beginning."
+                                );
                             }
 
                             // Create CD source
