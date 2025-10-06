@@ -1,3 +1,4 @@
+use crate::api::host_func_interface::add_functions;
 pub use extism::{Manifest, Plugin, PluginBuilder, Wasm};
 use serde::{Deserialize, Serialize};
 pub use serde_json::{Value, from_str, from_value};
@@ -9,7 +10,6 @@ pub use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
 };
-use crate::api::host_func_interface::add_functions;
 
 #[derive(Debug)]
 pub enum PluginManErr {
@@ -326,7 +326,9 @@ impl AdiPluginMan {
                 });
 
                 let m = Manifest::new([pfile]).with_config(config_iter);
-                let plugin: Plugin = add_functions(PluginBuilder::new(m).with_wasi(false)).build().unwrap();
+                let plugin: Plugin = add_functions(PluginBuilder::new(m).with_wasi(false))
+                    .build()
+                    .unwrap();
 
                 let pin = PluginInode {
                     plugin: Arc::new(Mutex::new(plugin)),
