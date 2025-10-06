@@ -9,6 +9,7 @@ pub use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
 };
+use crate::api::host_func_interface::add_functions;
 
 #[derive(Debug)]
 pub enum PluginManErr {
@@ -111,7 +112,7 @@ impl AdiPluginMan {
 
         for (index, item) in rpc_array.iter().enumerate() {
             if let Ok(rpc_config) = from_value::<RpcConfig>(item.clone()) {
-                if Self::validate_rpc_config(&rpc_config) {
+                if Self::validate_rpc(&rpc_config) {
                     valid_configs.push(rpc_config);
                 } else {
                     eprintln!(
@@ -132,7 +133,7 @@ impl AdiPluginMan {
         Ok(valid_configs)
     }
 
-    fn validate_rpc_config(config: &RpcConfig) -> bool {
+    fn validate_rpc(config: &RpcConfig) -> bool {
         if config.key.is_empty() {
             return false;
         }
@@ -194,8 +195,7 @@ impl AdiPluginMan {
         }
     }
 
-    // Convert RPC config to PluginConfig
-    fn rpc_config_to_plugin_config(rpc_configs: Vec<RpcConfig>) -> PluginConfig {
+    fn rpc2plugin(rpc_configs: Vec<RpcConfig>) -> PluginConfig {
         let mut plugin_config = HashMap::new();
 
         for config in rpc_configs {
@@ -263,7 +263,7 @@ impl AdiPluginMan {
         plugin_config
     }
 
-    pub fn load_plugin_with_metadata(&mut self, path: String) -> Result<(), PluginManErr> {
+    pub fn load_plugin(&mut self, path: String) -> Result<(), PluginManErr> {
         let ppath = std::path::PathBuf::from(path.clone());
         if ppath.exists() {
             let ext = ppath.extension();
@@ -300,7 +300,7 @@ impl AdiPluginMan {
 
                 let plugin_config = if pmet.exists() {
                     match Self::read_plugin_metadata(&pmet) {
-                        Ok(rpc_configs) => Self::rpc_config_to_plugin_config(rpc_configs),
+                        Ok(rpc_configs) => Self::rpc2plugin(rpc_configs),
                         Err(_) => {
                             eprintln!("Warning: Failed to read metadata, using empty config");
                             HashMap::new()
@@ -326,7 +326,7 @@ impl AdiPluginMan {
                 });
 
                 let m = Manifest::new([pfile]).with_config(config_iter);
-                let plugin: Plugin = PluginBuilder::new(m).with_wasi(false).build().unwrap();
+                let plugin: Plugin = add_functions(PluginBuilder::new(m).with_wasi(false)).build().unwrap();
 
                 let pin = PluginInode {
                     plugin: Arc::new(Mutex::new(plugin)),
