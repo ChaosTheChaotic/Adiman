@@ -4,13 +4,15 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../frb_generated.dart';
+import '../lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'plugin_man.freezed.dart';
 
+// These functions are ignored because they are not marked as `pub`: `read_plugin_metadata`, `rpc_config_to_plugin_config`, `validate_rpc_config`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AdiPluginMan`, `PluginManErr`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `load_plugin`, `new`, `remove_plugin`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `fmt`, `fmt`, `fmt`
+// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `load_plugin_with_metadata`, `new`, `remove_plugin`
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < Mutex < Plugin > >>>
 abstract class ArcMutexPlugin implements RustOpaqueInterface {}
@@ -24,6 +26,21 @@ abstract class PluginInode implements RustOpaqueInterface {
   set config(Map<String, ConfigTypes> config);
 
   set plugin(ArcMutexPlugin plugin);
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<RpcConfig>>
+abstract class RpcConfig implements RustOpaqueInterface {
+  String get ctype;
+
+  Value get defaultVal;
+
+  String get key;
+
+  set ctype(String ctype);
+
+  set defaultVal(Value defaultVal);
+
+  set key(String key);
 }
 
 @freezed

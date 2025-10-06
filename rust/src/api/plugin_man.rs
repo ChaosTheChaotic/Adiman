@@ -1,9 +1,12 @@
 pub use extism::{Manifest, Plugin, PluginBuilder, Wasm};
+use serde::{Deserialize, Serialize};
+pub use serde_json::{Value, from_str, from_value};
 pub use std::{
     collections::HashMap,
     error::Error,
     ffi::OsStr,
     io::Read,
+    path::PathBuf,
     sync::{Arc, Mutex},
 };
 
@@ -13,18 +16,26 @@ pub enum PluginManErr {
     BadFile(String),
     PluginError(Option<String>),
     PluginNotLoaded(String),
+    MetadataNotFound(String),
+    InvalidMeta(String),
 }
 
 impl std::fmt::Display for PluginManErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let err: String = match self {
             PluginManErr::FileNotFound(path) => format!("File not found: {path}"),
-            PluginManErr::BadFile(path) => format!("Provided file is not a wasm file: {path}"),
+            PluginManErr::BadFile(path) => {
+                format!("Provided file is not a wasm file or has no stem: {path}")
+            }
             PluginManErr::PluginError(e) => format!(
                 "A plugin error occurred: {}",
                 e.clone().unwrap_or("No error message returned".into())
             ),
             PluginManErr::PluginNotLoaded(path) => format!("Plugin: {path} is not loaded"),
+            PluginManErr::MetadataNotFound(path) => format!(
+                "Metadata for plugin: {path} not found. Ensure it has the same name as the plugin and is json type whilst being in the same (valid) directory as the plugin"
+            ),
+            PluginManErr::InvalidMeta(path) => format!("Metadata found for: {path} is invalid"),
         };
         write!(f, "{err}")
     }
@@ -40,6 +51,13 @@ pub enum ConfigTypes {
     UInt(u32),
     BigInt(i128),
     BigUInt(u128),
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct RpcConfig {
+    pub key: String,
+    pub ctype: String,
+    pub default_val: Value,
 }
 
 pub type PluginConfig = HashMap<String, ConfigTypes>; // A key-value pair with a key and a config type
@@ -63,51 +81,260 @@ impl AdiPluginMan {
         }
     }
 
-    pub fn load_plugin(
-        &mut self,
-        path: String,
-        pconf: Option<PluginConfig>,
-    ) -> Result<(), PluginManErr> {
+    fn read_plugin_metadata(
+        metadata_path: &std::path::Path,
+    ) -> Result<Vec<RpcConfig>, PluginManErr> {
+        let metadata_content = std::fs::read_to_string(metadata_path).map_err(|_| {
+            PluginManErr::MetadataNotFound(metadata_path.to_string_lossy().to_string())
+        })?;
+
+        let metadata: Value = from_str(&metadata_content)
+            .map_err(|_| PluginManErr::InvalidMeta(metadata_path.to_string_lossy().to_string()))?;
+
+        let rpc_array = match metadata.get("rpc") {
+            Some(Value::Array(arr)) => arr,
+            Some(_) => {
+                // rpc exists but is not an array
+                eprintln!(
+                    "Warning: 'rpc' field is not an array in metadata file: {}",
+                    metadata_path.display()
+                );
+                return Ok(Vec::new());
+            }
+            None => {
+                // rpc doesent exist
+                return Ok(Vec::new());
+            }
+        };
+
+        let mut valid_configs = Vec::new();
+
+        for (index, item) in rpc_array.iter().enumerate() {
+            if let Ok(rpc_config) = from_value::<RpcConfig>(item.clone()) {
+                if Self::validate_rpc_config(&rpc_config) {
+                    valid_configs.push(rpc_config);
+                } else {
+                    eprintln!(
+                        "Warning: Invalid RPC config at index {} in metadata file: {}",
+                        index,
+                        metadata_path.display()
+                    );
+                }
+            } else {
+                eprintln!(
+                    "Warning: Failed to parse RPC config at index {} in metadata file: {}",
+                    index,
+                    metadata_path.display()
+                );
+            }
+        }
+
+        Ok(valid_configs)
+    }
+
+    fn validate_rpc_config(config: &RpcConfig) -> bool {
+        if config.key.is_empty() {
+            return false;
+        }
+
+        match config.ctype.as_str() {
+            "String" => {
+                matches!(config.default_val, Value::String(_))
+            }
+            "Bool" => {
+                matches!(config.default_val, Value::Bool(_))
+            }
+            "Int" => {
+                if let Some(num) = config.default_val.as_i64() {
+                    num >= i32::MIN as i64 && num <= i32::MAX as i64
+                } else {
+                    false
+                }
+            }
+            "UInt" => {
+                if let Some(num) = config.default_val.as_u64() {
+                    num <= u32::MAX as u64
+                } else {
+                    false
+                }
+            }
+            "BigInt" => {
+                // BigInt can be number or string of digits (with optional minus)
+                if let Some(_) = config.default_val.as_i64() {
+                    true
+                } else if let Some(str_val) = config.default_val.as_str() {
+                    // Must be all digits with optional minus at start
+                    let mut chars = str_val.chars();
+                    let first_char = chars.next();
+                    let rest: String = chars.collect();
+
+                    (first_char == Some('-')
+                        || first_char.map(|c| c.is_ascii_digit()).unwrap_or(false))
+                        && rest.chars().all(|c| c.is_ascii_digit())
+                        && !rest.is_empty()
+                } else {
+                    false
+                }
+            }
+            "BigUInt" => {
+                // BigUInt can be number or string of digits
+                if let Some(_) = config.default_val.as_u64() {
+                    true
+                } else if let Some(str_val) = config.default_val.as_str() {
+                    // Must be all digits
+                    !str_val.is_empty() && str_val.chars().all(|c| c.is_ascii_digit())
+                } else {
+                    false
+                }
+            }
+            _ => {
+                // Unknown config type
+                false
+            }
+        }
+    }
+
+    // Convert RPC config to PluginConfig
+    fn rpc_config_to_plugin_config(rpc_configs: Vec<RpcConfig>) -> PluginConfig {
+        let mut plugin_config = HashMap::new();
+
+        for config in rpc_configs {
+            let config_type = match config.ctype.as_str() {
+                "String" => {
+                    if let Value::String(s) = config.default_val {
+                        ConfigTypes::String(s)
+                    } else {
+                        continue; // Should not happen due to validation
+                    }
+                }
+                "Bool" => {
+                    if let Value::Bool(b) = config.default_val {
+                        ConfigTypes::Bool(b)
+                    } else {
+                        continue;
+                    }
+                }
+                "Int" => {
+                    if let Some(i) = config.default_val.as_i64() {
+                        ConfigTypes::Int(i as i32)
+                    } else {
+                        continue;
+                    }
+                }
+                "UInt" => {
+                    if let Some(u) = config.default_val.as_u64() {
+                        ConfigTypes::UInt(u as u32)
+                    } else {
+                        continue;
+                    }
+                }
+                "BigInt" => {
+                    if let Some(i) = config.default_val.as_i64() {
+                        ConfigTypes::BigInt(i as i128)
+                    } else if let Value::String(s) = &config.default_val {
+                        if let Ok(i) = s.parse::<i128>() {
+                            ConfigTypes::BigInt(i)
+                        } else {
+                            continue;
+                        }
+                    } else {
+                        continue;
+                    }
+                }
+                "BigUInt" => {
+                    if let Some(u) = config.default_val.as_u64() {
+                        ConfigTypes::BigUInt(u as u128)
+                    } else if let Value::String(s) = &config.default_val {
+                        if let Ok(u) = s.parse::<u128>() {
+                            ConfigTypes::BigUInt(u)
+                        } else {
+                            continue;
+                        }
+                    } else {
+                        continue;
+                    }
+                }
+                _ => continue, // Should not happen due to validation
+            };
+
+            plugin_config.insert(config.key, config_type);
+        }
+
+        plugin_config
+    }
+
+    pub fn load_plugin_with_metadata(&mut self, path: String) -> Result<(), PluginManErr> {
         let ppath = std::path::PathBuf::from(path.clone());
         if ppath.exists() {
             let ext = ppath.extension();
             let wasm_ext: bool = ext == Some(OsStr::new("wasm"));
             let stem = ppath.file_stem();
+            if stem.is_none() {
+                eprintln!(
+                    "Plugin file has no stem, add a name before the extension to ensure the metadata can be reliably read"
+                );
+                return Err(PluginManErr::BadFile(path));
+            }
             let stem_clean: bool = stem
                 .and_then(OsStr::to_str)
                 .map(|s| !s.contains('.'))
                 .unwrap_or(true);
-            let mut fp = std::fs::File::open(ppath).expect("Failed to open file");
+            let mut fp = std::fs::File::open(ppath.clone()).expect("Failed to open file");
             let mut buf = [0; 4];
-            fp.read_exact(&mut buf).expect("Faild to read from file");
-            let magic_clean: bool = buf == [0x00, 0x61, 0x73, 0x6d]; // Do the first 4 bytes match the wasm magic number?
+            fp.read_exact(&mut buf).expect("Failed to read from file");
+            let magic_clean: bool = buf == [0x00, 0x61, 0x73, 0x6d];
             let valid: bool = wasm_ext && stem_clean && magic_clean;
+
             if valid {
-                let pfile = Wasm::file(path.clone());
-                let config_iter;
-                let m: Manifest = if let Some(ref conf) = pconf {
-                    // Convert the PluginConfig into an iterator of (String, String)
-                    config_iter = conf.into_iter().map(|(k, v)| {
-                        let value_string = match v {
-                            ConfigTypes::String(s) => s.to_string(),
-                            ConfigTypes::Bool(b) => b.to_string(),
-                            ConfigTypes::Int(i) => i.to_string(),
-                            ConfigTypes::UInt(u) => u.to_string(),
-                            ConfigTypes::BigInt(i) => i.to_string(),
-                            ConfigTypes::BigUInt(u) => u.to_string(),
-                        };
-                        (k, value_string)
-                    });
-                    Manifest::new([pfile]).with_config(config_iter)
+                let ppar = ppath.parent();
+                if ppar.is_none() {
+                    eprintln!(
+                        "The parent dir is either root or an empty string, fix this to ensure the plugin and metadata can be used correctly"
+                    );
+                    return Err(PluginManErr::MetadataNotFound(path));
+                }
+
+                let nfn = std::path::PathBuf::from(stem.unwrap().to_string_lossy().to_string())
+                    .with_extension("json");
+                let pmet = ppar.unwrap().join(nfn);
+
+                let plugin_config = if pmet.exists() {
+                    match Self::read_plugin_metadata(&pmet) {
+                        Ok(rpc_configs) => Self::rpc_config_to_plugin_config(rpc_configs),
+                        Err(_) => {
+                            eprintln!("Warning: Failed to read metadata, using empty config");
+                            HashMap::new()
+                        }
+                    }
                 } else {
-                    Manifest::new([pfile])
+                    // No metadata found
+                    HashMap::new()
                 };
+
+                let pfile = Wasm::file(path.clone());
+
+                let config_iter = plugin_config.iter().map(|(k, v)| {
+                    let value_string = match v {
+                        ConfigTypes::String(s) => s.to_string(),
+                        ConfigTypes::Bool(b) => b.to_string(),
+                        ConfigTypes::Int(i) => i.to_string(),
+                        ConfigTypes::UInt(u) => u.to_string(),
+                        ConfigTypes::BigInt(i) => i.to_string(),
+                        ConfigTypes::BigUInt(u) => u.to_string(),
+                    };
+                    (k.clone(), value_string)
+                });
+
+                let m = Manifest::new([pfile]).with_config(config_iter);
                 let plugin: Plugin = PluginBuilder::new(m).with_wasi(false).build().unwrap();
+
                 let pin = PluginInode {
                     plugin: Arc::new(Mutex::new(plugin)),
-                    config: pconf.unwrap_or(HashMap::new()),
+                    config: plugin_config,
                 };
+
                 self.plugin_meta.insert(path.clone(), pin);
+
                 if let Some(pentry) = self.plugin_meta.get(&path) {
                     let pluginst: &Arc<Mutex<Plugin>> = &pentry.plugin;
                     let mut pluginstl = pluginst.lock().unwrap();
