@@ -54,8 +54,8 @@ dependencies:
   sqflite_common_ffi: ^2.3.6
 
 dev_dependencies:
-  freezed: ^3.2.3
-  build_runner: ^2.9.0
+  freezed: ^3.1.0
+  build_runner: ^2.5.4
   flutter_test:
     sdk: flutter
 
