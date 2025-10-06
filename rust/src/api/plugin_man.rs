@@ -1,5 +1,11 @@
-pub use extism::{Plugin, PluginBuilder, Wasm, Manifest};
-pub use std::{collections::HashMap, error::Error, ffi::OsStr, io::Read, sync::{Arc, Mutex}};
+pub use extism::{Manifest, Plugin, PluginBuilder, Wasm};
+pub use std::{
+    collections::HashMap,
+    error::Error,
+    ffi::OsStr,
+    io::Read,
+    sync::{Arc, Mutex},
+};
 
 #[derive(Debug)]
 pub enum PluginManErr {
@@ -39,8 +45,8 @@ pub enum ConfigTypes {
 pub type PluginConfig = HashMap<String, ConfigTypes>; // A key-value pair with a key and a config type
 
 pub struct PluginInode {
-    pub plugin: Arc<Mutex<Plugin>>,  // Plugin handle wrapped in an Arc and Mutex because frb keeps generating code trying to clone it 
-    pub config: PluginConfig, // Plugins config
+    pub plugin: Arc<Mutex<Plugin>>, // Plugin handle wrapped in an Arc and Mutex because frb keeps generating code trying to clone it
+    pub config: PluginConfig,       // Plugins config
 }
 
 pub type AdimanPlugin = HashMap<String, PluginInode>; // Key value with plugins meta and its path
@@ -106,7 +112,8 @@ impl AdiPluginMan {
                     let pluginst: &Arc<Mutex<Plugin>> = &pentry.plugin;
                     let mut pluginstl = pluginst.lock().unwrap();
                     if pluginstl.function_exists("init") {
-                        let r: core::result::Result<&str, anyhow::Error> = pluginstl.call("init", ());
+                        let r: core::result::Result<&str, anyhow::Error> =
+                            pluginstl.call("init", ());
                         if r.is_err() {
                             return Err(PluginManErr::PluginError(r.err().map(|e| e.to_string())));
                         } else {
@@ -123,9 +130,11 @@ impl AdiPluginMan {
         }
     }
     pub fn remove_plugin(&mut self, path: String) -> Result<(), PluginManErr> {
-        let pentry = self.plugin_meta.remove(&path)
+        let pentry = self
+            .plugin_meta
+            .remove(&path)
             .ok_or_else(|| PluginManErr::PluginNotLoaded(path.clone()))?;
-    
+
         let mut pluginstl = pentry.plugin.lock().unwrap();
         if pluginstl.function_exists("stop") {
             let r: core::result::Result<&str, anyhow::Error> = pluginstl.call("stop", ());
@@ -133,7 +142,7 @@ impl AdiPluginMan {
                 return Err(PluginManErr::PluginError(Some(e.to_string())));
             }
         }
-    
+
         Ok(())
     }
 }
