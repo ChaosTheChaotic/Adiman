@@ -4183,6 +4183,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final bool _isChangingColor = false;
   final bool _isManagingSeparators = false;
   final bool _isClearingDatabase = false;
+  bool _enablePlugins = false;
   bool _autoConvert = false;
   bool _clearMp3Cache = false;
   bool _vimKeybindings = false;
@@ -4326,6 +4327,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SharedPreferencesService.instance.getString('spotdlFlags') ?? '';
       _edgeBreathe =
           SharedPreferencesService.instance.getBool('edgeBreathe') ?? true;
+      _enablePlugins = SharedPreferencesService.instance.getBool('enablePlugins') ?? false;
       final seekbarTypeString =
           SharedPreferencesService.instance.getString('seekbarType');
       _seekbarType = seekbarTypeString == 'alt'
@@ -4460,6 +4462,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveSeekbarType(SeekbarType type) async {
     await SharedPreferencesService.instance.setString('seekbarType', type.name);
     setState(() => _seekbarType = type);
+  }
+
+  Future<void> _saveEnablePlugins(bool value) async {
+    await SharedPreferencesService.instance.setBool('enablePlugins', value);
+    setState(() => _enablePlugins = value);
   }
 
   Future<void> _clearCache() async {
@@ -5508,6 +5515,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ],
                               ),
                             ]),
+			_buildSettingsExpansionTile(
+			  title: 'Plugins',
+			  icon: Broken.cpu,
+			  children: [
+			    _buildSettingsSwitch(
+			      context,
+			      title: 'Enable plugins', value: _enablePlugins, onChanged: _saveEnablePlugins,
+			  ),
+			]),
                         _buildSettingsExpansionTile(
                           title: 'Keybindings',
                           icon: Broken.keyboard,
