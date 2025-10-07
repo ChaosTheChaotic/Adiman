@@ -2,7 +2,7 @@ use extism::{CurrentPlugin, Function, PTR, PluginBuilder, UserData, Val, host_fn
 use flutter_rust_bridge::frb;
 
 #[frb(ignore)]
-host_fn!(pprint(user_data: (); m: String) -> String {
+host_fn!(pprint(user_data: (); m: String) {
     println!("[PLUGIN LOG]: {m}");
     Ok(())
 });
