@@ -49,7 +49,7 @@ impl std::fmt::Display for PluginManErr {
 
 impl Error for PluginManErr {}
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum ConfigTypes {
     String(String),
     Bool(bool),
@@ -379,6 +379,12 @@ impl AdiPluginMan {
 
         Ok(())
     }
+    pub fn get_plugin_config(&self, path: String) -> Result<PluginConfig, PluginManErr> {
+        self.plugin_meta
+            .get(&path)
+            .map(|pinode| pinode.config.clone())
+            .ok_or_else(|| PluginManErr::PluginNotLoaded(path))
+    }
 }
 
 unsafe impl Send for AdiPluginMan {}
@@ -437,6 +443,24 @@ pub fn remove_plugin(path: String) -> String {
         Err(e) => {
             eprintln!("{}", format!("{e}"));
             format!("Failed to remove plugin: {e}")
+        }
+    }
+}
+
+pub fn get_plugin_config(path: String) -> String {
+    let pmg = PLUGIN_MAN.lock().unwrap();
+    if !check_plugin_man(&*pmg) {
+        eprintln!("{}", PluginManErr::PluginManNotLoaded);
+        return format!("[ERR]: {}", PluginManErr::PluginManNotLoaded);
+    }
+    
+    match pmg.as_ref().unwrap().get_plugin_config(path) {
+        Ok(config) => {
+            serde_json::to_string(&config).unwrap_or_else(|_| "Failed to serialize config".to_string())
+        }
+        Err(e) => {
+            eprintln!("{}", format!("{e}"));
+            format!("Failed to get plugin config: {e}")
         }
     }
 }
