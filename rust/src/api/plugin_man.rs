@@ -10,6 +10,9 @@ pub use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
 };
+use once_cell::sync::Lazy;
+
+static PLUGIN_MAN: Lazy<Mutex<Option<AdiPluginMan>>> = Lazy::new(|| Mutex::new(None));
 
 #[derive(Debug)]
 pub enum PluginManErr {
@@ -19,6 +22,7 @@ pub enum PluginManErr {
     PluginNotLoaded(String),
     MetadataNotFound(String),
     InvalidMeta(String),
+    PluginManNotLoaded,
 }
 
 impl std::fmt::Display for PluginManErr {
@@ -37,6 +41,7 @@ impl std::fmt::Display for PluginManErr {
                 "Metadata for plugin: {path} not found. Ensure it has the same name as the plugin and is json type whilst being in the same (valid) directory as the plugin"
             ),
             PluginManErr::InvalidMeta(path) => format!("Metadata found for: {path} is invalid"),
+            PluginManErr::PluginManNotLoaded => format!("The plugin manager has not been loaded.")
         };
         write!(f, "{err}")
     }
@@ -373,5 +378,47 @@ impl AdiPluginMan {
         }
 
         Ok(())
+    }
+}
+
+unsafe impl Send for AdiPluginMan {}
+unsafe impl Sync for AdiPluginMan {}
+
+pub fn init_plugin_man() {
+    let mut pmg = PLUGIN_MAN.lock().unwrap();
+    if pmg.is_none() {
+        *pmg = Some(AdiPluginMan::new())
+    }
+}
+
+pub fn check_plugin_man(pmg: &Option<AdiPluginMan>) -> bool {
+    if pmg.is_some() {
+        true
+    } else {
+        false
+    }
+}
+
+pub fn load_plugin(path: String) -> String {
+    let mut pmg = PLUGIN_MAN.lock().unwrap();
+    if !check_plugin_man(&*pmg) {
+        return format!("[ERR]: {}", PluginManErr::PluginManNotLoaded)
+    }
+    let res: Result<(), PluginManErr> = pmg.as_mut().unwrap().load_plugin(path.clone());
+    match res {
+        Ok(()) => format!("Loaded plugin: {}", PathBuf::from(path).file_stem().unwrap().to_string_lossy().to_string()),
+        Err(e) => format!("Failed to load plugin: {e}"),
+    }
+}
+
+pub fn remove_plugin(path: String) -> String {
+    let mut pmg = PLUGIN_MAN.lock().unwrap();
+    if !check_plugin_man(&*pmg) {
+        return format!("[ERR]: {}", PluginManErr::PluginManNotLoaded)
+    }
+    let res: Result<(), PluginManErr> = pmg.as_mut().unwrap().remove_plugin(path.clone());
+    match res {
+        Ok(()) => format!("Removed plugin {}", PathBuf::from(path).file_stem().unwrap().to_string_lossy().to_string()),
+        Err(e) => format!("Failed to remove plugin: {e}")
     }
 }

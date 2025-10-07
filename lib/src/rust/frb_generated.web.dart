@@ -84,6 +84,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt dco_decode_I128(dynamic raw);
 
   @protected
+  Map<String, PluginInode>
+      dco_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode_None(
+          dynamic raw);
+
+  @protected
   Map<String, ConfigTypes> dco_decode_Map_String_config_types_None(dynamic raw);
 
   @protected
@@ -113,7 +118,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt dco_decode_U128(dynamic raw);
 
   @protected
+  AdiPluginMan dco_decode_adi_plugin_man(dynamic raw);
+
+  @protected
   bool dco_decode_bool(dynamic raw);
+
+  @protected
+  AdiPluginMan dco_decode_box_autoadd_adi_plugin_man(dynamic raw);
 
   @protected
   int dco_decode_box_autoadd_u_32(dynamic raw);
@@ -146,6 +157,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<(String, PluginInode)>
+      dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_plugin_inode(
+          dynamic raw);
+
+  @protected
   List<(String, ConfigTypes)> dco_decode_list_record_string_config_types(
       dynamic raw);
 
@@ -156,6 +172,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
+  AdiPluginMan? dco_decode_opt_box_autoadd_adi_plugin_man(dynamic raw);
+
+  @protected
   int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
 
   @protected
@@ -163,6 +182,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PlayerState dco_decode_player_state(dynamic raw);
+
+  @protected
+  (
+    String,
+    PluginInode
+  ) dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_plugin_inode(
+      dynamic raw);
 
   @protected
   (String, ConfigTypes) dco_decode_record_string_config_types(dynamic raw);
@@ -232,6 +258,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt sse_decode_I128(SseDeserializer deserializer);
 
   @protected
+  Map<String, PluginInode>
+      sse_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode_None(
+          SseDeserializer deserializer);
+
+  @protected
   Map<String, ConfigTypes> sse_decode_Map_String_config_types_None(
       SseDeserializer deserializer);
 
@@ -262,7 +293,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt sse_decode_U128(SseDeserializer deserializer);
 
   @protected
+  AdiPluginMan sse_decode_adi_plugin_man(SseDeserializer deserializer);
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  AdiPluginMan sse_decode_box_autoadd_adi_plugin_man(
+      SseDeserializer deserializer);
 
   @protected
   int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
@@ -295,6 +333,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<(String, PluginInode)>
+      sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_plugin_inode(
+          SseDeserializer deserializer);
+
+  @protected
   List<(String, ConfigTypes)> sse_decode_list_record_string_config_types(
       SseDeserializer deserializer);
 
@@ -306,6 +349,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
+  AdiPluginMan? sse_decode_opt_box_autoadd_adi_plugin_man(
+      SseDeserializer deserializer);
+
+  @protected
   int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
 
   @protected
@@ -313,6 +360,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PlayerState sse_decode_player_state(SseDeserializer deserializer);
+
+  @protected
+  (
+    String,
+    PluginInode
+  ) sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_plugin_inode(
+      SseDeserializer deserializer);
 
   @protected
   (String, ConfigTypes) sse_decode_record_string_config_types(
@@ -384,6 +438,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_I128(BigInt self, SseSerializer serializer);
 
   @protected
+  void
+      sse_encode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode_None(
+          Map<String, PluginInode> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_Map_String_config_types_None(
       Map<String, ConfigTypes> self, SseSerializer serializer);
 
@@ -414,7 +473,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_U128(BigInt self, SseSerializer serializer);
 
   @protected
+  void sse_encode_adi_plugin_man(AdiPluginMan self, SseSerializer serializer);
+
+  @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_adi_plugin_man(
+      AdiPluginMan self, SseSerializer serializer);
 
   @protected
   void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
@@ -450,6 +516,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       Uint8List self, SseSerializer serializer);
 
   @protected
+  void
+      sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_plugin_inode(
+          List<(String, PluginInode)> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_record_string_config_types(
       List<(String, ConfigTypes)> self, SseSerializer serializer);
 
@@ -461,6 +532,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_adi_plugin_man(
+      AdiPluginMan? self, SseSerializer serializer);
+
+  @protected
   void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
 
   @protected
@@ -469,6 +544,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_player_state(PlayerState self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_plugin_inode(
+          (String, PluginInode) self, SseSerializer serializer);
 
   @protected
   void sse_encode_record_string_config_types(
