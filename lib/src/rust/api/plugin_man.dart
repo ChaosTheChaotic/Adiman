@@ -12,7 +12,7 @@ part 'plugin_man.freezed.dart';
 // These functions are ignored because they are not marked as `pub`: `read_plugin_metadata`, `rpc2plugin`, `validate_rpc`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `PluginManErr`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `load_plugin`, `new`, `remove_plugin`
+// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `get_plugin_config`, `load_plugin`, `new`, `remove_plugin`
 
 Future<void> initPluginMan() =>
     RustLib.instance.api.crateApiPluginManInitPluginMan();
@@ -25,6 +25,9 @@ Future<String> loadPlugin({required String path}) =>
 
 Future<String> removePlugin({required String path}) =>
     RustLib.instance.api.crateApiPluginManRemovePlugin(path: path);
+
+Future<String> getPluginConfig({required String path}) =>
+    RustLib.instance.api.crateApiPluginManGetPluginConfig(path: path);
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PluginInode>>
 abstract class PluginInode implements RustOpaqueInterface {

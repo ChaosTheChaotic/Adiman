@@ -453,11 +453,10 @@ pub fn get_plugin_config(path: String) -> String {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
         return format!("[ERR]: {}", PluginManErr::PluginManNotLoaded);
     }
-    
+
     match pmg.as_ref().unwrap().get_plugin_config(path) {
-        Ok(config) => {
-            serde_json::to_string(&config).unwrap_or_else(|_| "Failed to serialize config".to_string())
-        }
+        Ok(config) => serde_json::to_string(&config)
+            .unwrap_or_else(|_| "Failed to serialize config".to_string()),
         Err(e) => {
             eprintln!("{}", format!("{e}"));
             format!("Failed to get plugin config: {e}")
