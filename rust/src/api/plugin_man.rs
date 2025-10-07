@@ -402,23 +402,25 @@ pub fn check_plugin_man(pmg: &Option<AdiPluginMan>) -> bool {
 pub fn load_plugin(path: String) -> String {
     let mut pmg = PLUGIN_MAN.lock().unwrap();
     if !check_plugin_man(&*pmg) {
+        eprintln!("{}", PluginManErr::PluginManNotLoaded);
         return format!("[ERR]: {}", PluginManErr::PluginManNotLoaded)
     }
     let res: Result<(), PluginManErr> = pmg.as_mut().unwrap().load_plugin(path.clone());
     match res {
         Ok(()) => format!("Loaded plugin: {}", PathBuf::from(path).file_stem().unwrap().to_string_lossy().to_string()),
-        Err(e) => format!("Failed to load plugin: {e}"),
+        Err(e) => {eprintln!("{}", format!("{e}")); format!("Failed to load plugin: {e}")},
     }
 }
 
 pub fn remove_plugin(path: String) -> String {
     let mut pmg = PLUGIN_MAN.lock().unwrap();
     if !check_plugin_man(&*pmg) {
+        eprintln!("{}", PluginManErr::PluginManNotLoaded);
         return format!("[ERR]: {}", PluginManErr::PluginManNotLoaded)
     }
     let res: Result<(), PluginManErr> = pmg.as_mut().unwrap().remove_plugin(path.clone());
     match res {
         Ok(()) => format!("Removed plugin {}", PathBuf::from(path).file_stem().unwrap().to_string_lossy().to_string()),
-        Err(e) => format!("Failed to remove plugin: {e}")
+        Err(e) => {eprintln!("{}", format!("{e}")); format!("Failed to remove plugin: {e}")},
     }
 }
