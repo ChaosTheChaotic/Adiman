@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:path/path.dart' as path;
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
 import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
+import 'package:adiman/src/rust/api/plugin_man.dart' as plugin_api;
 import 'package:adiman/src/rust/frb_generated.dart';
 import 'package:flutter/material.dart';
 import 'namida_ui_extensions.dart';
@@ -584,6 +585,7 @@ late final AdimanService globalService;
 Future<void> main() async {
   await RustLib.init();
   await rust_api.initializePlayer();
+  await plugin_api.initPluginMan();
   globalService = AdimanService();
   VolumeController();
   sqfliteFfiInit();
