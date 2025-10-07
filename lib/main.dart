@@ -4327,7 +4327,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SharedPreferencesService.instance.getString('spotdlFlags') ?? '';
       _edgeBreathe =
           SharedPreferencesService.instance.getBool('edgeBreathe') ?? true;
-      _enablePlugins = SharedPreferencesService.instance.getBool('enablePlugins') ?? false;
+      _enablePlugins =
+          SharedPreferencesService.instance.getBool('enablePlugins') ?? false;
       final seekbarTypeString =
           SharedPreferencesService.instance.getString('seekbarType');
       _seekbarType = seekbarTypeString == 'alt'
@@ -5515,15 +5516,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ],
                               ),
                             ]),
-			_buildSettingsExpansionTile(
-			  title: 'Plugins',
-			  icon: Broken.cpu,
-			  children: [
-			    _buildSettingsSwitch(
-			      context,
-			      title: 'Enable plugins', value: _enablePlugins, onChanged: _saveEnablePlugins,
-			  ),
-			]),
+                        _buildSettingsExpansionTile(
+                            title: 'Plugins',
+                            icon: Broken.cpu,
+                            children: [
+                              _buildSettingsSwitch(
+                                context,
+                                title: 'Enable plugins',
+                                value: _enablePlugins,
+                                onChanged: _saveEnablePlugins,
+                              ),
+                            ]),
                         _buildSettingsExpansionTile(
                           title: 'Keybindings',
                           icon: Broken.keyboard,
