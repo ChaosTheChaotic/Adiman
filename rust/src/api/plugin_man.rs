@@ -531,3 +531,12 @@ pub fn get_plugin_config(path: String) -> String {
         }
     }
 }
+
+pub fn scan_dir(path: String) -> Option<Vec<PathBuf>> {
+    let pmg = PLUGIN_MAN.lock().unwrap();
+    if !check_plugin_man(&*pmg) {
+        eprintln!("{}", PluginManErr::PluginManNotLoaded);
+        return None
+    }
+    pmg.as_ref().unwrap().scan_dir(PathBuf::from(path))
+}

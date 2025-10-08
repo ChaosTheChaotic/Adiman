@@ -29,6 +29,12 @@ Future<String> removePlugin({required String path}) =>
 Future<String> getPluginConfig({required String path}) =>
     RustLib.instance.api.crateApiPluginManGetPluginConfig(path: path);
 
+Future<List<PathBuf>?> scanDir({required String path}) =>
+    RustLib.instance.api.crateApiPluginManScanDir(path: path);
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PathBuf>>
+abstract class PathBuf implements RustOpaqueInterface {}
+
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PluginInode>>
 abstract class PluginInode implements RustOpaqueInterface {
   Map<String, ConfigTypes> get config;
