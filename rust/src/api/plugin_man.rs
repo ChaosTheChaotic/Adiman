@@ -281,7 +281,9 @@ impl AdiPluginMan {
         if stem.is_none() {
             false
         } else {
-            stem.and_then(OsStr::to_str).map(|s| !s.contains('.')).unwrap_or(true)
+            stem.and_then(OsStr::to_str)
+                .map(|s| !s.contains('.'))
+                .unwrap_or(true)
         }
     }
 
@@ -306,75 +308,82 @@ impl AdiPluginMan {
                 return Err(PluginManErr::BadFile(path));
             }
             if !self.valid_magic(PathBuf::from(path.clone())) {
-                eprintln!("The wasm file provided does not have the valid magic numbers which could mean it is not a wasm file");
+                eprintln!(
+                    "The wasm file provided does not have the valid magic numbers which could mean it is not a wasm file"
+                );
                 return Err(PluginManErr::BadFile(path));
             }
-                let ppar = ppath.parent();
-                if ppar.is_none() {
-                    eprintln!(
-                        "The parent dir is either root or an empty string, fix this to ensure the plugin and metadata can be used correctly"
-                    );
-                    return Err(PluginManErr::MetadataNotFound(path));
-                }
-                let stem: PathBuf = PathBuf::from(PathBuf::from(path.clone()).file_stem().unwrap());
-                let nfn = stem
-                    .with_extension("json");
-                let pmet = ppar.unwrap().join(nfn);
+            let ppar = ppath.parent();
+            if ppar.is_none() {
+                eprintln!(
+                    "The parent dir is either root or an empty string, fix this to ensure the plugin and metadata can be used correctly"
+                );
+                return Err(PluginManErr::MetadataNotFound(path));
+            }
+            let stem: PathBuf = PathBuf::from(PathBuf::from(path.clone()).file_stem().unwrap());
+            let nfn = stem.with_extension("json");
+            let pmet = ppar.unwrap().join(nfn);
 
-                let plugin_config = if pmet.exists() {
-                    match Self::read_plugin_metadata(&pmet) {
-                        Ok(rpc_configs) => Self::rpc2plugin(rpc_configs),
-                        Err(_) => {
-                            eprintln!("Warning: Failed to read metadata, using empty config");
-                            HashMap::new()
-                        }
+            let plugin_config = if pmet.exists() {
+                match Self::read_plugin_metadata(&pmet) {
+                    Ok(rpc_configs) => Self::rpc2plugin(rpc_configs),
+                    Err(_) => {
+                        eprintln!("Warning: Failed to read metadata, using empty config");
+                        HashMap::new()
                     }
-                } else {
-                    // No metadata found
-                    eprintln!("Warning: Plugin: {} has no metadata file found and therefore no plugin settings will be loaded", PathBuf::from(path.clone()).file_stem().unwrap().to_string_lossy().to_string());
-                    HashMap::new()
+                }
+            } else {
+                // No metadata found
+                eprintln!(
+                    "Warning: Plugin: {} has no metadata file found and therefore no plugin settings will be loaded",
+                    PathBuf::from(path.clone())
+                        .file_stem()
+                        .unwrap()
+                        .to_string_lossy()
+                        .to_string()
+                );
+                HashMap::new()
+            };
+
+            let pfile = Wasm::file(path.clone());
+
+            let config_iter = plugin_config.iter().map(|(k, v)| {
+                let value_string = match v {
+                    ConfigTypes::String(s) => s.to_string(),
+                    ConfigTypes::Bool(b) => b.to_string(),
+                    ConfigTypes::Int(i) => i.to_string(),
+                    ConfigTypes::UInt(u) => u.to_string(),
+                    ConfigTypes::BigInt(i) => i.to_string(),
+                    ConfigTypes::BigUInt(u) => u.to_string(),
                 };
+                (k.clone(), value_string)
+            });
 
-                let pfile = Wasm::file(path.clone());
+            let m = Manifest::new([pfile]).with_config(config_iter);
+            let plugin: Plugin = add_functions(PluginBuilder::new(m).with_wasi(false))
+                .build()
+                .unwrap();
 
-                let config_iter = plugin_config.iter().map(|(k, v)| {
-                    let value_string = match v {
-                        ConfigTypes::String(s) => s.to_string(),
-                        ConfigTypes::Bool(b) => b.to_string(),
-                        ConfigTypes::Int(i) => i.to_string(),
-                        ConfigTypes::UInt(u) => u.to_string(),
-                        ConfigTypes::BigInt(i) => i.to_string(),
-                        ConfigTypes::BigUInt(u) => u.to_string(),
+            let pin = PluginInode {
+                plugin: Arc::new(Mutex::new(plugin)),
+                config: plugin_config,
+            };
+
+            self.plugin_meta.insert(path.clone(), pin);
+
+            if let Some(pentry) = self.plugin_meta.get(&path) {
+                let pluginst: &Arc<Mutex<Plugin>> = &pentry.plugin;
+                let mut pluginstl = pluginst.lock().unwrap();
+                if pluginstl.function_exists("init") {
+                    let r: core::result::Result<&str, anyhow::Error> = pluginstl.call("init", ());
+                    if r.is_err() {
+                        return Err(PluginManErr::PluginError(r.err().map(|e| e.to_string())));
+                    } else {
+                        return Ok(());
                     };
-                    (k.clone(), value_string)
-                });
-
-                let m = Manifest::new([pfile]).with_config(config_iter);
-                let plugin: Plugin = add_functions(PluginBuilder::new(m).with_wasi(false))
-                    .build()
-                    .unwrap();
-
-                let pin = PluginInode {
-                    plugin: Arc::new(Mutex::new(plugin)),
-                    config: plugin_config,
-                };
-
-                self.plugin_meta.insert(path.clone(), pin);
-
-                if let Some(pentry) = self.plugin_meta.get(&path) {
-                    let pluginst: &Arc<Mutex<Plugin>> = &pentry.plugin;
-                    let mut pluginstl = pluginst.lock().unwrap();
-                    if pluginstl.function_exists("init") {
-                        let r: core::result::Result<&str, anyhow::Error> =
-                            pluginstl.call("init", ());
-                        if r.is_err() {
-                            return Err(PluginManErr::PluginError(r.err().map(|e| e.to_string())));
-                        } else {
-                            return Ok(());
-                        };
-                    }
                 }
-                Ok(())
+            }
+            Ok(())
         } else {
             Err(PluginManErr::FileNotFound(path))
         }
