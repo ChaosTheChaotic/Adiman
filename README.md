@@ -88,7 +88,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 - git
 - GTK
 - rustup
-- Working rust
+- rust
 ## Build steps
 1. Git clone the repo and go into the directory
 ```

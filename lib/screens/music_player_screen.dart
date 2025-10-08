@@ -2118,7 +2118,6 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   }
 }
 
-
 class CustomRoundedRectSliderTrackShape extends RoundedRectSliderTrackShape {
   final double radius;
 
@@ -2189,7 +2188,6 @@ class CustomRoundedRectSliderTrackShape extends RoundedRectSliderTrackShape {
     context.canvas.drawRRect(inactiveRect, inactivePaint);
   }
 }
-
 
 class NamidaThumbnail extends StatefulWidget {
   final ImageProvider? image;

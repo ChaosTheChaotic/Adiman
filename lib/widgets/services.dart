@@ -243,7 +243,6 @@ class AdimanService extends MPRISService {
   }*/
 }
 
-
 class SharedPreferencesService {
   static SharedPreferences? _instance;
 

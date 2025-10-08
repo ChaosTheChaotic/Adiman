@@ -1842,8 +1842,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                           updatedSeparators);
 
                                                   ScaffoldMessenger.of(context)
-                                                      .showSnackBar(
-                                                          AdiSnackbar(
+                                                      .showSnackBar(AdiSnackbar(
                                                     backgroundColor:
                                                         _currentColor,
                                                     content:
@@ -1851,8 +1850,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                   ));
                                                 } catch (e) {
                                                   ScaffoldMessenger.of(context)
-                                                      .showSnackBar(
-                                                          AdiSnackbar(
+                                                      .showSnackBar(AdiSnackbar(
                                                     backgroundColor:
                                                         Colors.redAccent,
                                                     content:

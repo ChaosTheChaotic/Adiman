@@ -173,7 +173,6 @@ class _ParticlePlayButtonState extends State<ParticlePlayButton>
   }
 }
 
-
 class NamidaPageTransitions {
   static Route createRoute(Widget page, {Color? dominantColor}) {
     return PageRouteBuilder(

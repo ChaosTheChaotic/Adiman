@@ -1977,11 +1977,10 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                             return;
                           }
                           if (selectedSong == currentSong) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                AdiSnackbar(
-                                    backgroundColor: dominantColor,
-                                    content:
-                                        'Cannot make currently playing song next, use repeat function'));
+                            ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
+                                backgroundColor: dominantColor,
+                                content:
+                                    'Cannot make currently playing song next, use repeat function'));
                             return;
                           }
                           // Insert into the main songs list

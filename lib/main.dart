@@ -82,7 +82,6 @@ ThemeData _buildDynamicTheme(BuildContext context, Color dominantColor) {
   );
 }
 
-
 enum SortOption {
   playlist,
   title,
