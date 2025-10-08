@@ -532,11 +532,14 @@ pub fn get_plugin_config(path: String) -> String {
     }
 }
 
-pub fn scan_dir(path: String) -> Option<Vec<PathBuf>> {
+// Returns None on error or an array of all paths (as strings) that are valid wasm file plugins
+pub fn scan_dir(path: String) -> Option<Vec<String>> {
     let pmg = PLUGIN_MAN.lock().unwrap();
     if !check_plugin_man(&*pmg) {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
         return None
     }
-    pmg.as_ref().unwrap().scan_dir(PathBuf::from(path))
+    pmg.as_ref().unwrap().scan_dir(PathBuf::from(path)).map(|pb| {
+        pb.into_iter().filter_map(|pbuf| Some(pbuf.to_string_lossy().to_string())).collect()
+    })
 }
