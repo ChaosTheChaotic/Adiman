@@ -7,6 +7,7 @@ pub use std::{
     collections::HashMap,
     error::Error,
     ffi::OsStr,
+    fs::{self, metadata},
     io::Read,
     path::PathBuf,
     sync::{Arc, Mutex},
@@ -268,7 +269,7 @@ impl AdiPluginMan {
         plugin_config
     }
 
-    fn valid_extension(&self, path: PathBuf) -> bool {
+    fn valid_extension(&self, path: &PathBuf) -> bool {
         if path.extension() == Some(OsStr::new("wasm")) {
             true
         } else {
@@ -276,7 +277,7 @@ impl AdiPluginMan {
         }
     }
 
-    fn valid_stem(&self, path: PathBuf) -> bool {
+    fn valid_stem(&self, path: &PathBuf) -> bool {
         let stem = path.file_stem();
         if stem.is_none() {
             false
@@ -287,27 +288,64 @@ impl AdiPluginMan {
         }
     }
 
-    fn valid_magic(&self, path: PathBuf) -> bool {
+    fn valid_magic(&self, path: &PathBuf) -> bool {
         let mut fp = std::fs::File::open(path).expect("Failed to open file");
         let mut buf = [0; 4];
         fp.read_exact(&mut buf).expect("Failed to read from file");
         buf == [0x00, 0x61, 0x73, 0x6d] // Does the file have the magic bytes of a wasm file?
     }
 
+    fn plugin_file_validity(&self, path: PathBuf) -> bool {
+        self.valid_extension(&path) && self.valid_magic(&path) && self.valid_stem(&path)
+    }
+
+    pub fn scan_dir(&self, path: PathBuf) -> Option<Vec<PathBuf>> {
+        // Make sure the path is valid
+        if !path.exists() {
+            return None;
+        }
+        if !path.is_dir() {
+            return None;
+        }
+        let mut ppaths: Vec<PathBuf> = vec![];
+        // Iterate through each entry
+        for e in fs::read_dir(path).ok()? {
+            let e = e.ok()?;
+            // If its a dir (we do this because we want to follow symlinks)
+            if metadata(e.path()).ok()?.is_dir() {
+                // Iterate through everything inside it to see if its a valid plugin
+                for w in fs::read_dir(e.path()).ok()? {
+                    let w = w.ok()?;
+                    if metadata(w.path()).ok()?.is_file() {
+                        if self.plugin_file_validity(w.path()) {
+                            ppaths.push(w.path());
+                        }
+                    }
+                }
+                // If its a file check if its a valid plugin
+            } else if metadata(e.path()).ok()?.is_file() {
+                if self.plugin_file_validity(e.path()) {
+                    ppaths.push(e.path());
+                }
+            }
+        }
+        Some(ppaths)
+    }
+
     pub fn load_plugin(&mut self, path: String) -> Result<(), PluginManErr> {
         let ppath = std::path::PathBuf::from(path.clone());
         if ppath.exists() {
-            if !self.valid_extension(PathBuf::from(path.clone())) {
+            if !self.valid_extension(&PathBuf::from(path.clone())) {
                 eprintln!("Invalid plugin extension");
                 return Err(PluginManErr::BadFile(path));
             }
-            if !self.valid_stem(PathBuf::from(path.clone())) {
+            if !self.valid_stem(&PathBuf::from(path.clone())) {
                 eprintln!(
                     "Plugin file has no stem, add a name before the extension to ensure the metadata can be reliably read"
                 );
                 return Err(PluginManErr::BadFile(path));
             }
-            if !self.valid_magic(PathBuf::from(path.clone())) {
+            if !self.valid_magic(&PathBuf::from(path.clone())) {
                 eprintln!(
                     "The wasm file provided does not have the valid magic numbers which could mean it is not a wasm file"
                 );
