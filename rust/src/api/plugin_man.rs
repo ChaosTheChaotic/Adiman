@@ -415,6 +415,7 @@ impl AdiPluginMan {
 unsafe impl Send for AdiPluginMan {}
 unsafe impl Sync for AdiPluginMan {}
 
+// Initialzes the plugin manager in a static variable
 pub fn init_plugin_man() {
     let mut pmg = PLUGIN_MAN.lock().unwrap();
     if pmg.is_none() {
@@ -422,56 +423,60 @@ pub fn init_plugin_man() {
     }
 }
 
+// Checks if the plugin manager is initialized
 pub fn check_plugin_man(pmg: &Option<AdiPluginMan>) -> bool {
     if pmg.is_some() { true } else { false }
 }
 
-pub fn load_plugin(path: String) -> String {
+// Loads a plugin using the given path
+pub fn load_plugin(path: String) -> Result<String, String> {
     let mut pmg = PLUGIN_MAN.lock().unwrap();
     if !check_plugin_man(&*pmg) {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
-        return format!("[ERR]: {}", PluginManErr::PluginManNotLoaded);
+        return Err(format!("[ERR]: {}", PluginManErr::PluginManNotLoaded));
     }
     let res: Result<(), PluginManErr> = pmg.as_mut().unwrap().load_plugin(path.clone());
     match res {
-        Ok(()) => format!(
+        Ok(()) => Ok(format!(
             "Loaded plugin: {}",
             PathBuf::from(path)
                 .file_stem()
                 .unwrap()
                 .to_string_lossy()
                 .to_string()
-        ),
+        )),
         Err(e) => {
             eprintln!("{}", format!("{e}"));
-            format!("Failed to load plugin: {e}")
+            Err(format!("Failed to load plugin: {e}"))
         }
     }
 }
 
-pub fn remove_plugin(path: String) -> String {
+// Removes a plugin (if loaded) at a given path
+pub fn remove_plugin(path: String) -> Result<String, String> {
     let mut pmg = PLUGIN_MAN.lock().unwrap();
     if !check_plugin_man(&*pmg) {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
-        return format!("[ERR]: {}", PluginManErr::PluginManNotLoaded);
+        return Err(format!("[ERR]: {}", PluginManErr::PluginManNotLoaded));
     }
     let res: Result<(), PluginManErr> = pmg.as_mut().unwrap().remove_plugin(path.clone());
     match res {
-        Ok(()) => format!(
+        Ok(()) => Ok(format!(
             "Removed plugin {}",
             PathBuf::from(path)
                 .file_stem()
                 .unwrap()
                 .to_string_lossy()
                 .to_string()
-        ),
+        )),
         Err(e) => {
             eprintln!("{}", format!("{e}"));
-            format!("Failed to remove plugin: {e}")
+            Err(format!("Failed to remove plugin: {e}"))
         }
     }
 }
 
+// Returns a json string which is the plugins config
 pub fn get_plugin_config(path: String) -> String {
     let pmg = PLUGIN_MAN.lock().unwrap();
     if !check_plugin_man(&*pmg) {

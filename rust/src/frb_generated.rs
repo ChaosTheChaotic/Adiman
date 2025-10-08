@@ -1241,9 +1241,8 @@ fn wire__crate__api__plugin_man__load_plugin_impl(
             let api_path = <String>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
-                transform_result_sse::<_, ()>((move || {
-                    let output_ok =
-                        Result::<_, ()>::Ok(crate::api::plugin_man::load_plugin(api_path))?;
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::plugin_man::load_plugin(api_path)?;
                     Ok(output_ok)
                 })())
             }
@@ -1409,9 +1408,8 @@ fn wire__crate__api__plugin_man__remove_plugin_impl(
             let api_path = <String>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
-                transform_result_sse::<_, ()>((move || {
-                    let output_ok =
-                        Result::<_, ()>::Ok(crate::api::plugin_man::remove_plugin(api_path))?;
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::plugin_man::remove_plugin(api_path)?;
                     Ok(output_ok)
                 })())
             }
