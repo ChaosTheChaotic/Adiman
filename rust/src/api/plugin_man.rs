@@ -268,29 +268,47 @@ impl AdiPluginMan {
         plugin_config
     }
 
+    fn valid_extension(&self, path: PathBuf) -> bool {
+        if path.extension() == Some(OsStr::new("wasm")) {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn valid_stem(&self, path: PathBuf) -> bool {
+        let stem = path.file_stem();
+        if stem.is_none() {
+            false
+        } else {
+            stem.and_then(OsStr::to_str).map(|s| !s.contains('.')).unwrap_or(true)
+        }
+    }
+
+    fn valid_magic(&self, path: PathBuf) -> bool {
+        let mut fp = std::fs::File::open(path).expect("Failed to open file");
+        let mut buf = [0; 4];
+        fp.read_exact(&mut buf).expect("Failed to read from file");
+        buf == [0x00, 0x61, 0x73, 0x6d] // Does the file have the magic bytes of a wasm file?
+    }
+
     pub fn load_plugin(&mut self, path: String) -> Result<(), PluginManErr> {
         let ppath = std::path::PathBuf::from(path.clone());
         if ppath.exists() {
-            let ext = ppath.extension();
-            let wasm_ext: bool = ext == Some(OsStr::new("wasm"));
-            let stem = ppath.file_stem();
-            if stem.is_none() {
+            if !self.valid_extension(PathBuf::from(path.clone())) {
+                eprintln!("Invalid plugin extension");
+                return Err(PluginManErr::BadFile(path));
+            }
+            if !self.valid_stem(PathBuf::from(path.clone())) {
                 eprintln!(
                     "Plugin file has no stem, add a name before the extension to ensure the metadata can be reliably read"
                 );
                 return Err(PluginManErr::BadFile(path));
             }
-            let stem_clean: bool = stem
-                .and_then(OsStr::to_str)
-                .map(|s| !s.contains('.'))
-                .unwrap_or(true);
-            let mut fp = std::fs::File::open(ppath.clone()).expect("Failed to open file");
-            let mut buf = [0; 4];
-            fp.read_exact(&mut buf).expect("Failed to read from file");
-            let magic_clean: bool = buf == [0x00, 0x61, 0x73, 0x6d];
-            let valid: bool = wasm_ext && stem_clean && magic_clean;
-
-            if valid {
+            if !self.valid_magic(PathBuf::from(path.clone())) {
+                eprintln!("The wasm file provided does not have the valid magic numbers which could mean it is not a wasm file");
+                return Err(PluginManErr::BadFile(path));
+            }
                 let ppar = ppath.parent();
                 if ppar.is_none() {
                     eprintln!(
@@ -298,8 +316,8 @@ impl AdiPluginMan {
                     );
                     return Err(PluginManErr::MetadataNotFound(path));
                 }
-
-                let nfn = std::path::PathBuf::from(stem.unwrap().to_string_lossy().to_string())
+                let stem: PathBuf = PathBuf::from(PathBuf::from(path.clone()).file_stem().unwrap());
+                let nfn = stem
                     .with_extension("json");
                 let pmet = ppar.unwrap().join(nfn);
 
@@ -313,6 +331,7 @@ impl AdiPluginMan {
                     }
                 } else {
                     // No metadata found
+                    eprintln!("Warning: Plugin: {} has no metadata file found and therefore no plugin settings will be loaded", PathBuf::from(path.clone()).file_stem().unwrap().to_string_lossy().to_string());
                     HashMap::new()
                 };
 
@@ -356,9 +375,6 @@ impl AdiPluginMan {
                     }
                 }
                 Ok(())
-            } else {
-                Err(PluginManErr::BadFile(path))
-            }
         } else {
             Err(PluginManErr::FileNotFound(path))
         }
