@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_glow/flutter_glow.dart';
-import 'broken_icons.dart';
+import 'package:adiman/icons/broken_icons.dart';
 
 class AdiSnackbar extends SnackBar {
   AdiSnackbar({

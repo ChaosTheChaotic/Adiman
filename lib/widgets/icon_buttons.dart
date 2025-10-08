@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
 import 'package:flutter_glow/flutter_glow.dart';
-import 'broken_icons.dart';
+import 'package:adiman/icons/broken_icons.dart';
 
 class DynamicIconButton extends StatelessWidget {
   final IconData icon;

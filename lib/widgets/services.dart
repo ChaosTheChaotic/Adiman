@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
-import 'main.dart';
+import 'package:adiman/main.dart';
 import 'snackbar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';

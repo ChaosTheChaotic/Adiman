@@ -2,15 +2,15 @@ import 'dart:async';
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
 import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
 import 'package:flutter/material.dart';
-import 'main.dart';
+import 'package:adiman/main.dart';
 import 'icon_buttons.dart';
-import 'music_player_screen.dart';
+import 'package:adiman/screens/music_player_screen.dart';
 import 'snackbar.dart';
 import 'services.dart';
 import 'package:flutter_glow/flutter_glow.dart';
 import 'seekbars.dart';
 import 'volume.dart';
-import 'broken_icons.dart';
+import 'package:adiman/icons/broken_icons.dart';
 
 class MiniPlayer extends StatefulWidget {
   final Song song;

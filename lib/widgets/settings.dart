@@ -6,7 +6,7 @@ import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
 import 'package:flutter/material.dart';
 import 'miniplayer.dart';
 import 'services.dart';
-import 'main.dart';
+import 'package:adiman/main.dart';
 import 'icon_buttons.dart';
 import 'misc.dart';
 import 'snackbar.dart';
@@ -14,7 +14,7 @@ import 'package:flutter_glow/flutter_glow.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import 'broken_icons.dart';
+import 'package:adiman/icons/broken_icons.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AdimanService service;

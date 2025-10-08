@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
 import 'package:flutter/material.dart';
 import 'package:flutter_glow/flutter_glow.dart';
-import 'broken_icons.dart';
+import 'package:adiman/icons/broken_icons.dart';
 
 class VolumeIcon extends StatelessWidget {
   final double volume;
