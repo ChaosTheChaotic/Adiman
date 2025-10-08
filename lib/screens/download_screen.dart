@@ -4,15 +4,15 @@ import 'package:path/path.dart' as path;
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
 import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
 import 'package:flutter/material.dart';
-import 'services.dart';
-import 'main.dart';
-import 'miniplayer.dart';
+import 'package:adiman/widgets/services.dart';
+import 'package:adiman/main.dart';
+import 'package:adiman/widgets/miniplayer.dart';
 import 'music_player_screen.dart';
 import 'package:flutter_glow/flutter_glow.dart';
 import 'package:flutter/services.dart';
-import 'broken_icons.dart';
-import 'snackbar.dart';
-import 'icon_buttons.dart';
+import 'package:adiman/icons/broken_icons.dart';
+import 'package:adiman/widgets/snackbar.dart';
+import 'package:adiman/widgets/icon_buttons.dart';
 
 class Track {
   final String name;

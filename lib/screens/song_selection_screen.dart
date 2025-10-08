@@ -5,20 +5,20 @@ import 'package:path/path.dart' as path;
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
 import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
 import 'package:flutter/material.dart';
-import 'main.dart';
-import 'miniplayer.dart';
-import 'services.dart';
-import 'settings.dart';
-import 'icon_buttons.dart';
-import 'misc.dart';
+import 'package:adiman/main.dart';
+import 'package:adiman/widgets/miniplayer.dart';
+import 'package:adiman/widgets/services.dart';
+import 'package:adiman/widgets/settings.dart';
+import 'package:adiman/widgets/icon_buttons.dart';
+import 'package:adiman/widgets/misc.dart';
 import 'music_player_screen.dart';
-import 'snackbar.dart';
+import 'package:adiman/widgets/snackbar.dart';
 import 'playlist_reorder_screen.dart';
 import 'download_screen.dart';
 import 'package:flutter_glow/flutter_glow.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
-import 'broken_icons.dart';
+import 'package:adiman/icons/broken_icons.dart';
 
 class SongSelectionScreen extends StatefulWidget {
   final Function(Color)? updateThemeColor;

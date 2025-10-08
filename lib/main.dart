@@ -3,9 +3,9 @@ import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
 import 'package:adiman/src/rust/api/plugin_man.dart' as plugin_api;
 import 'package:adiman/src/rust/frb_generated.dart';
 import 'package:flutter/material.dart';
-import 'services.dart';
-import 'song_selection_screen.dart';
-import 'volume.dart';
+import 'package:adiman/widgets/services.dart';
+import 'package:adiman/screens/song_selection_screen.dart';
+import 'package:adiman/widgets/volume.dart';
 import 'package:flutter/services.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 

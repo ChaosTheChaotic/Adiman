@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'main.dart';
+import 'package:adiman/main.dart';
 import 'package:flutter_glow/flutter_glow.dart';
-import 'snackbar.dart';
+import 'package:adiman/widgets/snackbar.dart';
 import 'package:flutter/services.dart';
-import 'icon_buttons.dart';
-import 'services.dart';
-import 'broken_icons.dart';
+import 'package:adiman/widgets/icon_buttons.dart';
+import 'package:adiman/widgets/services.dart';
+import 'package:adiman/icons/broken_icons.dart';
 
 class PlaylistReorderScreen extends StatefulWidget {
   final String playlistName;
