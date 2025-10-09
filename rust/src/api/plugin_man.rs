@@ -21,6 +21,7 @@ pub enum PluginManErr {
     BadFile(String),
     PluginError(Option<String>),
     PluginNotLoaded(String),
+    PluginAlreadyLoaded(String),
     MetadataNotFound(String),
     InvalidMeta(String),
     PluginManNotLoaded,
@@ -38,6 +39,7 @@ impl std::fmt::Display for PluginManErr {
                 e.clone().unwrap_or("No error message returned".into())
             ),
             PluginManErr::PluginNotLoaded(path) => format!("Plugin: {path} is not loaded"),
+            PluginManErr::PluginAlreadyLoaded(path) => format!("The plugin: {path} was already loaded"),
             PluginManErr::MetadataNotFound(path) => format!(
                 "Metadata for plugin: {path} not found. Ensure it has the same name as the plugin and is json type whilst being in the same (valid) directory as the plugin"
             ),
@@ -335,6 +337,10 @@ impl AdiPluginMan {
     pub fn load_plugin(&mut self, path: String) -> Result<(), PluginManErr> {
         let ppath = std::path::PathBuf::from(path.clone());
         if ppath.exists() {
+            if self.plugin_meta.contains_key(&path) {
+                eprintln!("Plugin already loaded");
+                return Err(PluginManErr::PluginAlreadyLoaded(path));
+            }
             if !self.valid_extension(&PathBuf::from(path.clone())) {
                 eprintln!("Invalid plugin extension");
                 return Err(PluginManErr::BadFile(path));
