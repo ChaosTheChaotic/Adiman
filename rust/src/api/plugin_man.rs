@@ -432,6 +432,7 @@ impl AdiPluginMan {
             Err(PluginManErr::FileNotFound(path))
         }
     }
+
     pub fn remove_plugin(&mut self, path: String) -> Result<(), PluginManErr> {
         let pentry = self
             .plugin_meta
@@ -448,6 +449,21 @@ impl AdiPluginMan {
 
         Ok(())
     }
+
+    pub fn reload_plugin(&mut self, path: String) -> Result<(), PluginManErr> {
+        let r = self.remove_plugin(path.clone());
+        if r.is_err() {
+            return r;
+        } else {
+            let l = self.load_plugin(path);
+            if l.is_err() {
+                return l;
+            } else {
+                Ok(())
+            }
+        }
+    }
+
     pub fn get_plugin_config(&self, path: String) -> Result<PluginConfig, PluginManErr> {
         self.plugin_meta
             .get(&path)
@@ -548,4 +564,59 @@ pub fn scan_dir(path: String) -> Option<Vec<String>> {
     pmg.as_ref().unwrap().scan_dir(PathBuf::from(path)).map(|pb| {
         pb.into_iter().filter_map(|pbuf| Some(pbuf.to_string_lossy().to_string())).collect()
     })
+}
+
+// Reloads the plugin given as a path
+pub fn reload_plugin(path: String) -> Result<String, String> {
+    let mut pmg = PLUGIN_MAN.lock().unwrap();
+    if !check_plugin_man(&*pmg) {
+        eprintln!("{}", PluginManErr::PluginManNotLoaded);
+        return Err("[ERR]: Plugin man not loaded".to_string());
+    }
+    
+    let res: Result<(), PluginManErr> = pmg.as_mut().unwrap().reload_plugin(path.clone());
+    match res {
+        Ok(()) => Ok(format!(
+            "Reloaded plugin: {}",
+            PathBuf::from(path)
+                .file_stem()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
+        )),
+        Err(e) => {
+            eprintln!("{}", format!("{e}"));
+            Err(format!("Failed to reload plugin: {e}"))
+        }
+    }
+}
+
+// Checks if the given path is a loaded plugin
+pub fn is_plugin_loaded(path: String) -> bool {
+    let pmg = PLUGIN_MAN.lock().unwrap();
+    if !check_plugin_man(&*pmg) {
+        eprintln!("{}", PluginManErr::PluginManNotLoaded);
+        return false;
+    }
+    
+    pmg.as_ref()
+        .unwrap()
+        .plugin_meta
+        .contains_key(&path)
+}
+
+// Returns an array of loaded plugins
+pub fn list_loaded_plugins() -> Vec<String> {
+    let pmg = PLUGIN_MAN.lock().unwrap();
+    if !check_plugin_man(&*pmg) {
+        eprintln!("{}", PluginManErr::PluginManNotLoaded);
+        return Vec::new();
+    }
+    
+    pmg.as_ref()
+        .unwrap()
+        .plugin_meta
+        .keys()
+        .cloned()
+        .collect()
 }

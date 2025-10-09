@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:adiman/main.dart';
 import 'package:adiman/widgets/miniplayer.dart';
 import 'package:adiman/widgets/services.dart';
-import 'package:adiman/widgets/settings.dart';
+import 'settings_screen.dart';
 import 'package:adiman/widgets/icon_buttons.dart';
 import 'package:adiman/widgets/misc.dart';
 import 'music_player_screen.dart';
