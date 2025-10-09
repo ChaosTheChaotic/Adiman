@@ -12,7 +12,7 @@ part 'plugin_man.freezed.dart';
 // These functions are ignored because they are not marked as `pub`: `plugin_file_validity`, `read_plugin_metadata`, `rpc2plugin`, `valid_extension`, `valid_magic`, `valid_stem`, `validate_rpc`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `PluginManErr`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `get_plugin_config`, `load_plugin`, `new`, `remove_plugin`, `scan_dir`
+// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `get_plugin_config`, `load_plugin`, `new`, `reload_plugin`, `remove_plugin`, `scan_dir`
 
 Future<void> initPluginMan() =>
     RustLib.instance.api.crateApiPluginManInitPluginMan();
@@ -31,6 +31,15 @@ Future<String> getPluginConfig({required String path}) =>
 
 Future<List<String>?> scanDir({required String path}) =>
     RustLib.instance.api.crateApiPluginManScanDir(path: path);
+
+Future<String> reloadPlugin({required String path}) =>
+    RustLib.instance.api.crateApiPluginManReloadPlugin(path: path);
+
+Future<bool> isPluginLoaded({required String path}) =>
+    RustLib.instance.api.crateApiPluginManIsPluginLoaded(path: path);
+
+Future<List<String>> listLoadedPlugins() =>
+    RustLib.instance.api.crateApiPluginManListLoadedPlugins();
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PluginInode>>
 abstract class PluginInode implements RustOpaqueInterface {
