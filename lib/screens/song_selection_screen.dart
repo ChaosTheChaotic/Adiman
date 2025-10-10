@@ -19,6 +19,7 @@ import 'package:flutter_glow/flutter_glow.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:adiman/icons/broken_icons.dart';
+import 'plugins_screen.dart';
 
 class SongSelectionScreen extends StatefulWidget {
   final Function(Color)? updateThemeColor;
@@ -2924,6 +2925,24 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   );
                                 },
                               ),
+			      _buildMenuTile(
+				icon: Broken.cpu,
+				title: 'Plugins',
+				onTap: () {
+  				  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+  				  Navigator.pop(context);
+  				  Navigator.push(
+  				    context,
+  				    NamidaPageTransitions.createRoute(
+  				      PluginsScreen(
+  				        dominantColor: dominantColor,
+  				        service: service,
+  				        updateThemeColor: widget.updateThemeColor,
+  				      ),
+  				    ),
+  				  );
+  				},
+			      ),
                               _buildMenuTile(
                                 icon: Broken.cd,
                                 title: 'Audio CD',
