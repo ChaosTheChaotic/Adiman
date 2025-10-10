@@ -204,7 +204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               false;
       _spotdlFlags =
           SharedPreferencesService.instance.getString('spotdlFlags') ?? '';
-      _pluginDir = SharedPreferencesService.instance.getString('pluginDir') ?? '';
+      _pluginDir = SharedPreferencesService.instance.getString('pluginDir') ?? '~/AdiPlugins';
       _edgeBreathe =
           SharedPreferencesService.instance.getBool('edgeBreathe') ?? true;
       _enablePlugins =
