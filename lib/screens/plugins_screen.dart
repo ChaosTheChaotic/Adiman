@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:adiman/widgets/services.dart';
 import 'package:adiman/widgets/misc.dart';
@@ -176,12 +177,10 @@ class _PluginsScreenState extends State<PluginsScreen> {
 
   Map<String, dynamic> _parseConfig(String configJson) {
     try {
-      // Simple JSON parsing - you might want to use a proper JSON decoder
-      if (configJson.isEmpty || configJson.startsWith('Failed')) {
+      if (configJson.isEmpty || configJson.startsWith('Failed') || configJson.startsWith('[ERR]')) {
         return {};
       }
-      // This is a simplified parser - you should use dart:convert in real implementation
-      return {};
+      return jsonDecode(configJson) as Map<String, dynamic>;
     } catch (e) {
       return {};
     }
