@@ -2925,24 +2925,23 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   );
                                 },
                               ),
-			      _buildMenuTile(
-				icon: Broken.cpu,
-				title: 'Plugins',
-				onTap: () {
-  				  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-  				  //Navigator.pop(context);
-  				  //Navigator.push(
-  				  //  context,
-  				  //  NamidaPageTransitions.createRoute(
-  				  //    PluginsScreen(
-  				  //      dominantColor: dominantColor,
-  				  //      service: service,
-  				  //      updateThemeColor: widget.updateThemeColor,
-  				  //    ),
-  				  //  ),
-  				  //);
-  				},
-			      ),
+                              _buildMenuTile(
+                                icon: Broken.cpu,
+                                title: 'Plugins',
+                                onTap: () {
+                                  ScaffoldMessenger.of(context)
+                                      .hideCurrentSnackBar();
+                                  //Navigator.pop(context);
+                                  //Navigator.push(
+                                  //  context,
+                                  //  NamidaPageTransitions.createRoute(
+                                  //    PluginsScreen(
+                                  //
+                                  //    ),
+                                  //  ),
+                                  //);
+                                },
+                              ),
                               _buildMenuTile(
                                 icon: Broken.cd,
                                 title: 'Audio CD',

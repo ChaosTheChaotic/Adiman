@@ -204,7 +204,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               false;
       _spotdlFlags =
           SharedPreferencesService.instance.getString('spotdlFlags') ?? '';
-      _pluginDir = SharedPreferencesService.instance.getString('pluginDir') ?? '~/AdiPlugins';
+      _pluginDir = SharedPreferencesService.instance.getString('pluginDir') ??
+          '~/AdiPlugins';
       _edgeBreathe =
           SharedPreferencesService.instance.getBool('edgeBreathe') ?? true;
       _enablePlugins =
@@ -1411,14 +1412,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 value: _enablePlugins,
                                 onChanged: _saveEnablePlugins,
                               ),
-			      SettingsTextField(
-			        title: 'Plugin Directory',
-			        initialValue: _pluginDir,
-			        hintText: 'Enter plugin directory path...',
-			        onChanged: _savePluginDir,
-			        icon: Broken.folder,
-			        dominantColor: _currentColor,
-			      ),
+                              SettingsTextField(
+                                title: 'Plugin Directory',
+                                initialValue: _pluginDir,
+                                hintText: 'Enter plugin directory path...',
+                                onChanged: _savePluginDir,
+                                icon: Broken.folder,
+                                dominantColor: _currentColor,
+                              ),
                             ]),
                         _buildSettingsExpansionTile(
                           title: 'Keybindings',
