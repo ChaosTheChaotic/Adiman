@@ -2931,15 +2931,15 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 onTap: () {
                                   ScaffoldMessenger.of(context)
                                       .hideCurrentSnackBar();
-                                  //Navigator.pop(context);
-                                  //Navigator.push(
-                                  //  context,
-                                  //  NamidaPageTransitions.createRoute(
-                                  //    PluginsScreen(
-                                  //
-                                  //    ),
-                                  //  ),
-                                  //);
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    NamidaPageTransitions.createRoute(
+				      PluginsScreen(
+        			        onReloadLibrary: _loadSongs,
+        			      ),
+                                    ),
+                                  );
                                 },
                               ),
                               _buildMenuTile(
