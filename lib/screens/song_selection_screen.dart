@@ -2930,17 +2930,17 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
 				title: 'Plugins',
 				onTap: () {
   				  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-  				  Navigator.pop(context);
-  				  Navigator.push(
-  				    context,
-  				    NamidaPageTransitions.createRoute(
-  				      PluginsScreen(
-  				        dominantColor: dominantColor,
-  				        service: service,
-  				        updateThemeColor: widget.updateThemeColor,
-  				      ),
-  				    ),
-  				  );
+  				  //Navigator.pop(context);
+  				  //Navigator.push(
+  				  //  context,
+  				  //  NamidaPageTransitions.createRoute(
+  				  //    PluginsScreen(
+  				  //      dominantColor: dominantColor,
+  				  //      service: service,
+  				  //      updateThemeColor: widget.updateThemeColor,
+  				  //    ),
+  				  //  ),
+  				  //);
   				},
 			      ),
                               _buildMenuTile(
