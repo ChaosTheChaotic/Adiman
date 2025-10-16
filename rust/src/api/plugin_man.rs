@@ -149,28 +149,42 @@ impl AdiPluginMan {
 
         match config.ctype.as_str() {
             "String" => {
-                matches!(config.default_val, Value::String(_))
+                matches!(config.default_val, Value::String(_)) &&
+                matches!(config.set_val, Value::String(_))
             }
             "Bool" => {
-                matches!(config.default_val, Value::Bool(_))
+                matches!(config.default_val, Value::Bool(_)) &&
+                matches!(config.set_val, Value::Bool(_))
             }
             "Int" => {
-                if let Some(num) = config.default_val.as_i64() {
+                let d = if let Some(num) = config.default_val.as_i64() {
                     num >= i32::MIN as i64 && num <= i32::MAX as i64
                 } else {
                     false
-                }
+                };
+                let s = if let Some(num) = config.set_val.as_i64() {
+                    num >= i32::MIN as i64 && num <= i32::MAX as i64
+                } else {
+                    false
+                };
+                d && s
             }
             "UInt" => {
-                if let Some(num) = config.default_val.as_u64() {
+                let d = if let Some(num) = config.default_val.as_u64() {
                     num <= u32::MAX as u64
                 } else {
                     false
-                }
+                };
+                let s = if let Some(num) = config.default_val.as_u64() {
+                    num <= u32::MAX as u64
+                } else {
+                    false
+                };
+                d && s
             }
             "BigInt" => {
                 // BigInt can be number or string of digits (with optional minus)
-                if let Some(_) = config.default_val.as_i64() {
+                let d = if let Some(_) = config.default_val.as_i64() {
                     true
                 } else if let Some(str_val) = config.default_val.as_str() {
                     // Must be all digits with optional minus at start
@@ -184,25 +198,56 @@ impl AdiPluginMan {
                         && !rest.is_empty()
                 } else {
                     false
-                }
+                };
+                let s = if let Some(_) = config.default_val.as_i64() {
+                    true
+                } else if let Some(str_val) = config.default_val.as_str() {
+                    // Must be all digits with optional minus at start
+                    let mut chars = str_val.chars();
+                    let first_char = chars.next();
+                    let rest: String = chars.collect();
+
+                    (first_char == Some('-')
+                        || first_char.map(|c| c.is_ascii_digit()).unwrap_or(false))
+                        && rest.chars().all(|c| c.is_ascii_digit())
+                        && !rest.is_empty()
+                } else {
+                    false
+                };
+                d && s
             }
             "BigUInt" => {
                 // BigUInt can be number or string of digits
-                if let Some(_) = config.default_val.as_u64() {
+                let d = if let Some(_) = config.default_val.as_u64() {
                     true
                 } else if let Some(str_val) = config.default_val.as_str() {
                     // Must be all digits
                     !str_val.is_empty() && str_val.chars().all(|c| c.is_ascii_digit())
                 } else {
                     false
-                }
+                };
+                let s = if let Some(_) = config.default_val.as_u64() {
+                    true
+                } else if let Some(str_val) = config.default_val.as_str() {
+                    // Must be all digits
+                    !str_val.is_empty() && str_val.chars().all(|c| c.is_ascii_digit())
+                } else {
+                    false
+                };
+                d && s
             }
             "Float" => {
-                if let Some(_) = config.default_val.as_f64() {
+                let d = if let Some(_) = config.default_val.as_f64() {
                     true
                 } else {
                     false
-                }
+                };
+                let s = if let Some(_) = config.default_val.as_f64() {
+                    true
+                } else {
+                    false
+                };
+                d && s
             }
             _ => {
                 // Unknown config type
