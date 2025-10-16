@@ -1,4 +1,4 @@
-use extism::{CurrentPlugin, Function, PTR, PluginBuilder, UserData, Val, host_fn};
+use extism::{host_fn, CurrentPlugin, Function, PluginBuilder, UserData, Val, PTR};
 use flutter_rust_bridge::frb;
 
 #[frb(ignore)]

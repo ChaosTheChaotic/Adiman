@@ -2,7 +2,7 @@ use crate::api::host_func_interface::add_functions;
 pub use extism::{Manifest, Plugin, PluginBuilder, Wasm};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-pub use serde_json::{Value, from_str, from_value};
+pub use serde_json::{from_str, from_value, Value};
 pub use std::{
     collections::HashMap,
     error::Error,
@@ -149,12 +149,12 @@ impl AdiPluginMan {
 
         match config.ctype.as_str() {
             "String" => {
-                matches!(config.default_val, Value::String(_)) &&
-                matches!(config.set_val, Value::String(_))
+                matches!(config.default_val, Value::String(_))
+                    && matches!(config.set_val, Value::String(_))
             }
             "Bool" => {
-                matches!(config.default_val, Value::Bool(_)) &&
-                matches!(config.set_val, Value::Bool(_))
+                matches!(config.default_val, Value::Bool(_))
+                    && matches!(config.set_val, Value::Bool(_))
             }
             "Int" => {
                 let d = if let Some(num) = config.default_val.as_i64() {
@@ -538,7 +538,11 @@ pub fn init_plugin_man() {
 
 // Checks if the plugin manager is initialized
 pub fn check_plugin_man(pmg: &Option<AdiPluginMan>) -> bool {
-    if pmg.is_some() { true } else { false }
+    if pmg.is_some() {
+        true
+    } else {
+        false
+    }
 }
 
 // Loads a plugin using the given path
@@ -612,11 +616,16 @@ pub fn scan_dir(path: String) -> Option<Vec<String>> {
     let pmg = PLUGIN_MAN.lock().unwrap();
     if !check_plugin_man(&*pmg) {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
-        return None
+        return None;
     }
-    pmg.as_ref().unwrap().scan_dir(PathBuf::from(path)).map(|pb| {
-        pb.into_iter().filter_map(|pbuf| Some(pbuf.to_string_lossy().to_string())).collect()
-    })
+    pmg.as_ref()
+        .unwrap()
+        .scan_dir(PathBuf::from(path))
+        .map(|pb| {
+            pb.into_iter()
+                .filter_map(|pbuf| Some(pbuf.to_string_lossy().to_string()))
+                .collect()
+        })
 }
 
 // Reloads the plugin given as a path
@@ -626,7 +635,7 @@ pub fn reload_plugin(path: String) -> Result<String, String> {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
         return Err("[ERR]: Plugin man not loaded".to_string());
     }
-    
+
     let res: Result<(), PluginManErr> = pmg.as_mut().unwrap().reload_plugin(path.clone());
     match res {
         Ok(()) => Ok(format!(
@@ -651,11 +660,8 @@ pub fn is_plugin_loaded(path: String) -> bool {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
         return false;
     }
-    
-    pmg.as_ref()
-        .unwrap()
-        .plugin_meta
-        .contains_key(&path)
+
+    pmg.as_ref().unwrap().plugin_meta.contains_key(&path)
 }
 
 // Returns an array of loaded plugins
@@ -665,11 +671,6 @@ pub fn list_loaded_plugins() -> Vec<String> {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
         return Vec::new();
     }
-    
-    pmg.as_ref()
-        .unwrap()
-        .plugin_meta
-        .keys()
-        .cloned()
-        .collect()
+
+    pmg.as_ref().unwrap().plugin_meta.keys().cloned().collect()
 }
