@@ -175,7 +175,7 @@ impl AdiPluginMan {
                 } else {
                     false
                 };
-                let s = if let Some(num) = config.default_val.as_u64() {
+                let s = if let Some(num) = config.set_val.as_u64() {
                     num <= u32::MAX as u64
                 } else {
                     false
@@ -199,9 +199,9 @@ impl AdiPluginMan {
                 } else {
                     false
                 };
-                let s = if let Some(_) = config.default_val.as_i64() {
+                let s = if let Some(_) = config.set_val.as_i64() {
                     true
-                } else if let Some(str_val) = config.default_val.as_str() {
+                } else if let Some(str_val) = config.set_val.as_str() {
                     // Must be all digits with optional minus at start
                     let mut chars = str_val.chars();
                     let first_char = chars.next();
@@ -226,9 +226,9 @@ impl AdiPluginMan {
                 } else {
                     false
                 };
-                let s = if let Some(_) = config.default_val.as_u64() {
+                let s = if let Some(_) = config.set_val.as_u64() {
                     true
-                } else if let Some(str_val) = config.default_val.as_str() {
+                } else if let Some(str_val) = config.set_val.as_str() {
                     // Must be all digits
                     !str_val.is_empty() && str_val.chars().all(|c| c.is_ascii_digit())
                 } else {
@@ -242,7 +242,7 @@ impl AdiPluginMan {
                 } else {
                     false
                 };
-                let s = if let Some(_) = config.default_val.as_f64() {
+                let s = if let Some(_) = config.set_val.as_f64() {
                     true
                 } else {
                     false
