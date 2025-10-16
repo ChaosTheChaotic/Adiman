@@ -330,39 +330,34 @@ impl AdiPluginMan {
         key: String,
         value: ConfigTypes,
     ) -> Result<(), PluginManErr> {
-        // Check if plugin is loaded
-        if !self.plugin_meta.contains_key(&path) {
-            return Err(PluginManErr::PluginNotLoaded(path.clone()));
-        }
-
         let ppath = std::path::PathBuf::from(path.clone());
         let ppar = ppath.parent().ok_or_else(|| {
             PluginManErr::MetadataNotFound("Cannot determine plugin directory".to_string())
         })?;
-
+    
         // Build metadata file path
         let stem: PathBuf = PathBuf::from(ppath.file_stem().unwrap());
         let nfn = stem.with_extension("json");
         let pmet = ppar.join(nfn);
-
+    
         // Check if metadata file exists
         if !pmet.exists() {
             return Err(PluginManErr::MetadataNotFound(
                 pmet.to_string_lossy().to_string(),
             ));
         }
-
+    
         // Read and parse existing metadata
         let metadata_content = fs::read_to_string(&pmet)
             .map_err(|_| PluginManErr::MetadataNotFound(pmet.to_string_lossy().to_string()))?;
-
+    
         let mut metadata: Value = from_str(&metadata_content)
             .map_err(|_| PluginManErr::InvalidMeta(pmet.to_string_lossy().to_string()))?;
-
+    
         // Find and update the specific RPC config
         if let Some(Value::Array(rpc_array)) = metadata.get_mut("rpc") {
             let mut found = false;
-
+    
             for item in rpc_array.iter_mut() {
                 if let Some(Value::String(item_key)) = item.get("key") {
                     if item_key == &key {
@@ -387,14 +382,14 @@ impl AdiPluginMan {
                                 }
                             }
                         };
-
+    
                         item["set_val"] = new_value;
                         found = true;
                         break;
                     }
                 }
             }
-
+    
             if !found {
                 return Err(PluginManErr::InvalidMeta(format!(
                     "Key '{}' not found in plugin metadata",
@@ -406,21 +401,21 @@ impl AdiPluginMan {
                 "No RPC configuration found in metadata".to_string(),
             ));
         }
-
+    
         // Write updated metadata back to file
         let updated_content = serde_json::to_string_pretty(&metadata).map_err(|_| {
             PluginManErr::InvalidMeta("Failed to serialize updated metadata".to_string())
         })?;
-
+    
         fs::write(&pmet, updated_content).map_err(|_| {
             PluginManErr::InvalidMeta("Failed to write updated metadata file".to_string())
         })?;
-
-        // Update in-memory configuration
+    
+        // Update in-memory configuration only if plugin is loaded
         if let Some(plugin_inode) = self.plugin_meta.get_mut(&path) {
             plugin_inode.config.insert(key, value);
         }
-
+    
         Ok(())
     }
 
@@ -623,6 +618,30 @@ impl AdiPluginMan {
             .map(|pinode| pinode.config.clone())
             .ok_or_else(|| PluginManErr::PluginNotLoaded(path))
     }
+
+    pub fn get_plugin_meta(&self, path: String) -> Result<String, String> {
+        let ppath = std::path::PathBuf::from(path.clone());
+        let ppar = ppath
+            .parent()
+            .ok_or_else(|| "Cannot determine plugin directory".to_string())?;
+
+        let stem: PathBuf = PathBuf::from(
+            ppath
+                .file_stem()
+                .ok_or_else(|| "Invalid plugin file name".to_string())?,
+        );
+        let nfn = stem.with_extension("json");
+        let pmet = ppar.join(nfn);
+
+        if !pmet.exists() {
+            return Err("Metadata file not found".to_string());
+        }
+
+        let metadata_content =
+            fs::read_to_string(&pmet).map_err(|_| "Failed to read metadata file".to_string())?;
+
+        Ok(metadata_content)
+    }
 }
 
 unsafe impl Send for AdiPluginMan {}
@@ -696,18 +715,24 @@ pub fn remove_plugin(path: String) -> Result<String, String> {
 // Returns a json string which is the plugins config
 pub fn get_plugin_config(path: String) -> String {
     let pmg = PLUGIN_MAN.lock().unwrap();
-    if !check_plugin_man(&*pmg) {
-        eprintln!("{}", PluginManErr::PluginManNotLoaded);
-        return format!("[ERR]: {}", PluginManErr::PluginManNotLoaded);
-    }
 
-    match pmg.as_ref().unwrap().get_plugin_config(path) {
-        Ok(config) => serde_json::to_string(&config)
-            .unwrap_or_else(|_| "Failed to serialize config".to_string()),
-        Err(e) => {
-            eprintln!("{}", format!("{e}"));
-            format!("Failed to get plugin config: {e}")
+    // First try to get config from loaded plugin
+    if let Some(plugin_man) = pmg.as_ref() {
+        if let Ok(config) = plugin_man.get_plugin_config(path.clone()) {
+            return serde_json::to_string(&config)
+                .unwrap_or_else(|_| "Failed to serialize config".to_string());
+        } else {
+            // If plugin is not loaded or config not available, try to read from metadata
+            match plugin_man.get_plugin_meta(path) {
+                Ok(metadata_content) => return metadata_content,
+                Err(e) => {
+                    eprintln!("Failed to get plugin config: {}", e);
+                    return format!("Failed to get plugin config: {}", e);
+                }
+            }
         }
+    } else {
+        return format!("{}", PluginManErr::PluginManNotLoaded);
     }
 }
 

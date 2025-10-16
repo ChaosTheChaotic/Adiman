@@ -302,15 +302,15 @@ class _PluginsScreenState extends State<PluginsScreen> {
                   ),
                 ),
                 
+		DynamicIconButton(
+              	  icon: Broken.setting_2,
+              	  onPressed: isLoading ? null : () => _showPluginSettings(pluginPath),
+              	  backgroundColor: dominantColor,
+              	  size: 40,
+              	),
+              	const SizedBox(width: 12),
                 // Actions
                 if (isLoaded) ...[
-		  DynamicIconButton(
-              	    icon: Broken.setting_2,
-              	    onPressed: isLoading ? null : () => _showPluginSettings(pluginPath),
-              	    backgroundColor: dominantColor,
-              	    size: 40,
-              	  ),
-              const SizedBox(width: 12),
                   DynamicIconButton(
                     icon: Broken.refresh,
                     onPressed: isLoading ? null : () => _reloadPlugin(pluginPath),
@@ -632,34 +632,46 @@ class PluginSettingsDialog extends StatefulWidget {
 }
 
 class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
-  Map<String, rust_api.ConfigTypes>? _pluginConfig;
+  Map<String, dynamic>? _pluginMetadata;
   bool _isLoading = true;
   final Map<String, bool> _savingStates = {};
 
   @override
   void initState() {
     super.initState();
-    _loadPluginConfig();
+    _loadPluginMetadata();
   }
 
-  Future<void> _loadPluginConfig() async {
+  Future<void> _loadPluginMetadata() async {
     try {
-      // This function needs to be implemented in your Rust API
-      final configJson = await rust_api.getPluginConfig(path: widget.pluginPath);
-      final configMap = jsonDecode(configJson) as Map<String, dynamic>;
+      final metadataJson = await rust_api.getPluginConfig(path: widget.pluginPath);
       
-      setState(() {
-        _pluginConfig = _parseConfigMap(configMap);
-      });
+      // Check if the response is an error message
+      if (metadataJson.startsWith('Failed to get plugin config:') || 
+          metadataJson.startsWith('[ERR]:')) {
+        // No metadata found or error occurred
+        setState(() {
+          _pluginMetadata = null;
+        });
+      } else {
+        // Parse the metadata JSON
+        final metadataMap = jsonDecode(metadataJson) as Map<String, dynamic>;
+        setState(() {
+          _pluginMetadata = metadataMap;
+        });
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           AdiSnackbar(
             backgroundColor: widget.dominantColor,
-            content: 'Error loading plugin config: $e',
+            content: 'Error loading plugin metadata: $e',
           ),
         );
       }
+      setState(() {
+        _pluginMetadata = null;
+      });
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -667,49 +679,34 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
     }
   }
 
-  Map<String, rust_api.ConfigTypes> _parseConfigMap(Map<String, dynamic> configMap) {
-    final parsedConfig = <String, rust_api.ConfigTypes>{};
-    
-    configMap.forEach((key, value) {
-      if (value is String) {
-        parsedConfig[key] = rust_api.ConfigTypes.string(value);
-      } else if (value is bool) {
-        parsedConfig[key] = rust_api.ConfigTypes.bool(value);
-      } else if (value is int) {
-        // Determine if it should be Int or UInt based on value
-        if (value >= 0) {
-          parsedConfig[key] = rust_api.ConfigTypes.uInt(value);
-        } else {
-          parsedConfig[key] = rust_api.ConfigTypes.int(value);
-        }
-      } else if (value is BigInt) {
-        // Determine if it should be BigInt or BigUInt based on value
-        if (value >= BigInt.zero) {
-          parsedConfig[key] = rust_api.ConfigTypes.bigUInt(value);
-        } else {
-          parsedConfig[key] = rust_api.ConfigTypes.bigInt(value);
-        }
-      }
-    });
-    
-    return parsedConfig;
-  }
-
-  Future<void> _updateConfigValue(String key, rust_api.ConfigTypes newValue) async {
+  Future<void> _updateConfigValue(String key, dynamic newValue) async {
     setState(() {
       _savingStates[key] = true;
     });
 
     try {
+      // Convert the new value to the appropriate ConfigTypes
+      final configValue = _convertToConfigType(newValue);
+      
       final result = await rust_api.setPluginConfig(
         path: widget.pluginPath,
         key: key,
-        value: newValue,
+        value: configValue,
       );
 
       if (result.contains('Updated config')) {
+        // Update local state
         setState(() {
-          _pluginConfig![key] = newValue;
+          if (_pluginMetadata != null && _pluginMetadata!['rpc'] != null) {
+            final rpcArray = _pluginMetadata!['rpc'] as List<dynamic>;
+            for (var i = 0; i < rpcArray.length; i++) {
+              final item = rpcArray[i] as Map<String, dynamic>;
+              if (item['key'] == key) {
+                item['set_val'] = newValue;
+                break;
+              }
+            }
+          }
         });
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -739,7 +736,24 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
     }
   }
 
-  Widget _buildConfigField(String key, rust_api.ConfigTypes value) {
+  rust_api.ConfigTypes _convertToConfigType(dynamic value) {
+    if (value is String) {
+      return rust_api.ConfigTypes.string(value);
+    } else if (value is bool) {
+      return rust_api.ConfigTypes.bool(value);
+    } else if (value is int) {
+      // For now, treat all ints as regular int (you might want to check the actual type from metadata)
+      return rust_api.ConfigTypes.int(value);
+    }
+    // Fallback to string
+    return rust_api.ConfigTypes.string(value.toString());
+  }
+
+  Widget _buildConfigField(Map<String, dynamic> config) {
+    final key = config['key'] as String;
+    final ctype = config['ctype'] as String;
+    final defaultValue = config['default_val'];
+    final currentValue = config['set_val'] ?? defaultValue;
     final isLoading = _savingStates[key] ?? false;
 
     return Padding(
@@ -777,19 +791,31 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
               ),
               const SizedBox(height: 8),
               
-              value.map(
-                string: (stringValue) => _buildStringField(key, stringValue.field0, isLoading),
-                bool: (boolValue) => _buildBoolField(key, boolValue.field0, isLoading),
-                int: (intValue) => _buildIntField(key, intValue.field0, isLoading, false),
-                uInt: (uIntValue) => _buildIntField(key, uIntValue.field0, isLoading, true),
-                bigInt: (bigIntValue) => _buildBigIntField(key, bigIntValue.field0, isLoading, false),
-                bigUInt: (bigUIntValue) => _buildBigIntField(key, bigUIntValue.field0, isLoading, true),
-              ),
+              _buildFieldByType(key, ctype, currentValue, isLoading),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildFieldByType(String key, String ctype, dynamic value, bool isLoading) {
+    switch (ctype) {
+      case 'String':
+        return _buildStringField(key, value as String, isLoading);
+      case 'Bool':
+        return _buildBoolField(key, value as bool, isLoading);
+      case 'Int':
+      case 'UInt':
+        return _buildIntField(key, value, isLoading, ctype == 'UInt');
+      case 'BigInt':
+      case 'BigUInt':
+        return _buildBigIntField(key, value, isLoading, ctype == 'BigUInt');
+      case 'Float':
+        return _buildDoubleField(key, value, isLoading);
+      default:
+        return _buildStringField(key, value.toString(), isLoading);
+    }
   }
 
   Widget _buildStringField(String key, String value, bool isLoading) {
@@ -815,7 +841,7 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
             ),
             onSubmitted: (newValue) {
               if (newValue != value) {
-                _updateConfigValue(key, rust_api.ConfigTypes.string(newValue));
+                _updateConfigValue(key, newValue);
               }
             },
           ),
@@ -844,7 +870,7 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
           child: Switch(
             value: value,
             onChanged: isLoading ? null : (newValue) {
-              _updateConfigValue(key, rust_api.ConfigTypes.bool(newValue));
+              _updateConfigValue(key, newValue);
             },
             activeColor: widget.dominantColor,
             activeTrackColor: widget.dominantColor.withAlpha(100),
@@ -874,7 +900,7 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
     );
   }
 
-  Widget _buildIntField(String key, int value, bool isLoading, bool unsigned) {
+  Widget _buildIntField(String key, dynamic value, bool isLoading, bool unsigned) {
     final controller = TextEditingController(text: value.toString());
     
     return Row(
@@ -899,8 +925,7 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
             onSubmitted: (newValue) {
               final parsedValue = int.tryParse(newValue);
               if (parsedValue != null && parsedValue != value) {
-                final configType = unsigned ? rust_api.ConfigTypes.uInt(parsedValue) : rust_api.ConfigTypes.int(parsedValue);
-                _updateConfigValue(key, configType);
+                _updateConfigValue(key, parsedValue);
               }
             },
           ),
@@ -921,7 +946,7 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
     );
   }
 
-  Widget _buildBigIntField(String key, BigInt value, bool isLoading, bool unsigned) {
+  Widget _buildBigIntField(String key, dynamic value, bool isLoading, bool unsigned) {
     final controller = TextEditingController(text: value.toString());
     
     return Row(
@@ -945,9 +970,8 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
             onSubmitted: (newValue) {
               try {
                 final parsedValue = BigInt.parse(newValue);
-                if (parsedValue != value) {
-                  final configType = unsigned ? rust_api.ConfigTypes.bigUInt(parsedValue) : rust_api.ConfigTypes.bigInt(parsedValue);
-                  _updateConfigValue(key, configType);
+                if (parsedValue != BigInt.parse(value.toString())) {
+                  _updateConfigValue(key, parsedValue);
                 }
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -976,8 +1000,66 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
     );
   }
 
+  Widget _buildDoubleField(String key, dynamic value, bool isLoading) {
+    final controller = TextEditingController(text: value.toString());
+    
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            enabled: !isLoading,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            style: TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: widget.dominantColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: widget.dominantColor.withAlpha(150)),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            onSubmitted: (newValue) {
+              final parsedValue = double.tryParse(newValue);
+              if (parsedValue != null && parsedValue != value) {
+                _updateConfigValue(key, parsedValue);
+              }
+            },
+          ),
+        ),
+        if (isLoading)
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(widget.dominantColor),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  List<Map<String, dynamic>> _getRpcConfigs() {
+    if (_pluginMetadata == null || _pluginMetadata!['rpc'] == null) {
+      return [];
+    }
+    
+    final rpcArray = _pluginMetadata!['rpc'] as List<dynamic>;
+    return rpcArray.cast<Map<String, dynamic>>();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final rpcConfigs = _getRpcConfigs();
+    final hasSettings = rpcConfigs.isNotEmpty;
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(20),
@@ -1057,7 +1139,7 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
                         valueColor: AlwaysStoppedAnimation<Color>(widget.dominantColor),
                       ),
                     )
-                  : (_pluginConfig == null || _pluginConfig!.isEmpty)
+                  : !hasSettings
                       ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -1091,8 +1173,8 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
                       : Padding(
                           padding: const EdgeInsets.all(16),
                           child: ListView(
-                            children: _pluginConfig!.entries
-                                .map((entry) => _buildConfigField(entry.key, entry.value))
+                            children: rpcConfigs
+                                .map((config) => _buildConfigField(config))
                                 .toList(),
                           ),
                         ),
