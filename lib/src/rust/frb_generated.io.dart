@@ -125,6 +125,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AdiPluginMan dco_decode_box_autoadd_adi_plugin_man(dynamic raw);
 
   @protected
+  ConfigTypes dco_decode_box_autoadd_config_types(dynamic raw);
+
+  @protected
   int dco_decode_box_autoadd_u_32(dynamic raw);
 
   @protected
@@ -302,6 +305,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   AdiPluginMan sse_decode_box_autoadd_adi_plugin_man(
       SseDeserializer deserializer);
+
+  @protected
+  ConfigTypes sse_decode_box_autoadd_config_types(SseDeserializer deserializer);
 
   @protected
   int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
@@ -485,6 +491,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_adi_plugin_man(
       AdiPluginMan self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_config_types(
+      ConfigTypes self, SseSerializer serializer);
 
   @protected
   void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);

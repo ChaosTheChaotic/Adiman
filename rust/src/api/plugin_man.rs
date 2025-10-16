@@ -324,6 +324,106 @@ impl AdiPluginMan {
         plugin_config
     }
 
+    pub fn set_plugin_config(
+        &mut self,
+        path: String,
+        key: String,
+        value: ConfigTypes,
+    ) -> Result<(), PluginManErr> {
+        // Check if plugin is loaded
+        if !self.plugin_meta.contains_key(&path) {
+            return Err(PluginManErr::PluginNotLoaded(path.clone()));
+        }
+
+        let ppath = std::path::PathBuf::from(path.clone());
+        let ppar = ppath.parent().ok_or_else(|| {
+            PluginManErr::MetadataNotFound("Cannot determine plugin directory".to_string())
+        })?;
+
+        // Build metadata file path
+        let stem: PathBuf = PathBuf::from(ppath.file_stem().unwrap());
+        let nfn = stem.with_extension("json");
+        let pmet = ppar.join(nfn);
+
+        // Check if metadata file exists
+        if !pmet.exists() {
+            return Err(PluginManErr::MetadataNotFound(
+                pmet.to_string_lossy().to_string(),
+            ));
+        }
+
+        // Read and parse existing metadata
+        let metadata_content = fs::read_to_string(&pmet)
+            .map_err(|_| PluginManErr::MetadataNotFound(pmet.to_string_lossy().to_string()))?;
+
+        let mut metadata: Value = from_str(&metadata_content)
+            .map_err(|_| PluginManErr::InvalidMeta(pmet.to_string_lossy().to_string()))?;
+
+        // Find and update the specific RPC config
+        if let Some(Value::Array(rpc_array)) = metadata.get_mut("rpc") {
+            let mut found = false;
+
+            for item in rpc_array.iter_mut() {
+                if let Some(Value::String(item_key)) = item.get("key") {
+                    if item_key == &key {
+                        // Convert ConfigTypes to Value for serialization
+                        let new_value = match &value {
+                            ConfigTypes::String(s) => Value::String(s.clone()),
+                            ConfigTypes::Bool(b) => Value::Bool(*b),
+                            ConfigTypes::Int(i) => Value::Number(serde_json::Number::from(*i)),
+                            ConfigTypes::UInt(u) => Value::Number(serde_json::Number::from(*u)),
+                            ConfigTypes::BigInt(i) => {
+                                if let Some(num) = serde_json::Number::from_f64(*i as f64) {
+                                    Value::Number(num)
+                                } else {
+                                    Value::String(i.to_string())
+                                }
+                            }
+                            ConfigTypes::BigUInt(u) => {
+                                if let Some(num) = serde_json::Number::from_f64(*u as f64) {
+                                    Value::Number(num)
+                                } else {
+                                    Value::String(u.to_string())
+                                }
+                            }
+                        };
+
+                        item["set_val"] = new_value;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            if !found {
+                return Err(PluginManErr::InvalidMeta(format!(
+                    "Key '{}' not found in plugin metadata",
+                    key
+                )));
+            }
+        } else {
+            return Err(PluginManErr::InvalidMeta(
+                "No RPC configuration found in metadata".to_string(),
+            ));
+        }
+
+        // Write updated metadata back to file
+        let updated_content = serde_json::to_string_pretty(&metadata).map_err(|_| {
+            PluginManErr::InvalidMeta("Failed to serialize updated metadata".to_string())
+        })?;
+
+        fs::write(&pmet, updated_content).map_err(|_| {
+            PluginManErr::InvalidMeta("Failed to write updated metadata file".to_string())
+        })?;
+
+        // Update in-memory configuration
+        if let Some(plugin_inode) = self.plugin_meta.get_mut(&path) {
+            plugin_inode.config.insert(key, value);
+        }
+
+        Ok(())
+    }
+
     fn valid_extension(&self, path: &PathBuf) -> bool {
         if path.extension() == Some(OsStr::new("wasm")) {
             true
@@ -673,4 +773,32 @@ pub fn list_loaded_plugins() -> Vec<String> {
     }
 
     pmg.as_ref().unwrap().plugin_meta.keys().cloned().collect()
+}
+
+pub fn set_plugin_config(path: String, key: String, value: ConfigTypes) -> Result<String, String> {
+    let mut pmg = PLUGIN_MAN.lock().unwrap();
+    if !check_plugin_man(&*pmg) {
+        eprintln!("{}", PluginManErr::PluginManNotLoaded);
+        return Err(format!("[ERR]: {}", PluginManErr::PluginManNotLoaded));
+    }
+
+    match pmg
+        .as_mut()
+        .unwrap()
+        .set_plugin_config(path.clone(), key.clone(), value)
+    {
+        Ok(()) => Ok(format!(
+            "Updated config key '{}' for plugin: {}",
+            key,
+            PathBuf::from(path)
+                .file_stem()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
+        )),
+        Err(e) => {
+            eprintln!("{}", format!("{e}"));
+            Err(format!("Failed to set plugin config: {e}"))
+        }
+    }
 }
