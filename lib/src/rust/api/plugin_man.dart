@@ -118,4 +118,7 @@ sealed class ConfigTypes with _$ConfigTypes {
   const factory ConfigTypes.bigUInt(
     BigInt field0,
   ) = ConfigTypes_BigUInt;
+  const factory ConfigTypes.float(
+    double field0,
+  ) = ConfigTypes_Float;
 }

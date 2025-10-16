@@ -60,6 +60,7 @@ pub enum ConfigTypes {
     UInt(u32),
     BigInt(i128),
     BigUInt(u128),
+    Float(f64),
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -315,6 +316,13 @@ impl AdiPluginMan {
                         continue;
                     }
                 }
+                "Float" => {
+                    if let Some(f) = config.set_val.as_f64() {
+                        ConfigTypes::Float(f as f64)
+                    } else {
+                        continue;
+                    }
+                }
                 _ => continue, // Should not happen due to validation
             };
 
@@ -334,30 +342,30 @@ impl AdiPluginMan {
         let ppar = ppath.parent().ok_or_else(|| {
             PluginManErr::MetadataNotFound("Cannot determine plugin directory".to_string())
         })?;
-    
+
         // Build metadata file path
         let stem: PathBuf = PathBuf::from(ppath.file_stem().unwrap());
         let nfn = stem.with_extension("json");
         let pmet = ppar.join(nfn);
-    
+
         // Check if metadata file exists
         if !pmet.exists() {
             return Err(PluginManErr::MetadataNotFound(
                 pmet.to_string_lossy().to_string(),
             ));
         }
-    
+
         // Read and parse existing metadata
         let metadata_content = fs::read_to_string(&pmet)
             .map_err(|_| PluginManErr::MetadataNotFound(pmet.to_string_lossy().to_string()))?;
-    
+
         let mut metadata: Value = from_str(&metadata_content)
             .map_err(|_| PluginManErr::InvalidMeta(pmet.to_string_lossy().to_string()))?;
-    
+
         // Find and update the specific RPC config
         if let Some(Value::Array(rpc_array)) = metadata.get_mut("rpc") {
             let mut found = false;
-    
+
             for item in rpc_array.iter_mut() {
                 if let Some(Value::String(item_key)) = item.get("key") {
                     if item_key == &key {
@@ -381,15 +389,22 @@ impl AdiPluginMan {
                                     Value::String(u.to_string())
                                 }
                             }
+                            ConfigTypes::Float(f) => {
+                                if let Some(n) = serde_json::Number::from_f64(*f as f64) {
+                                    Value::Number(n)
+                                } else {
+                                    Value::String(f.to_string())
+                                }
+                            }
                         };
-    
+
                         item["set_val"] = new_value;
                         found = true;
                         break;
                     }
                 }
             }
-    
+
             if !found {
                 return Err(PluginManErr::InvalidMeta(format!(
                     "Key '{}' not found in plugin metadata",
@@ -401,21 +416,21 @@ impl AdiPluginMan {
                 "No RPC configuration found in metadata".to_string(),
             ));
         }
-    
+
         // Write updated metadata back to file
         let updated_content = serde_json::to_string_pretty(&metadata).map_err(|_| {
             PluginManErr::InvalidMeta("Failed to serialize updated metadata".to_string())
         })?;
-    
+
         fs::write(&pmet, updated_content).map_err(|_| {
             PluginManErr::InvalidMeta("Failed to write updated metadata file".to_string())
         })?;
-    
+
         // Update in-memory configuration only if plugin is loaded
         if let Some(plugin_inode) = self.plugin_meta.get_mut(&path) {
             plugin_inode.config.insert(key, value);
         }
-    
+
         Ok(())
     }
 
@@ -547,6 +562,7 @@ impl AdiPluginMan {
                     ConfigTypes::UInt(u) => u.to_string(),
                     ConfigTypes::BigInt(i) => i.to_string(),
                     ConfigTypes::BigUInt(u) => u.to_string(),
+                    ConfigTypes::Float(f) => f.to_string(),
                 };
                 (k.clone(), value_string)
             });

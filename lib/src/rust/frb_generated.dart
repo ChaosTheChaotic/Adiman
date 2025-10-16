@@ -1984,6 +1984,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         return ConfigTypes_BigUInt(
           dco_decode_U128(raw[1]),
         );
+      case 6:
+        return ConfigTypes_Float(
+          dco_decode_f_64(raw[1]),
+        );
       default:
         throw Exception("unreachable");
     }
@@ -2396,6 +2400,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 5:
         var var_field0 = sse_decode_U128(deserializer);
         return ConfigTypes_BigUInt(var_field0);
+      case 6:
+        var var_field0 = sse_decode_f_64(deserializer);
+        return ConfigTypes_Float(var_field0);
       default:
         throw UnimplementedError('');
     }
@@ -2845,6 +2852,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case ConfigTypes_BigUInt(field0: final field0):
         sse_encode_i_32(5, serializer);
         sse_encode_U128(field0, serializer);
+      case ConfigTypes_Float(field0: final field0):
+        sse_encode_i_32(6, serializer);
+        sse_encode_f_64(field0, serializer);
     }
   }
 

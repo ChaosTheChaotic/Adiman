@@ -61,6 +61,7 @@ extension ConfigTypesPatterns on ConfigTypes {
     TResult Function(ConfigTypes_UInt value)? uInt,
     TResult Function(ConfigTypes_BigInt value)? bigInt,
     TResult Function(ConfigTypes_BigUInt value)? bigUInt,
+    TResult Function(ConfigTypes_Float value)? float,
     required TResult orElse(),
   }) {
     final _that = this;
@@ -77,6 +78,8 @@ extension ConfigTypesPatterns on ConfigTypes {
         return bigInt(_that);
       case ConfigTypes_BigUInt() when bigUInt != null:
         return bigUInt(_that);
+      case ConfigTypes_Float() when float != null:
+        return float(_that);
       case _:
         return orElse();
     }
@@ -103,6 +106,7 @@ extension ConfigTypesPatterns on ConfigTypes {
     required TResult Function(ConfigTypes_UInt value) uInt,
     required TResult Function(ConfigTypes_BigInt value) bigInt,
     required TResult Function(ConfigTypes_BigUInt value) bigUInt,
+    required TResult Function(ConfigTypes_Float value) float,
   }) {
     final _that = this;
     switch (_that) {
@@ -118,6 +122,8 @@ extension ConfigTypesPatterns on ConfigTypes {
         return bigInt(_that);
       case ConfigTypes_BigUInt():
         return bigUInt(_that);
+      case ConfigTypes_Float():
+        return float(_that);
     }
   }
 
@@ -141,6 +147,7 @@ extension ConfigTypesPatterns on ConfigTypes {
     TResult? Function(ConfigTypes_UInt value)? uInt,
     TResult? Function(ConfigTypes_BigInt value)? bigInt,
     TResult? Function(ConfigTypes_BigUInt value)? bigUInt,
+    TResult? Function(ConfigTypes_Float value)? float,
   }) {
     final _that = this;
     switch (_that) {
@@ -156,6 +163,8 @@ extension ConfigTypesPatterns on ConfigTypes {
         return bigInt(_that);
       case ConfigTypes_BigUInt() when bigUInt != null:
         return bigUInt(_that);
+      case ConfigTypes_Float() when float != null:
+        return float(_that);
       case _:
         return null;
     }
@@ -181,6 +190,7 @@ extension ConfigTypesPatterns on ConfigTypes {
     TResult Function(int field0)? uInt,
     TResult Function(BigInt field0)? bigInt,
     TResult Function(BigInt field0)? bigUInt,
+    TResult Function(double field0)? float,
     required TResult orElse(),
   }) {
     final _that = this;
@@ -197,6 +207,8 @@ extension ConfigTypesPatterns on ConfigTypes {
         return bigInt(_that.field0);
       case ConfigTypes_BigUInt() when bigUInt != null:
         return bigUInt(_that.field0);
+      case ConfigTypes_Float() when float != null:
+        return float(_that.field0);
       case _:
         return orElse();
     }
@@ -223,6 +235,7 @@ extension ConfigTypesPatterns on ConfigTypes {
     required TResult Function(int field0) uInt,
     required TResult Function(BigInt field0) bigInt,
     required TResult Function(BigInt field0) bigUInt,
+    required TResult Function(double field0) float,
   }) {
     final _that = this;
     switch (_that) {
@@ -238,6 +251,8 @@ extension ConfigTypesPatterns on ConfigTypes {
         return bigInt(_that.field0);
       case ConfigTypes_BigUInt():
         return bigUInt(_that.field0);
+      case ConfigTypes_Float():
+        return float(_that.field0);
     }
   }
 
@@ -261,6 +276,7 @@ extension ConfigTypesPatterns on ConfigTypes {
     TResult? Function(int field0)? uInt,
     TResult? Function(BigInt field0)? bigInt,
     TResult? Function(BigInt field0)? bigUInt,
+    TResult? Function(double field0)? float,
   }) {
     final _that = this;
     switch (_that) {
@@ -276,6 +292,8 @@ extension ConfigTypesPatterns on ConfigTypes {
         return bigInt(_that.field0);
       case ConfigTypes_BigUInt() when bigUInt != null:
         return bigUInt(_that.field0);
+      case ConfigTypes_Float() when float != null:
+        return float(_that.field0);
       case _:
         return null;
     }
@@ -668,6 +686,71 @@ class _$ConfigTypes_BigUIntCopyWithImpl<$Res>
           ? _self.field0
           : field0 // ignore: cast_nullable_to_non_nullable
               as BigInt,
+    ));
+  }
+}
+
+/// @nodoc
+
+class ConfigTypes_Float extends ConfigTypes {
+  const ConfigTypes_Float(this.field0) : super._();
+
+  @override
+  final double field0;
+
+  /// Create a copy of ConfigTypes
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $ConfigTypes_FloatCopyWith<ConfigTypes_Float> get copyWith =>
+      _$ConfigTypes_FloatCopyWithImpl<ConfigTypes_Float>(this, _$identity);
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is ConfigTypes_Float &&
+            (identical(other.field0, field0) || other.field0 == field0));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, field0);
+
+  @override
+  String toString() {
+    return 'ConfigTypes.float(field0: $field0)';
+  }
+}
+
+/// @nodoc
+abstract mixin class $ConfigTypes_FloatCopyWith<$Res>
+    implements $ConfigTypesCopyWith<$Res> {
+  factory $ConfigTypes_FloatCopyWith(
+          ConfigTypes_Float value, $Res Function(ConfigTypes_Float) _then) =
+      _$ConfigTypes_FloatCopyWithImpl;
+  @useResult
+  $Res call({double field0});
+}
+
+/// @nodoc
+class _$ConfigTypes_FloatCopyWithImpl<$Res>
+    implements $ConfigTypes_FloatCopyWith<$Res> {
+  _$ConfigTypes_FloatCopyWithImpl(this._self, this._then);
+
+  final ConfigTypes_Float _self;
+  final $Res Function(ConfigTypes_Float) _then;
+
+  /// Create a copy of ConfigTypes
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? field0 = null,
+  }) {
+    return _then(ConfigTypes_Float(
+      null == field0
+          ? _self.field0
+          : field0 // ignore: cast_nullable_to_non_nullable
+              as double,
     ));
   }
 }

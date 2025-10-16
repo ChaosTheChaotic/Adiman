@@ -2364,6 +2364,10 @@ impl SseDecode for crate::api::plugin_man::ConfigTypes {
                 let mut var_field0 = <u128>::sse_decode(deserializer);
                 return crate::api::plugin_man::ConfigTypes::BigUInt(var_field0);
             }
+            6 => {
+                let mut var_field0 = <f64>::sse_decode(deserializer);
+                return crate::api::plugin_man::ConfigTypes::Float(var_field0);
+            }
             _ => {
                 unimplemented!("");
             }
@@ -2980,6 +2984,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::plugin_man::ConfigTypes {
             crate::api::plugin_man::ConfigTypes::BigUInt(field0) => {
                 [5.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
+            crate::api::plugin_man::ConfigTypes::Float(field0) => {
+                [6.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
             _ => {
                 unimplemented!("");
             }
@@ -3200,6 +3207,10 @@ impl SseEncode for crate::api::plugin_man::ConfigTypes {
             crate::api::plugin_man::ConfigTypes::BigUInt(field0) => {
                 <i32>::sse_encode(5, serializer);
                 <u128>::sse_encode(field0, serializer);
+            }
+            crate::api::plugin_man::ConfigTypes::Float(field0) => {
+                <i32>::sse_encode(6, serializer);
+                <f64>::sse_encode(field0, serializer);
             }
             _ => {
                 unimplemented!("");
