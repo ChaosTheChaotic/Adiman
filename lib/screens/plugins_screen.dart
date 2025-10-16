@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:adiman/main.dart';
 import 'package:adiman/widgets/services.dart';
@@ -173,6 +174,16 @@ class _PluginsScreenState extends State<PluginsScreen> {
     return fileName.replaceAll('.wasm', '');
   }
 
+  void _showPluginSettings(String pluginPath) {
+    showDialog(
+      context: context,
+      builder: (context) => PluginSettingsDialog(
+        pluginPath: pluginPath,
+        dominantColor: dominantColor,
+      ),
+    );
+  }
+
   Widget _buildPluginTile(String pluginPath) {
     final isLoaded = loadedPlugins.contains(pluginPath);
     final isLoading = _pluginLoadingStates[pluginPath] ?? false;
@@ -293,6 +304,13 @@ class _PluginsScreenState extends State<PluginsScreen> {
                 
                 // Actions
                 if (isLoaded) ...[
+		  DynamicIconButton(
+              	    icon: Broken.setting_2,
+              	    onPressed: isLoading ? null : () => _showPluginSettings(pluginPath),
+              	    backgroundColor: dominantColor,
+              	    size: 40,
+              	  ),
+              const SizedBox(width: 12),
                   DynamicIconButton(
                     icon: Broken.refresh,
                     onPressed: isLoading ? null : () => _reloadPlugin(pluginPath),
@@ -596,5 +614,497 @@ class _PluginsScreenState extends State<PluginsScreen> {
   @override
   void dispose() {
     super.dispose();
+  }
+}
+
+class PluginSettingsDialog extends StatefulWidget {
+  final String pluginPath;
+  final Color dominantColor;
+
+  const PluginSettingsDialog({
+    super.key,
+    required this.pluginPath,
+    required this.dominantColor,
+  });
+
+  @override
+  State<PluginSettingsDialog> createState() => _PluginSettingsDialogState();
+}
+
+class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
+  Map<String, rust_api.ConfigTypes>? _pluginConfig;
+  bool _isLoading = true;
+  final Map<String, bool> _savingStates = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPluginConfig();
+  }
+
+  Future<void> _loadPluginConfig() async {
+    try {
+      // This function needs to be implemented in your Rust API
+      final configJson = await rust_api.getPluginConfig(path: widget.pluginPath);
+      final configMap = jsonDecode(configJson) as Map<String, dynamic>;
+      
+      setState(() {
+        _pluginConfig = _parseConfigMap(configMap);
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          AdiSnackbar(
+            backgroundColor: widget.dominantColor,
+            content: 'Error loading plugin config: $e',
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Map<String, rust_api.ConfigTypes> _parseConfigMap(Map<String, dynamic> configMap) {
+    final parsedConfig = <String, rust_api.ConfigTypes>{};
+    
+    configMap.forEach((key, value) {
+      if (value is String) {
+        parsedConfig[key] = rust_api.ConfigTypes.string(value);
+      } else if (value is bool) {
+        parsedConfig[key] = rust_api.ConfigTypes.bool(value);
+      } else if (value is int) {
+        // Determine if it should be Int or UInt based on value
+        if (value >= 0) {
+          parsedConfig[key] = rust_api.ConfigTypes.uInt(value);
+        } else {
+          parsedConfig[key] = rust_api.ConfigTypes.int(value);
+        }
+      } else if (value is BigInt) {
+        // Determine if it should be BigInt or BigUInt based on value
+        if (value >= BigInt.zero) {
+          parsedConfig[key] = rust_api.ConfigTypes.bigUInt(value);
+        } else {
+          parsedConfig[key] = rust_api.ConfigTypes.bigInt(value);
+        }
+      }
+    });
+    
+    return parsedConfig;
+  }
+
+  Future<void> _updateConfigValue(String key, rust_api.ConfigTypes newValue) async {
+    setState(() {
+      _savingStates[key] = true;
+    });
+
+    try {
+      final result = await rust_api.setPluginConfig(
+        path: widget.pluginPath,
+        key: key,
+        value: newValue,
+      );
+
+      if (result.contains('Updated config')) {
+        setState(() {
+          _pluginConfig![key] = newValue;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          AdiSnackbar(
+            backgroundColor: widget.dominantColor,
+            content: 'Setting updated successfully',
+          ),
+        );
+      } else {
+        throw Exception(result);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          AdiSnackbar(
+            backgroundColor: widget.dominantColor,
+            content: 'Error updating setting: $e',
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _savingStates[key] = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildConfigField(String key, rust_api.ConfigTypes value) {
+    final isLoading = _savingStates[key] ?? false;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                widget.dominantColor.withAlpha(20),
+                Colors.black.withAlpha(80),
+              ],
+            ),
+            border: Border.all(
+              color: widget.dominantColor.withAlpha(50),
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                key,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              
+              value.map(
+                string: (stringValue) => _buildStringField(key, stringValue.field0, isLoading),
+                bool: (boolValue) => _buildBoolField(key, boolValue.field0, isLoading),
+                int: (intValue) => _buildIntField(key, intValue.field0, isLoading, false),
+                uInt: (uIntValue) => _buildIntField(key, uIntValue.field0, isLoading, true),
+                bigInt: (bigIntValue) => _buildBigIntField(key, bigIntValue.field0, isLoading, false),
+                bigUInt: (bigUIntValue) => _buildBigIntField(key, bigUIntValue.field0, isLoading, true),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStringField(String key, String value, bool isLoading) {
+    final controller = TextEditingController(text: value);
+    
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            enabled: !isLoading,
+            style: TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: widget.dominantColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: widget.dominantColor.withAlpha(150)),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            onSubmitted: (newValue) {
+              if (newValue != value) {
+                _updateConfigValue(key, rust_api.ConfigTypes.string(newValue));
+              }
+            },
+          ),
+        ),
+        if (isLoading)
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(widget.dominantColor),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBoolField(String key, bool value, bool isLoading) {
+    return Row(
+      children: [
+        Transform.scale(
+          scale: 1.2,
+          child: Switch(
+            value: value,
+            onChanged: isLoading ? null : (newValue) {
+              _updateConfigValue(key, rust_api.ConfigTypes.bool(newValue));
+            },
+            activeColor: widget.dominantColor,
+            activeTrackColor: widget.dominantColor.withAlpha(100),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          value ? 'Enabled' : 'Disabled',
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: 14,
+          ),
+        ),
+        if (isLoading)
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(widget.dominantColor),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildIntField(String key, int value, bool isLoading, bool unsigned) {
+    final controller = TextEditingController(text: value.toString());
+    
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            enabled: !isLoading,
+            keyboardType: TextInputType.number,
+            style: TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: widget.dominantColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: widget.dominantColor.withAlpha(150)),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            onSubmitted: (newValue) {
+              final parsedValue = int.tryParse(newValue);
+              if (parsedValue != null && parsedValue != value) {
+                final configType = unsigned ? rust_api.ConfigTypes.uInt(parsedValue) : rust_api.ConfigTypes.int(parsedValue);
+                _updateConfigValue(key, configType);
+              }
+            },
+          ),
+        ),
+        if (isLoading)
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(widget.dominantColor),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBigIntField(String key, BigInt value, bool isLoading, bool unsigned) {
+    final controller = TextEditingController(text: value.toString());
+    
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            enabled: !isLoading,
+            style: TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: widget.dominantColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: widget.dominantColor.withAlpha(150)),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            onSubmitted: (newValue) {
+              try {
+                final parsedValue = BigInt.parse(newValue);
+                if (parsedValue != value) {
+                  final configType = unsigned ? rust_api.ConfigTypes.bigUInt(parsedValue) : rust_api.ConfigTypes.bigInt(parsedValue);
+                  _updateConfigValue(key, configType);
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  AdiSnackbar(
+                    backgroundColor: widget.dominantColor,
+                    content: 'Invalid number format',
+                  ),
+                );
+              }
+            },
+          ),
+        ),
+        if (isLoading)
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(widget.dominantColor),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withAlpha(220),
+              Colors.black.withAlpha(240),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: widget.dominantColor.withAlpha(100),
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    widget.dominantColor.withAlpha(40),
+                    Colors.black.withAlpha(150),
+                  ],
+                ),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  GlowIcon(
+                    Broken.setting,
+                    color: widget.dominantColor,
+                    size: 24,
+                    glowColor: widget.dominantColor.withAlpha(80),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '${_getPluginName(widget.pluginPath)} Settings',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: GlowIcon(
+                      Broken.close_square,
+                      color: widget.dominantColor,
+                      glowColor: widget.dominantColor.withAlpha(80),
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Content
+            Expanded(
+              child: _isLoading
+                  ? Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(widget.dominantColor),
+                      ),
+                    )
+                  : (_pluginConfig == null || _pluginConfig!.isEmpty)
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              GlowIcon(
+                                Broken.setting,
+                                color: Colors.white70,
+                                size: 48,
+                                glowColor: Colors.white30,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No Settings Available',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'This plugin has no configurable settings',
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: ListView(
+                            children: _pluginConfig!.entries
+                                .map((entry) => _buildConfigField(entry.key, entry.value))
+                                .toList(),
+                          ),
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getPluginName(String path) {
+    final fileName = path.split(Platform.pathSeparator).last;
+    return fileName.replaceAll('.wasm', '');
   }
 }
