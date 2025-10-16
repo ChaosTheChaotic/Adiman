@@ -67,6 +67,7 @@ pub struct RpcConfig {
     pub key: String,
     pub ctype: String,
     pub default_val: Value,
+    pub set_val: Value,
 }
 
 pub type PluginConfig = HashMap<String, ConfigTypes>; // A key-value pair with a key and a config type
@@ -196,6 +197,13 @@ impl AdiPluginMan {
                     false
                 }
             }
+            "Float" => {
+                if let Some(_) = config.default_val.as_f64() {
+                    true
+                } else {
+                    false
+                }
+            }
             _ => {
                 // Unknown config type
                 false
@@ -209,37 +217,37 @@ impl AdiPluginMan {
         for config in rpc_configs {
             let config_type = match config.ctype.as_str() {
                 "String" => {
-                    if let Value::String(s) = config.default_val {
+                    if let Value::String(s) = config.set_val {
                         ConfigTypes::String(s)
                     } else {
                         continue; // Should not happen due to validation
                     }
                 }
                 "Bool" => {
-                    if let Value::Bool(b) = config.default_val {
+                    if let Value::Bool(b) = config.set_val {
                         ConfigTypes::Bool(b)
                     } else {
                         continue;
                     }
                 }
                 "Int" => {
-                    if let Some(i) = config.default_val.as_i64() {
+                    if let Some(i) = config.set_val.as_i64() {
                         ConfigTypes::Int(i as i32)
                     } else {
                         continue;
                     }
                 }
                 "UInt" => {
-                    if let Some(u) = config.default_val.as_u64() {
+                    if let Some(u) = config.set_val.as_u64() {
                         ConfigTypes::UInt(u as u32)
                     } else {
                         continue;
                     }
                 }
                 "BigInt" => {
-                    if let Some(i) = config.default_val.as_i64() {
+                    if let Some(i) = config.set_val.as_i64() {
                         ConfigTypes::BigInt(i as i128)
-                    } else if let Value::String(s) = &config.default_val {
+                    } else if let Value::String(s) = &config.set_val {
                         if let Ok(i) = s.parse::<i128>() {
                             ConfigTypes::BigInt(i)
                         } else {
@@ -250,9 +258,9 @@ impl AdiPluginMan {
                     }
                 }
                 "BigUInt" => {
-                    if let Some(u) = config.default_val.as_u64() {
+                    if let Some(u) = config.set_val.as_u64() {
                         ConfigTypes::BigUInt(u as u128)
-                    } else if let Value::String(s) = &config.default_val {
+                    } else if let Value::String(s) = &config.set_val {
                         if let Ok(u) = s.parse::<u128>() {
                             ConfigTypes::BigUInt(u)
                         } else {
