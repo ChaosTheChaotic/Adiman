@@ -679,21 +679,21 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
     }
   }
 
-  Future<void> _updateConfigValue(String key, dynamic newValue) async {
+  Future<void> _updateConfigValue(String key, dynamic newValue, String ctype) async {
     setState(() {
       _savingStates[key] = true;
     });
-
+  
     try {
-      // Convert the new value to the appropriate ConfigTypes
-      final configValue = _convertToConfigType(newValue);
+      // Convert the new value to the appropriate ConfigTypes using the ctype
+      final configValue = _convertToConfigType(newValue, ctype);
       
       final result = await rust_api.setPluginConfig(
         path: widget.pluginPath,
         key: key,
         value: configValue,
       );
-
+  
       if (result.contains('Updated config')) {
         // Update local state
         setState(() {
@@ -736,17 +736,44 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
     }
   }
 
-  rust_api.ConfigTypes _convertToConfigType(dynamic value) {
-    if (value is String) {
-      return rust_api.ConfigTypes.string(value);
-    } else if (value is bool) {
-      return rust_api.ConfigTypes.bool(value);
-    } else if (value is int) {
-      // For now, treat all ints as regular int (you might want to check the actual type from metadata)
-      return rust_api.ConfigTypes.int(value);
+  rust_api.ConfigTypes _convertToConfigType(dynamic value, String ctype) {
+    switch (ctype) {
+      case 'String':
+        return rust_api.ConfigTypes.string(value.toString());
+      case 'Bool':
+        if (value is bool) return rust_api.ConfigTypes.bool(value);
+        if (value is String) return rust_api.ConfigTypes.bool(value.toLowerCase() == 'true');
+        return rust_api.ConfigTypes.bool(value == 1 || value == '1');
+      case 'Int':
+        if (value is int) return rust_api.ConfigTypes.int(value);
+        if (value is String) return rust_api.ConfigTypes.int(int.tryParse(value) ?? 0);
+        return rust_api.ConfigTypes.int(value.toInt());
+      case 'UInt':
+        if (value is int) return rust_api.ConfigTypes.uInt(value);
+        if (value is String) {
+          final parsed = int.tryParse(value);
+          return rust_api.ConfigTypes.uInt(parsed != null && parsed >= 0 ? parsed : 0);
+        }
+        return rust_api.ConfigTypes.uInt(value.toInt());
+      case 'BigInt':
+        if (value is int) return rust_api.ConfigTypes.bigInt(BigInt.from(value));
+        if (value is String) return rust_api.ConfigTypes.bigInt(BigInt.parse(value));
+        if (value is BigInt) return rust_api.ConfigTypes.bigInt(value);
+        return rust_api.ConfigTypes.bigInt(BigInt.from(value.toInt()));
+      case 'BigUInt':
+        if (value is int) return rust_api.ConfigTypes.bigUInt(BigInt.from(value));
+        if (value is String) return rust_api.ConfigTypes.bigUInt(BigInt.parse(value));
+        if (value is BigInt) return rust_api.ConfigTypes.bigUInt(value);
+        return rust_api.ConfigTypes.bigUInt(BigInt.from(value.toInt()));
+      case 'Float':
+        if (value is double) return rust_api.ConfigTypes.float(value);
+        if (value is int) return rust_api.ConfigTypes.float(value.toDouble());
+        if (value is String) return rust_api.ConfigTypes.float(double.tryParse(value) ?? 0.0);
+        return rust_api.ConfigTypes.float(value.toDouble());
+      default:
+        // Fallback to string for unknown types
+        return rust_api.ConfigTypes.string(value.toString());
     }
-    // Fallback to string
-    return rust_api.ConfigTypes.string(value.toString());
   }
 
   Widget _buildConfigField(Map<String, dynamic> config) {
@@ -841,7 +868,7 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
             ),
             onSubmitted: (newValue) {
               if (newValue != value) {
-                _updateConfigValue(key, newValue);
+                _updateConfigValue(key, newValue, "String");
               }
             },
           ),
@@ -870,7 +897,7 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
           child: Switch(
             value: value,
             onChanged: isLoading ? null : (newValue) {
-              _updateConfigValue(key, newValue);
+              _updateConfigValue(key, newValue, "Bool");
             },
             activeColor: widget.dominantColor,
             activeTrackColor: widget.dominantColor.withAlpha(100),
@@ -925,7 +952,8 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
             onSubmitted: (newValue) {
               final parsedValue = int.tryParse(newValue);
               if (parsedValue != null && parsedValue != value) {
-                _updateConfigValue(key, parsedValue);
+	      final String ctype = unsigned ? "UInt" : "Int";
+                _updateConfigValue(key, parsedValue, ctype);
               }
             },
           ),
@@ -971,7 +999,8 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
               try {
                 final parsedValue = BigInt.parse(newValue);
                 if (parsedValue != BigInt.parse(value.toString())) {
-                  _updateConfigValue(key, parsedValue);
+		final String ctype = unsigned ?  "BigUInt" : "BigInt";
+                  _updateConfigValue(key, parsedValue, ctype);
                 }
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1025,7 +1054,7 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
             onSubmitted: (newValue) {
               final parsedValue = double.tryParse(newValue);
               if (parsedValue != null && parsedValue != value) {
-                _updateConfigValue(key, parsedValue);
+                _updateConfigValue(key, parsedValue, 'Float');
               }
             },
           ),
