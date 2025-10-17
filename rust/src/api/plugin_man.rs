@@ -732,23 +732,16 @@ pub fn remove_plugin(path: String) -> Result<String, String> {
 pub fn get_plugin_config(path: String) -> String {
     let pmg = PLUGIN_MAN.lock().unwrap();
 
-    // First try to get config from loaded plugin
     if let Some(plugin_man) = pmg.as_ref() {
-        if let Ok(config) = plugin_man.get_plugin_config(path.clone()) {
-            return serde_json::to_string(&config)
-                .unwrap_or_else(|_| "Failed to serialize config".to_string());
-        } else {
-            // If plugin is not loaded or config not available, try to read from metadata
-            match plugin_man.get_plugin_meta(path) {
-                Ok(metadata_content) => return metadata_content,
-                Err(e) => {
-                    eprintln!("Failed to get plugin config: {}", e);
-                    return format!("Failed to get plugin config: {}", e);
-                }
+        match plugin_man.get_plugin_meta(path) {
+            Ok(metadata_content) => metadata_content,
+            Err(e) => {
+                eprintln!("Failed to get plugin config from metadata: {}", e);
+                format!("Failed to get plugin config: {}", e)
             }
         }
     } else {
-        return format!("{}", PluginManErr::PluginManNotLoaded);
+        format!("{}", PluginManErr::PluginManNotLoaded)
     }
 }
 
