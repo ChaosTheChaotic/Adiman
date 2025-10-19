@@ -2047,6 +2047,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
 			label: 'Find metadata',
 			onTap: () async {
 			  final meta = await acoustid.lookup(path: song.path);
+			  if (meta == null) {
+			    ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(content: "Failed to find metadata for song"));
+			  }
 			  print(meta);
 			}
 		      ),
