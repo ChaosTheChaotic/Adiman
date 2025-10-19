@@ -1061,6 +1061,7 @@ unsafe impl Send for AudioPlayer {}
 unsafe impl Sync for AudioPlayer {}
 
 pub fn initialize_player() -> bool {
+    dotenvy::dotenv().ok();
     let mut state = PLAYER_STATE.lock().unwrap();
     if !state.initialized {
         let mut player = PLAYER.lock().unwrap();

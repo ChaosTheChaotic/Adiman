@@ -6,6 +6,7 @@
 // Static analysis wrongly picks the IO variant, thus ignore this
 // ignore_for_file: argument_type_not_assignable
 
+import 'api/acoustid.dart';
 import 'api/color_extractor.dart';
 import 'api/music_handler.dart';
 import 'api/plugin_man.dart';
@@ -130,6 +131,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ConfigTypes dco_decode_box_autoadd_config_types(dynamic raw);
 
   @protected
+  SongMetadata dco_decode_box_autoadd_song_metadata(dynamic raw);
+
+  @protected
   int dco_decode_box_autoadd_u_32(dynamic raw);
 
   @protected
@@ -154,6 +158,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Float64List dco_decode_list_prim_f_64_strict(dynamic raw);
 
   @protected
+  List<int> dco_decode_list_prim_u_32_loose(dynamic raw);
+
+  @protected
+  Uint32List dco_decode_list_prim_u_32_strict(dynamic raw);
+
+  @protected
   List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
 
   @protected
@@ -176,6 +186,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   AdiPluginMan? dco_decode_opt_box_autoadd_adi_plugin_man(dynamic raw);
+
+  @protected
+  SongMetadata? dco_decode_opt_box_autoadd_song_metadata(dynamic raw);
 
   @protected
   int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
@@ -312,6 +325,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ConfigTypes sse_decode_box_autoadd_config_types(SseDeserializer deserializer);
 
   @protected
+  SongMetadata sse_decode_box_autoadd_song_metadata(
+      SseDeserializer deserializer);
+
+  @protected
   int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
 
   @protected
@@ -334,6 +351,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Float64List sse_decode_list_prim_f_64_strict(SseDeserializer deserializer);
+
+  @protected
+  List<int> sse_decode_list_prim_u_32_loose(SseDeserializer deserializer);
+
+  @protected
+  Uint32List sse_decode_list_prim_u_32_strict(SseDeserializer deserializer);
 
   @protected
   List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
@@ -359,6 +382,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   AdiPluginMan? sse_decode_opt_box_autoadd_adi_plugin_man(
+      SseDeserializer deserializer);
+
+  @protected
+  SongMetadata? sse_decode_opt_box_autoadd_song_metadata(
       SseDeserializer deserializer);
 
   @protected
@@ -499,6 +526,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       ConfigTypes self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_song_metadata(
+      SongMetadata self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
 
   @protected
@@ -523,6 +554,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_prim_f_64_strict(
       Float64List self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_prim_u_32_loose(
+      List<int> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_prim_u_32_strict(
+      Uint32List self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
@@ -550,6 +589,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_adi_plugin_man(
       AdiPluginMan? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_song_metadata(
+      SongMetadata? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
