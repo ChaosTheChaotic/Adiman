@@ -4,6 +4,7 @@ use rodio::source::Source;
 use rusty_chromaprint::{Configuration, Fingerprinter};
 use serde::Deserialize;
 use std::path::Path;
+use base64::{engine::general_purpose, Engine as _};
 
 // The main lookup function
 fn lookup_rs(path: impl AsRef<Path> + ToString) -> Option<SongMetadata> {
@@ -163,12 +164,10 @@ fn lookup_metadata(
     let client_key =
         std::env::var("ACOUSTID_API").context("ACOUSTID_API environment variable not set")?;
 
-    // Convert fingerprint to the string format AcoustID expects
-    let fingerprint_string = fingerprint
-        .iter()
-        .map(|x| x.to_string())
-        .collect::<Vec<_>>()
-        .join(",");
+    let bytes: &[u8] = unsafe {
+        std::slice::from_raw_parts(fingerprint.as_ptr() as *const u8, fingerprint.len() * std::mem::size_of::<u32>())
+    };
+    let fingerprint_string = general_purpose::STANDARD.encode(bytes);
 
     let client: reqwest::blocking::Client = reqwest::blocking::Client::new();
     let response = client
@@ -181,6 +180,8 @@ fn lookup_metadata(
         ])
         .send()
         .context("Failed to send request to AcoustID")?;
+
+    println!("{}", response.url());
 
     let acoustid_response: AcoustIdResponse = response
         .json()
