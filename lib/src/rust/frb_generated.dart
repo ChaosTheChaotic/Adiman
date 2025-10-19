@@ -72,7 +72,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -303322504;
+  int get rustContentHash => -1401083728;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -173,10 +173,7 @@ abstract class RustLibApi extends BaseApi {
 
   Future<String> crateApiPluginManLoadPlugin({required String path});
 
-  Future<SongMetadata?> crateApiAcoustidLookupMetadata(
-      {required List<int> fingerprint,
-      required BigInt durationSecs,
-      required String path});
+  Future<SongMetadata?> crateApiAcoustidLookup({required String path});
 
   Future<bool> crateApiMusicHandlerPauseSong();
 
@@ -1198,33 +1195,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<SongMetadata?> crateApiAcoustidLookupMetadata(
-      {required List<int> fingerprint,
-      required BigInt durationSecs,
-      required String path}) {
+  Future<SongMetadata?> crateApiAcoustidLookup({required String path}) {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_list_prim_u_32_loose(fingerprint, serializer);
-        sse_encode_u_64(durationSecs, serializer);
         sse_encode_String(path, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
             funcId: 37, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_opt_box_autoadd_song_metadata,
-        decodeErrorData: sse_decode_AnyhowException,
+        decodeErrorData: null,
       ),
-      constMeta: kCrateApiAcoustidLookupMetadataConstMeta,
-      argValues: [fingerprint, durationSecs, path],
+      constMeta: kCrateApiAcoustidLookupConstMeta,
+      argValues: [path],
       apiImpl: this,
     ));
   }
 
-  TaskConstMeta get kCrateApiAcoustidLookupMetadataConstMeta =>
-      const TaskConstMeta(
-        debugName: "lookup_metadata",
-        argNames: ["fingerprint", "durationSecs", "path"],
+  TaskConstMeta get kCrateApiAcoustidLookupConstMeta => const TaskConstMeta(
+        debugName: "lookup",
+        argNames: ["path"],
       );
 
   @override
@@ -2072,18 +2063,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<int> dco_decode_list_prim_u_32_loose(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as List<int>;
-  }
-
-  @protected
-  Uint32List dco_decode_list_prim_u_32_strict(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as Uint32List;
-  }
-
-  @protected
   List<int> dco_decode_list_prim_u_8_loose(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as List<int>;
@@ -2517,20 +2496,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getFloat64List(len_);
-  }
-
-  @protected
-  List<int> sse_decode_list_prim_u_32_loose(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var len_ = sse_decode_i_32(deserializer);
-    return deserializer.buffer.getUint32List(len_);
-  }
-
-  @protected
-  Uint32List sse_decode_list_prim_u_32_strict(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var len_ = sse_decode_i_32(deserializer);
-    return deserializer.buffer.getUint32List(len_);
   }
 
   @protected
@@ -2999,23 +2964,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putFloat64List(self);
-  }
-
-  @protected
-  void sse_encode_list_prim_u_32_loose(
-      List<int> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    serializer.buffer
-        .putUint32List(self is Uint32List ? self : Uint32List.fromList(self));
-  }
-
-  @protected
-  void sse_encode_list_prim_u_32_strict(
-      Uint32List self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    serializer.buffer.putUint32List(self);
   }
 
   @protected

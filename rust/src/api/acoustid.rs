@@ -5,7 +5,31 @@ use rusty_chromaprint::{Configuration, Fingerprinter};
 use serde::Deserialize;
 use std::path::Path;
 
-pub fn calc_fingerprint(path: impl AsRef<Path>) -> anyhow::Result<Vec<u32>> {
+// The main lookup function
+fn lookup_rs(path: impl AsRef<Path> + ToString) -> Option<SongMetadata> {
+    let pref = path.as_ref();
+    let f = match calc_fingerprint(pref) {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("{e}");
+            return None;
+        }
+    };
+    let d = get_duration(pref);
+    match lookup_metadata(f.as_slice(), d, path) {
+        Ok(sm) => sm,
+        Err(e) => {
+            eprintln!("{e}");
+            return None;
+        }
+    }
+}
+
+pub fn lookup(path: String) -> Option<SongMetadata> {
+    lookup_rs(path)
+}
+
+fn calc_fingerprint(path: impl AsRef<Path>) -> anyhow::Result<Vec<u32>> {
     let path = path.as_ref();
     let src = std::fs::File::open(path).context("Failed to open file")?;
     let mss = symphonia::core::io::MediaSourceStream::new(Box::new(src), Default::default());
@@ -85,7 +109,7 @@ pub fn calc_fingerprint(path: impl AsRef<Path>) -> anyhow::Result<Vec<u32>> {
     Ok(printer.fingerprint().to_vec())
 }
 
-pub fn get_duration(path: impl AsRef<Path>) -> u64 {
+fn get_duration(path: impl AsRef<Path>) -> u64 {
     // Extract duration (fallback to 0 if decoding fails)
     if let Ok(file) = std::fs::File::open(path) {
         rodio::Decoder::try_from(file)
@@ -131,10 +155,10 @@ struct AcoustIdResponse {
     results: Vec<AcoustIdResult>,
 }
 
-pub fn lookup_metadata(
+fn lookup_metadata(
     fingerprint: &[u32],
     duration_secs: u64,
-    path: &str,
+    path: impl AsRef<Path> + ToString,
 ) -> anyhow::Result<Option<SongMetadata>> {
     let client_key =
         std::env::var("ACOUSTID_API").context("ACOUSTID_API environment variable not set")?;

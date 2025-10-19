@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -303322504;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1401083728;
 
 // Section: executor
 
@@ -1413,7 +1413,7 @@ fn wire__crate__api__plugin_man__load_plugin_impl(
         },
     )
 }
-fn wire__crate__api__acoustid__lookup_metadata_impl(
+fn wire__crate__api__acoustid__lookup_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -1421,7 +1421,7 @@ fn wire__crate__api__acoustid__lookup_metadata_impl(
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "lookup_metadata",
+            debug_name: "lookup",
             port: Some(port_),
             mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
@@ -1435,21 +1435,13 @@ fn wire__crate__api__acoustid__lookup_metadata_impl(
             };
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_fingerprint = <Vec<u32>>::sse_decode(&mut deserializer);
-            let api_duration_secs = <u64>::sse_decode(&mut deserializer);
             let api_path = <String>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
-                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
-                    (move || {
-                        let output_ok = crate::api::acoustid::lookup_metadata(
-                            &api_fingerprint,
-                            api_duration_secs,
-                            &api_path,
-                        )?;
-                        Ok(output_ok)
-                    })(),
-                )
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(crate::api::acoustid::lookup(api_path))?;
+                    Ok(output_ok)
+                })())
             }
         },
     )
@@ -2473,18 +2465,6 @@ impl SseDecode for Vec<f64> {
     }
 }
 
-impl SseDecode for Vec<u32> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut len_ = <i32>::sse_decode(deserializer);
-        let mut ans_ = vec![];
-        for idx_ in 0..len_ {
-            ans_.push(<u32>::sse_decode(deserializer));
-        }
-        return ans_;
-    }
-}
-
 impl SseDecode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2802,7 +2782,7 @@ fn pde_ffi_dispatcher_primary_impl(
             data_len,
         ),
         36 => wire__crate__api__plugin_man__load_plugin_impl(port, ptr, rust_vec_len, data_len),
-        37 => wire__crate__api__acoustid__lookup_metadata_impl(port, ptr, rust_vec_len, data_len),
+        37 => wire__crate__api__acoustid__lookup_impl(port, ptr, rust_vec_len, data_len),
         38 => wire__crate__api__music_handler__pause_song_impl(port, ptr, rust_vec_len, data_len),
         39 => wire__crate__api__music_handler__play_song_impl(port, ptr, rust_vec_len, data_len),
         40 => wire__crate__api__music_handler__player_state_default_impl(
@@ -3333,16 +3313,6 @@ impl SseEncode for Vec<f64> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <f64>::sse_encode(item, serializer);
-        }
-    }
-}
-
-impl SseEncode for Vec<u32> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <i32>::sse_encode(self.len() as _, serializer);
-        for item in self {
-            <u32>::sse_encode(item, serializer);
         }
     }
 }

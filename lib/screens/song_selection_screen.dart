@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:path/path.dart' as path;
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
+import 'package:adiman/src/rust/api/acoustid.dart' as acoustid;
 import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
 import 'package:flutter/material.dart';
 import 'package:adiman/main.dart';
@@ -2040,6 +2041,15 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                           isDestructive: true,
                         ),
                       ],
+		      const SizedBox(height: 12,),
+		      _buildPlaylistOptionButton(
+			icon: Broken.global_search,
+			label: 'Find metadata',
+			onTap: () async {
+			  final meta = await acoustid.lookup(path: song.path);
+			  print(meta);
+			}
+		      ),
                       const SizedBox(height: 12),
                       _buildPlaylistOptionButton(
                         icon: Broken.trash,
