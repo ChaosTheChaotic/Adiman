@@ -2054,7 +2054,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   AdiSnackbar(
                                       content:
                                           "Failed to find metadata for song"));
-                            }
+                            } else {
+			      final new_song_meta = Song.fromMetadata(meta);
+			    }
                           }),
                       const SizedBox(height: 12),
                       _buildPlaylistOptionButton(
