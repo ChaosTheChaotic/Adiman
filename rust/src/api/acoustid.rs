@@ -1,7 +1,7 @@
 use crate::api::music_handler::SongMetadata;
-use anyhow::Context;
+use anyhow::{bail, Context};
 use rodio::source::Source;
-use rusty_chromaprint::{Configuration, Fingerprinter};
+use rusty_chromaprint::{Configuration, Fingerprinter, FingerprintCompressor};
 use serde::Deserialize;
 use std::path::Path;
 use base64::{engine::general_purpose, Engine as _};
@@ -64,15 +64,17 @@ fn calc_fingerprint(path: impl AsRef<Path>) -> anyhow::Result<Vec<u32>> {
     let tid = track.id;
 
     let mut printer = Fingerprinter::new(&Configuration::default());
+
     let srate = track
         .codec_params
         .sample_rate
-        .context("Missing sample rate")?;
+        .unwrap_or(44100); // Common music sample rate
+    
     let channels = track
         .codec_params
         .channels
-        .context("Missing audio channels")?
-        .count() as u32;
+        .map(|c| c.count() as u32)
+        .unwrap_or(2);
     printer
         .start(srate, channels)
         .context("Initializing fingerprinter")?;
@@ -164,24 +166,41 @@ fn lookup_metadata(
     let client_key =
         std::env::var("ACOUSTID_API").context("ACOUSTID_API environment variable not set")?;
 
-    let bytes: &[u8] = unsafe {
-        std::slice::from_raw_parts(fingerprint.as_ptr() as *const u8, fingerprint.len() * std::mem::size_of::<u32>())
-    };
-    let fingerprint_string = general_purpose::STANDARD.encode(bytes);
+    let compressed_fingerprint = FingerprintCompressor::from(&Configuration::default()).compress(fingerprint);
+    
+    let fingerprint_string = general_purpose::URL_SAFE_NO_PAD.encode(&compressed_fingerprint);
+
+    let url = format!(
+        "https://api.acoustid.org/v2/lookup?client={}&duration={}&fingerprint={}&meta=recordings+releasegroups+compress",
+        client_key,
+        duration_secs,
+        fingerprint_string
+    );
 
     let client: reqwest::blocking::Client = reqwest::blocking::Client::new();
+    //let response = client
+    //    .get("https://api.acoustid.org/v2/lookup")
+    //    .query(&[
+    //        ("client", &client_key),
+    //        ("duration", &duration_secs.to_string()),
+    //        ("fingerprint", &fingerprint_string),
+    //        ("meta", &"recordings+releasegroups+compress".to_string()),
+    //    ])
+    //    .send()
+    //    .context("Failed to send request to AcoustID")?;
+
     let response = client
-        .get("https://api.acoustid.org/v2/lookup")
-        .query(&[
-            ("client", &client_key),
-            ("duration", &duration_secs.to_string()),
-            ("fingerprint", &fingerprint_string),
-            ("meta", &"recordings+releasegroups+compress".to_string()),
-        ])
+        .get(&url)
         .send()
         .context("Failed to send request to AcoustID")?;
 
     println!("{}", response.url());
+
+    if response.status().is_client_error() {
+        bail!(format!("AcoustID responded with a client error {}", response.status()))
+    } else if response.status().is_server_error() {
+        bail!("AcoustID responded with a server error, try again later")
+    }
 
     let acoustid_response: AcoustIdResponse = response
         .json()

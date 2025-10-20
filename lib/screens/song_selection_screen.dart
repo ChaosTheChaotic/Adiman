@@ -2050,7 +2050,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
 			  if (meta == null) {
 			    ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(content: "Failed to find metadata for song"));
 			  }
-			  print(meta);
 			}
 		      ),
                       const SizedBox(height: 12),
