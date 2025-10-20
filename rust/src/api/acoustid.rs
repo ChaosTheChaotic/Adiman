@@ -1,10 +1,10 @@
 use crate::api::music_handler::SongMetadata;
 use anyhow::{bail, Context};
+use base64::{engine::general_purpose, Engine as _};
 use rodio::source::Source;
-use rusty_chromaprint::{Configuration, Fingerprinter, FingerprintCompressor};
+use rusty_chromaprint::{Configuration, FingerprintCompressor, Fingerprinter};
 use serde::Deserialize;
 use std::path::Path;
-use base64::{engine::general_purpose, Engine as _};
 
 // The main lookup function
 fn lookup_rs(path: impl AsRef<Path> + ToString) -> Option<SongMetadata> {
@@ -65,11 +65,8 @@ fn calc_fingerprint(path: impl AsRef<Path>) -> anyhow::Result<Vec<u32>> {
 
     let mut printer = Fingerprinter::new(&Configuration::default());
 
-    let srate = track
-        .codec_params
-        .sample_rate
-        .unwrap_or(44100); // Common music sample rate
-    
+    let srate = track.codec_params.sample_rate.unwrap_or(44100); // Common music sample rate
+
     let channels = track
         .codec_params
         .channels
@@ -166,8 +163,9 @@ fn lookup_metadata(
     let client_key =
         std::env::var("ACOUSTID_API").context("ACOUSTID_API environment variable not set")?;
 
-    let compressed_fingerprint = FingerprintCompressor::from(&Configuration::default()).compress(fingerprint);
-    
+    let compressed_fingerprint =
+        FingerprintCompressor::from(&Configuration::default()).compress(fingerprint);
+
     let fingerprint_string = general_purpose::URL_SAFE_NO_PAD.encode(&compressed_fingerprint);
 
     let url = format!(
@@ -178,26 +176,17 @@ fn lookup_metadata(
     );
 
     let client: reqwest::blocking::Client = reqwest::blocking::Client::new();
-    //let response = client
-    //    .get("https://api.acoustid.org/v2/lookup")
-    //    .query(&[
-    //        ("client", &client_key),
-    //        ("duration", &duration_secs.to_string()),
-    //        ("fingerprint", &fingerprint_string),
-    //        ("meta", &"recordings+releasegroups+compress".to_string()),
-    //    ])
-    //    .send()
-    //    .context("Failed to send request to AcoustID")?;
 
     let response = client
         .get(&url)
         .send()
         .context("Failed to send request to AcoustID")?;
 
-    println!("{}", response.url());
-
     if response.status().is_client_error() {
-        bail!(format!("AcoustID responded with a client error {}", response.status()))
+        bail!(format!(
+            "AcoustID responded with a client error {}",
+            response.status()
+        ))
     } else if response.status().is_server_error() {
         bail!("AcoustID responded with a server error, try again later")
     }
