@@ -2054,8 +2054,15 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   AdiSnackbar(
                                       content:
                                           "Failed to find metadata for song"));
+			      Navigator.pop(context);
                             } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  AdiSnackbar(
+                                      content:
+                                          "Found metadata for song"));
+			      Navigator.pop(context);
 			      final new_song_meta = Song.fromMetadata(meta);
+			      print(new_song_meta.title);
 			    }
                           }),
                       const SizedBox(height: 12),
