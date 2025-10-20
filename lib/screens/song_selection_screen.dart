@@ -2041,17 +2041,21 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                           isDestructive: true,
                         ),
                       ],
-		      const SizedBox(height: 12,),
-		      _buildPlaylistOptionButton(
-			icon: Broken.global_search,
-			label: 'Find metadata',
-			onTap: () async {
-			  final meta = await acoustid.lookup(path: song.path);
-			  if (meta == null) {
-			    ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(content: "Failed to find metadata for song"));
-			  }
-			}
-		      ),
+                      const SizedBox(
+                        height: 12,
+                      ),
+                      _buildPlaylistOptionButton(
+                          icon: Broken.global_search,
+                          label: 'Find metadata',
+                          onTap: () async {
+                            final meta = await acoustid.lookup(path: song.path);
+                            if (meta == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  AdiSnackbar(
+                                      content:
+                                          "Failed to find metadata for song"));
+                            }
+                          }),
                       const SizedBox(height: 12),
                       _buildPlaylistOptionButton(
                         icon: Broken.trash,
@@ -2947,9 +2951,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   Navigator.push(
                                     context,
                                     NamidaPageTransitions.createRoute(
-				      PluginsScreen(
-        			        onReloadLibrary: _loadSongs,
-        			      ),
+                                      PluginsScreen(
+                                        onReloadLibrary: _loadSongs,
+                                      ),
                                     ),
                                   );
                                 },

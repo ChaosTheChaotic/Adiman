@@ -11,7 +11,7 @@ import 'package:adiman/src/rust/api/plugin_man.dart' as rust_api;
 
 class PluginsScreen extends StatefulWidget {
   final Function()? onReloadLibrary;
-  
+
   const PluginsScreen({
     super.key,
     this.onReloadLibrary,
@@ -37,10 +37,11 @@ class _PluginsScreenState extends State<PluginsScreen> {
 
   Future<void> _loadPluginData() async {
     setState(() => isLoading = true);
-    
+
     try {
-      _pluginDir = SharedPreferencesService.instance.getString('pluginDir') ?? '~/AdiPlugins';
-      
+      _pluginDir = SharedPreferencesService.instance.getString('pluginDir') ??
+          '~/AdiPlugins';
+
       if (_pluginDir.startsWith('~')) {
         final home = Platform.environment['HOME'] ?? '';
         _pluginDir = _pluginDir.replaceFirst('~', home);
@@ -61,7 +62,6 @@ class _PluginsScreenState extends State<PluginsScreen> {
       for (final plugin in availablePlugins) {
         _pluginLoadingStates[plugin] = false;
       }
-
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -253,7 +253,7 @@ class _PluginsScreenState extends State<PluginsScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                
+
                 // Plugin Info
                 Expanded(
                   child: Column(
@@ -284,7 +284,7 @@ class _PluginsScreenState extends State<PluginsScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: isLoaded 
+                          color: isLoaded
                               ? Colors.green.withAlpha(80)
                               : Colors.grey.withAlpha(80),
                           borderRadius: BorderRadius.circular(12),
@@ -301,25 +301,27 @@ class _PluginsScreenState extends State<PluginsScreen> {
                     ],
                   ),
                 ),
-                
-		DynamicIconButton(
-              	  icon: Broken.setting_2,
-              	  onPressed: isLoading ? null : () => _showPluginSettings(pluginPath),
-              	  backgroundColor: dominantColor,
-              	  size: 40,
-              	),
-              	const SizedBox(width: 12),
+
+                DynamicIconButton(
+                  icon: Broken.setting_2,
+                  onPressed:
+                      isLoading ? null : () => _showPluginSettings(pluginPath),
+                  backgroundColor: dominantColor,
+                  size: 40,
+                ),
+                const SizedBox(width: 12),
                 // Actions
                 if (isLoaded) ...[
                   DynamicIconButton(
                     icon: Broken.refresh,
-                    onPressed: isLoading ? null : () => _reloadPlugin(pluginPath),
+                    onPressed:
+                        isLoading ? null : () => _reloadPlugin(pluginPath),
                     backgroundColor: dominantColor,
                     size: 40,
                   ),
                   const SizedBox(width: 12),
                 ],
-                
+
                 // Toggle Switch
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
@@ -524,7 +526,7 @@ class _PluginsScreenState extends State<PluginsScreen> {
           children: [
             // Header
             _buildHeader(),
-            
+
             // Content
             Expanded(
               child: isLoading
@@ -586,9 +588,11 @@ class _PluginsScreenState extends State<PluginsScreen> {
                                     child: Text(
                                       'Rescan Directory',
                                       style: TextStyle(
-                                        color: dominantColor.computeLuminance() > 0.01
-                                            ? dominantColor
-                                            : Colors.white,
+                                        color:
+                                            dominantColor.computeLuminance() >
+                                                    0.01
+                                                ? dominantColor
+                                                : Colors.white,
                                       ),
                                     ),
                                   ),
@@ -644,10 +648,11 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
 
   Future<void> _loadPluginMetadata() async {
     try {
-      final metadataJson = await rust_api.getPluginConfig(path: widget.pluginPath);
-      
+      final metadataJson =
+          await rust_api.getPluginConfig(path: widget.pluginPath);
+
       // Check if the response is an error message
-      if (metadataJson.startsWith('Failed to get plugin config:') || 
+      if (metadataJson.startsWith('Failed to get plugin config:') ||
           metadataJson.startsWith('[ERR]:')) {
         // No metadata found or error occurred
         setState(() {
@@ -679,21 +684,22 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
     }
   }
 
-  Future<void> _updateConfigValue(String key, dynamic newValue, String ctype) async {
+  Future<void> _updateConfigValue(
+      String key, dynamic newValue, String ctype) async {
     setState(() {
       _savingStates[key] = true;
     });
-  
+
     try {
       // Convert the new value to the appropriate ConfigTypes using the ctype
       final configValue = _convertToConfigType(newValue, ctype);
-      
+
       final result = await rust_api.setPluginConfig(
         path: widget.pluginPath,
         key: key,
         value: configValue,
       );
-  
+
       if (result.contains('Updated config')) {
         // Update local state
         setState(() {
@@ -708,7 +714,7 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
             }
           }
         });
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           AdiSnackbar(
             backgroundColor: widget.dominantColor,
@@ -742,33 +748,41 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
         return rust_api.ConfigTypes.string(value.toString());
       case 'Bool':
         if (value is bool) return rust_api.ConfigTypes.bool(value);
-        if (value is String) return rust_api.ConfigTypes.bool(value.toLowerCase() == 'true');
+        if (value is String)
+          return rust_api.ConfigTypes.bool(value.toLowerCase() == 'true');
         return rust_api.ConfigTypes.bool(value == 1 || value == '1');
       case 'Int':
         if (value is int) return rust_api.ConfigTypes.int(value);
-        if (value is String) return rust_api.ConfigTypes.int(int.tryParse(value) ?? 0);
+        if (value is String)
+          return rust_api.ConfigTypes.int(int.tryParse(value) ?? 0);
         return rust_api.ConfigTypes.int(value.toInt());
       case 'UInt':
         if (value is int) return rust_api.ConfigTypes.uInt(value);
         if (value is String) {
           final parsed = int.tryParse(value);
-          return rust_api.ConfigTypes.uInt(parsed != null && parsed >= 0 ? parsed : 0);
+          return rust_api.ConfigTypes.uInt(
+              parsed != null && parsed >= 0 ? parsed : 0);
         }
         return rust_api.ConfigTypes.uInt(value.toInt());
       case 'BigInt':
-        if (value is int) return rust_api.ConfigTypes.bigInt(BigInt.from(value));
-        if (value is String) return rust_api.ConfigTypes.bigInt(BigInt.parse(value));
+        if (value is int)
+          return rust_api.ConfigTypes.bigInt(BigInt.from(value));
+        if (value is String)
+          return rust_api.ConfigTypes.bigInt(BigInt.parse(value));
         if (value is BigInt) return rust_api.ConfigTypes.bigInt(value);
         return rust_api.ConfigTypes.bigInt(BigInt.from(value.toInt()));
       case 'BigUInt':
-        if (value is int) return rust_api.ConfigTypes.bigUInt(BigInt.from(value));
-        if (value is String) return rust_api.ConfigTypes.bigUInt(BigInt.parse(value));
+        if (value is int)
+          return rust_api.ConfigTypes.bigUInt(BigInt.from(value));
+        if (value is String)
+          return rust_api.ConfigTypes.bigUInt(BigInt.parse(value));
         if (value is BigInt) return rust_api.ConfigTypes.bigUInt(value);
         return rust_api.ConfigTypes.bigUInt(BigInt.from(value.toInt()));
       case 'Float':
         if (value is double) return rust_api.ConfigTypes.float(value);
         if (value is int) return rust_api.ConfigTypes.float(value.toDouble());
-        if (value is String) return rust_api.ConfigTypes.float(double.tryParse(value) ?? 0.0);
+        if (value is String)
+          return rust_api.ConfigTypes.float(double.tryParse(value) ?? 0.0);
         return rust_api.ConfigTypes.float(value.toDouble());
       default:
         // Fallback to string for unknown types
@@ -817,7 +831,6 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
                 ),
               ),
               const SizedBox(height: 8),
-              
               _buildFieldByType(key, ctype, currentValue, isLoading),
             ],
           ),
@@ -826,7 +839,8 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
     );
   }
 
-  Widget _buildFieldByType(String key, String ctype, dynamic value, bool isLoading) {
+  Widget _buildFieldByType(
+      String key, String ctype, dynamic value, bool isLoading) {
     switch (ctype) {
       case 'String':
         return _buildStringField(key, value as String, isLoading);
@@ -847,7 +861,7 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
 
   Widget _buildStringField(String key, String value, bool isLoading) {
     final controller = TextEditingController(text: value);
-    
+
     return Row(
       children: [
         Expanded(
@@ -862,9 +876,11 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: widget.dominantColor.withAlpha(150)),
+                borderSide:
+                    BorderSide(color: widget.dominantColor.withAlpha(150)),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
             onSubmitted: (newValue) {
               if (newValue != value) {
@@ -896,9 +912,11 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
           scale: 1.2,
           child: Switch(
             value: value,
-            onChanged: isLoading ? null : (newValue) {
-              _updateConfigValue(key, newValue, "Bool");
-            },
+            onChanged: isLoading
+                ? null
+                : (newValue) {
+                    _updateConfigValue(key, newValue, "Bool");
+                  },
             activeColor: widget.dominantColor,
             activeTrackColor: widget.dominantColor.withAlpha(100),
           ),
@@ -927,9 +945,10 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
     );
   }
 
-  Widget _buildIntField(String key, dynamic value, bool isLoading, bool unsigned) {
+  Widget _buildIntField(
+      String key, dynamic value, bool isLoading, bool unsigned) {
     final controller = TextEditingController(text: value.toString());
-    
+
     return Row(
       children: [
         Expanded(
@@ -945,14 +964,16 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: widget.dominantColor.withAlpha(150)),
+                borderSide:
+                    BorderSide(color: widget.dominantColor.withAlpha(150)),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
             onSubmitted: (newValue) {
               final parsedValue = int.tryParse(newValue);
               if (parsedValue != null && parsedValue != value) {
-	      final String ctype = unsigned ? "UInt" : "Int";
+                final String ctype = unsigned ? "UInt" : "Int";
                 _updateConfigValue(key, parsedValue, ctype);
               }
             },
@@ -974,9 +995,10 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
     );
   }
 
-  Widget _buildBigIntField(String key, dynamic value, bool isLoading, bool unsigned) {
+  Widget _buildBigIntField(
+      String key, dynamic value, bool isLoading, bool unsigned) {
     final controller = TextEditingController(text: value.toString());
-    
+
     return Row(
       children: [
         Expanded(
@@ -991,15 +1013,17 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: widget.dominantColor.withAlpha(150)),
+                borderSide:
+                    BorderSide(color: widget.dominantColor.withAlpha(150)),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
             onSubmitted: (newValue) {
               try {
                 final parsedValue = BigInt.parse(newValue);
                 if (parsedValue != BigInt.parse(value.toString())) {
-		final String ctype = unsigned ?  "BigUInt" : "BigInt";
+                  final String ctype = unsigned ? "BigUInt" : "BigInt";
                   _updateConfigValue(key, parsedValue, ctype);
                 }
               } catch (e) {
@@ -1031,7 +1055,7 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
 
   Widget _buildDoubleField(String key, dynamic value, bool isLoading) {
     final controller = TextEditingController(text: value.toString());
-    
+
     return Row(
       children: [
         Expanded(
@@ -1047,9 +1071,11 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: widget.dominantColor.withAlpha(150)),
+                borderSide:
+                    BorderSide(color: widget.dominantColor.withAlpha(150)),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
             onSubmitted: (newValue) {
               final parsedValue = double.tryParse(newValue);
@@ -1079,7 +1105,7 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
     if (_pluginMetadata == null || _pluginMetadata!['rpc'] == null) {
       return [];
     }
-    
+
     final rpcArray = _pluginMetadata!['rpc'] as List<dynamic>;
     return rpcArray.cast<Map<String, dynamic>>();
   }
@@ -1159,13 +1185,14 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
                 ],
               ),
             ),
-            
+
             // Content
             Expanded(
               child: _isLoading
                   ? Center(
                       child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(widget.dominantColor),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(widget.dominantColor),
                       ),
                     )
                   : !hasSettings
