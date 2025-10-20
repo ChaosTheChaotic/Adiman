@@ -89,16 +89,21 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 - GTK
 - rustup
 - rust
+- AcoustID API key
 ## Build steps
 1. Git clone the repo and go into the directory
 ```
 git clone "https://github.com/ChaosTheChaotic/Adiman.git" && cd Adiman
 ```
-2. Run the build commands
+2. Add API to .env file (do not put quotes around anything inside the .env file)
+```
+echo "ACOUSTID_API=YOUR_API" >> .env
+```
+3. Run the build commands
 ```
 flutter_rust_bridge_codegen generate && flutter build linux --release
 ```
-3. The app should be done and you can now run it
+4. The app should be done and you can now run it
 ```
 build/linux/<your_architecture>/release/bundle/adiman
 ```
