@@ -97,7 +97,7 @@ git clone "https://github.com/ChaosTheChaotic/Adiman.git" && cd Adiman
 ```
 2. Add API to .env file
 ```
-echo "ACOUSTID_API=YOUR_API" >> .env
+echo "ACOUSTID_API=YOUR_API" >> rust/.env
 ```
 3. Run the build commands
 ```
