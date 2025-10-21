@@ -160,9 +160,6 @@ fn lookup_metadata(
     duration_secs: u64,
     path: impl AsRef<Path> + ToString,
 ) -> anyhow::Result<Option<SongMetadata>> {
-    let client_key =
-        std::env::var("ACOUSTID_API").context("ACOUSTID_API environment variable not set")?;
-
     let compressed_fingerprint =
         FingerprintCompressor::from(&Configuration::default()).compress(fingerprint);
 
@@ -170,7 +167,7 @@ fn lookup_metadata(
 
     let url = format!(
         "https://api.acoustid.org/v2/lookup?client={}&duration={}&fingerprint={}&meta=recordings+releasegroups+compress",
-        client_key,
+        envcrypt::envc!("ACOUSTID_API"),
         duration_secs,
         fingerprint_string
     );
