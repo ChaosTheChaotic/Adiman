@@ -1168,6 +1168,27 @@ pub fn scan_music_directory(dir_path: String, auto_convert: bool) -> Vec<SongMet
     songs
 }
 
+pub fn write_meta(meta: &SongMetadata) -> Result<(), String> {
+    let mut tag = match Tag::new().read_from_path(meta.path.clone()) {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("{e}");
+            return Err(format!("Error reading tag: {e}"));
+        }
+    };
+    tag.set_title(&meta.title);
+    tag.set_artist(&meta.artist);
+    tag.set_genre(&meta.genre);
+    tag.set_album_title(&meta.album);
+    match tag.write_to_path(&meta.path.clone()) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            eprintln!("{e}");
+            Err(format!("Error writing tag to path: {e}"))
+        }
+    }
+}
+
 fn extract_metadata(path: &Path) -> Option<SongMetadata> {
     let tag = Tag::default().read_from_path(path).ok();
 

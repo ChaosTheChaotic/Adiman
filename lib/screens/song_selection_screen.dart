@@ -2005,7 +2005,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                               ScaffoldMessenger.of(context)
                                   .hideCurrentSnackBar();
                               Navigator.pop(context);
-                              // TODO: Implement metadata writing
+			      await rust_api.writeMeta(meta: newSongMeta.toMetadata());
                             },
                             backgroundColor: dominantColor,
                             size: 40,

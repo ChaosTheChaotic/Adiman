@@ -37,6 +37,9 @@ Future<List<SongMetadata>> scanMusicDirectory(
     RustLib.instance.api.crateApiMusicHandlerScanMusicDirectory(
         dirPath: dirPath, autoConvert: autoConvert);
 
+Future<void> writeMeta({required SongMetadata meta}) =>
+    RustLib.instance.api.crateApiMusicHandlerWriteMeta(meta: meta);
+
 Future<bool> playSong({required String path}) =>
     RustLib.instance.api.crateApiMusicHandlerPlaySong(path: path);
 

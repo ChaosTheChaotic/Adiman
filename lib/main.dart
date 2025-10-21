@@ -49,6 +49,17 @@ class Song {
       genre: metadata.genre as String,
     );
   }
+  rust_api.SongMetadata toMetadata() {
+    return rust_api.SongMetadata (
+      title: title,
+      artist: artist,
+      genre: genre,
+      duration: BigInt.from(duration.inSeconds),
+      album: album,
+      albumArt: albumArt,
+      path: path,
+    );
+  }
 }
 
 ThemeData _buildDynamicTheme(BuildContext context, Color dominantColor) {

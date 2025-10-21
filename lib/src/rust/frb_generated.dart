@@ -72,7 +72,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1401083728;
+  int get rustContentHash => -1923771267;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -226,6 +226,8 @@ abstract class RustLibApi extends BaseApi {
   Future<bool> crateApiMusicHandlerSwitchToPreloadedNow();
 
   Future<int> crateApiMusicHandlerTrackNum({required String device});
+
+  Future<void> crateApiMusicHandlerWriteMeta({required SongMetadata meta});
 
   RustArcIncrementStrongCountFnType
       get rust_arc_increment_strong_count_ArcMutexPlugin;
@@ -1775,6 +1777,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(
         debugName: "track_num",
         argNames: ["device"],
+      );
+
+  @override
+  Future<void> crateApiMusicHandlerWriteMeta({required SongMetadata meta}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_box_autoadd_song_metadata(meta, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 60, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_unit,
+        decodeErrorData: sse_decode_String,
+      ),
+      constMeta: kCrateApiMusicHandlerWriteMetaConstMeta,
+      argValues: [meta],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiMusicHandlerWriteMetaConstMeta =>
+      const TaskConstMeta(
+        debugName: "write_meta",
+        argNames: ["meta"],
       );
 
   RustArcIncrementStrongCountFnType
