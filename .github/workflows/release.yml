@@ -54,6 +54,10 @@ jobs:
           wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage 
 
+      - name: Create .env file
+        run: |
+          echo "ACOUSTID_API=${{ secrets.ACOUSTID_API }}" > rust/.env
+
       - name: Build Project
         run: |
           flutter_rust_bridge_codegen generate
@@ -124,6 +128,10 @@ jobs:
         run: |
           wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-aarch64.AppImage
           chmod +x appimagetool-aarch64.AppImage
+
+      - name: Create .env file
+        run: |
+          echo "ACOUSTID_API=${{ secrets.ACOUSTID_API }}" > rust/.env
 
       - name: Build Project
         run: |
