@@ -95,7 +95,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 ```
 git clone "https://github.com/ChaosTheChaotic/Adiman.git" && cd Adiman
 ```
-2. Add API to .env file (do not put quotes around anything inside the .env file)
+2. Add API to .env file
 ```
 echo "ACOUSTID_API=YOUR_API" >> .env
 ```
