@@ -2319,7 +2319,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                               Navigator.pop(context);
                               final new_song_meta = Song.fromMetadata(meta);
                               print(new_song_meta.title);
-			      await _showMetadataPreviewPopup(song, new_song_meta);
+                              await _showMetadataPreviewPopup(
+                                  song, new_song_meta);
                             }
                           }),
                       const SizedBox(height: 12),
