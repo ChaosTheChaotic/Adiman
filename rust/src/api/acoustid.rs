@@ -242,6 +242,6 @@ fn lookup_metadata(
         path: path.to_string(),
         // Following 2 fields are never provided
         album_art: None,
-        genre: "Unknown genre".to_string(),
+        genre: "Unknown Genre".to_string(),
     }))
 }
