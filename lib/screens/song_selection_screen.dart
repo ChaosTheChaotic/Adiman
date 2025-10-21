@@ -1918,6 +1918,263 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     }
   }
 
+  Future<void> _showMetadataPreviewPopup(
+      Song currentSong, Song newSongMeta) async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: AnimatedPopupWrapper(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      dominantColor.withValues(alpha: 0.15),
+                      Colors.black.withValues(alpha: 0.6),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: dominantColor.withValues(alpha: 0.3),
+                    width: 1.2,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      GlowText(
+                        'Metadata Preview',
+                        glowColor: dominantColor.withValues(alpha: 0.3),
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: dominantColor.computeLuminance() > 0.01
+                              ? dominantColor
+                              : Theme.of(context).textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Current metadata section
+                      _buildMetadataComparisonSection(
+                        'Current Metadata',
+                        currentSong,
+                        dominantColor.withValues(alpha: 0.3),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // New metadata section
+                      _buildMetadataComparisonSection(
+                        'New Metadata',
+                        newSongMeta,
+                        Colors.green.withValues(alpha: 0.3),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Changes summary
+                      _buildChangesSummary(currentSong, newSongMeta),
+                      const SizedBox(height: 20),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            onPressed: () {
+                              ScaffoldMessenger.of(context)
+                                  .hideCurrentSnackBar();
+                              Navigator.pop(context);
+                            },
+                          ),
+                          const SizedBox(width: 12),
+                          DynamicIconButton(
+                            icon: Broken.tick,
+                            onPressed: () async {
+                              ScaffoldMessenger.of(context)
+                                  .hideCurrentSnackBar();
+                              Navigator.pop(context);
+                              // TODO: Implement metadata writing
+                            },
+                            backgroundColor: dominantColor,
+                            size: 40,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMetadataComparisonSection(
+      String title, Song song, Color glowColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GlowText(
+          title,
+          glowColor: glowColor,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color:
+                glowColor.computeLuminance() > 0.01 ? glowColor : Colors.white,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.black.withValues(alpha: 0.3),
+            border: Border.all(
+              color: glowColor.withValues(alpha: 0.2),
+            ),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildMetadataRow('Title', song.title),
+              _buildMetadataRow('Artist', song.artist),
+              _buildMetadataRow('Album', song.album),
+              _buildMetadataRow('Genre', song.genre),
+              _buildMetadataRow('Duration',
+                  '${song.duration.inMinutes}:${(song.duration.inSeconds % 60).toString().padLeft(2, '0')}'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetadataRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 60,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.isEmpty ? 'Unknown' : value,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChangesSummary(Song current, Song newSong) {
+    final changes = <String>[];
+
+    if (current.title != newSong.title) {
+      changes.add('Title: "${current.title}" → "${newSong.title}"');
+    }
+    if (current.artist != newSong.artist) {
+      changes.add('Artist: "${current.artist}" → "${newSong.artist}"');
+    }
+    if (current.album != newSong.album) {
+      changes.add('Album: "${current.album}" → "${newSong.album}"');
+    }
+    if (current.genre != newSong.genre) {
+      changes.add('Genre: "${current.genre}" → "${newSong.genre}"');
+    }
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: dominantColor.withValues(alpha: 0.1),
+        border: Border.all(
+          color: dominantColor.withValues(alpha: 0.3),
+        ),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              GlowIcon(
+                Broken.info_circle,
+                color: dominantColor,
+                size: 16,
+                blurRadius: 8,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Changes Summary',
+                style: TextStyle(
+                  color: dominantColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (changes.isEmpty)
+            Text(
+              'No changes detected',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+              ),
+            )
+          else
+            ...changes
+                .map((change) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        '• $change',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ))
+                .toList(),
+        ],
+      ),
+    );
+  }
+
   /// Show popup to create or add to a playlist.
   void _showPlaylistPopup(Song song) {
     showDialog(
@@ -2054,16 +2311,16 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   AdiSnackbar(
                                       content:
                                           "Failed to find metadata for song"));
-			      Navigator.pop(context);
+                              Navigator.pop(context);
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                   AdiSnackbar(
-                                      content:
-                                          "Found metadata for song"));
-			      Navigator.pop(context);
-			      final new_song_meta = Song.fromMetadata(meta);
-			      print(new_song_meta.title);
-			    }
+                                      content: "Found metadata for song"));
+                              Navigator.pop(context);
+                              final new_song_meta = Song.fromMetadata(meta);
+                              print(new_song_meta.title);
+			      await _showMetadataPreviewPopup(song, new_song_meta);
+                            }
                           }),
                       const SizedBox(height: 12),
                       _buildPlaylistOptionButton(
