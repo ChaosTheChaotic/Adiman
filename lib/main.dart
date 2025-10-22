@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
+import 'package:adiman/src/rust/api/settings_store.dart' as settings_store;
 import 'package:adiman/src/rust/api/plugin_man.dart' as plugin_api;
 import 'package:adiman/src/rust/frb_generated.dart';
 import 'package:flutter/material.dart';
@@ -118,9 +120,20 @@ Future<void> main() async {
   databaseFactory = databaseFactoryFfi;
   await PlaylistOrderDatabase().database;
   await SharedPreferencesService.init();
+  syncRust();
   useDominantColorsNotifier.value =
       SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
   runApp(const Adiman());
+}
+
+void syncRust() {
+  String musicFolder =
+      SharedPreferencesService.instance.getString('musicFolder') ?? '~/Music';
+  if (musicFolder.startsWith('~')) {
+    final home = Platform.environment['HOME'] ?? '';
+    musicFolder = musicFolder.replaceFirst('~', home);
+  }
+  settings_store.updateMusicFolder(f: musicFolder);
 }
 
 class Adiman extends StatefulWidget {
