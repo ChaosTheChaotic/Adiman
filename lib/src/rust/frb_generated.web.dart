@@ -10,6 +10,7 @@ import 'api/acoustid.dart';
 import 'api/color_extractor.dart';
 import 'api/music_handler.dart';
 import 'api/plugin_man.dart';
+import 'api/settings_store.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';

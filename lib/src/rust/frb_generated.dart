@@ -7,6 +7,7 @@ import 'api/acoustid.dart';
 import 'api/color_extractor.dart';
 import 'api/music_handler.dart';
 import 'api/plugin_man.dart';
+import 'api/settings_store.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -72,7 +73,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1923771267;
+  int get rustContentHash => -1184025928;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -226,6 +227,8 @@ abstract class RustLibApi extends BaseApi {
   Future<bool> crateApiMusicHandlerSwitchToPreloadedNow();
 
   Future<int> crateApiMusicHandlerTrackNum({required String device});
+
+  Future<void> crateApiSettingsStoreUpdateMusicFolder({required String f});
 
   Future<void> crateApiMusicHandlerWriteMeta({required SongMetadata meta});
 
@@ -1780,13 +1783,38 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiSettingsStoreUpdateMusicFolder({required String f}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_String(f, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 60, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_unit,
+        decodeErrorData: null,
+      ),
+      constMeta: kCrateApiSettingsStoreUpdateMusicFolderConstMeta,
+      argValues: [f],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiSettingsStoreUpdateMusicFolderConstMeta =>
+      const TaskConstMeta(
+        debugName: "update_music_folder",
+        argNames: ["f"],
+      );
+
+  @override
   Future<void> crateApiMusicHandlerWriteMeta({required SongMetadata meta}) {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_box_autoadd_song_metadata(meta, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 60, port: port_);
+            funcId: 61, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_unit,
