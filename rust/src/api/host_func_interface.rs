@@ -1,10 +1,17 @@
 use extism::{host_fn, CurrentPlugin, Function, PluginBuilder, UserData, Val, PTR};
 use flutter_rust_bridge::frb;
+use crate::api::settings_store::MUSIC_FOLDER;
 
 #[frb(ignore)]
 host_fn!(pprint(user_data: (); m: String) {
     println!("[PLUGIN LOG]: {m}");
     Ok(())
+});
+
+#[frb(ignore)]
+host_fn!(get_music_folder(user_data: ()) -> String {
+    let g = MUSIC_FOLDER.lock().unwrap();
+    Ok((*g).clone())
 });
 
 // A template set that most functions I add will conform to
