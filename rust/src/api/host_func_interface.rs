@@ -1,6 +1,6 @@
+use crate::api::settings_store::MUSIC_FOLDER;
 use extism::{host_fn, CurrentPlugin, Function, PluginBuilder, UserData, Val, PTR};
 use flutter_rust_bridge::frb;
-use crate::api::settings_store::MUSIC_FOLDER;
 
 #[frb(ignore)]
 host_fn!(pprint(user_data: (); m: String) {
@@ -9,13 +9,13 @@ host_fn!(pprint(user_data: (); m: String) {
 });
 
 #[frb(ignore)]
-host_fn!(get_music_folder(user_data: ()) -> String {
+host_fn!(get_music_folder() -> String {
     let g = MUSIC_FOLDER.lock().unwrap();
     Ok((*g).clone())
 });
 
 // A template set that most functions I add will conform to
-fn generic_func_template_r<F>(name: &str, func: F) -> Function
+fn generic_func_template_pr<F>(name: &str, func: F) -> Function
 where
     F: Sync
         + Send
@@ -25,7 +25,17 @@ where
     Function::new(name, [PTR], [PTR], UserData::new(()), func)
 }
 
-fn generic_func_template<F>(name: &str, func: F) -> Function
+fn generic_func_template_r<F>(name: &str, func: F) -> Function
+where
+    F: Sync
+        + Send
+        + 'static
+        + Fn(&mut CurrentPlugin, &[Val], &mut [Val], UserData<()>) -> Result<(), extism::Error>,
+{
+    Function::new(name, [], [PTR], UserData::new(()), func)
+}
+
+fn generic_func_template_p<F>(name: &str, func: F) -> Function
 where
     F: Sync
         + Send
@@ -37,6 +47,9 @@ where
 
 #[frb(ignore)]
 pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
-    let f = vec![generic_func_template("pprint", pprint)];
+    let f = vec![
+        generic_func_template_p("pprint", pprint),
+        generic_func_template_r("get_music_folder", get_music_folder),
+    ];
     b.with_functions(f)
 }
