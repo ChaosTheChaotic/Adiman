@@ -52,7 +52,7 @@ class Song {
     );
   }
   rust_api.SongMetadata toMetadata() {
-    return rust_api.SongMetadata (
+    return rust_api.SongMetadata(
       title: title,
       artist: artist,
       genre: genre,
