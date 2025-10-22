@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1184025928;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -2104123388;
 
 // Section: executor
 
@@ -2205,7 +2205,7 @@ fn wire__crate__api__music_handler__track_num_impl(
         },
     )
 }
-fn wire__crate__api__settings_store__update_music_folder_impl(
+fn wire__crate__api__value_store__update_music_folder_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -2232,7 +2232,7 @@ fn wire__crate__api__settings_store__update_music_folder_impl(
             move |context| {
                 transform_result_sse::<_, ()>((move || {
                     let output_ok = Result::<_, ()>::Ok({
-                        crate::api::settings_store::update_music_folder(api_f);
+                        crate::api::value_store::update_music_folder(api_f);
                     })?;
                     Ok(output_ok)
                 })())
@@ -2919,7 +2919,7 @@ fn pde_ffi_dispatcher_primary_impl(
             data_len,
         ),
         59 => wire__crate__api__music_handler__track_num_impl(port, ptr, rust_vec_len, data_len),
-        60 => wire__crate__api__settings_store__update_music_folder_impl(
+        60 => wire__crate__api__value_store__update_music_folder_impl(
             port,
             ptr,
             rust_vec_len,

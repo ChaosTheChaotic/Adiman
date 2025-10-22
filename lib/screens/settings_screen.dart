@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
-import 'package:adiman/src/rust/api/settings_store.dart' as settings_store;
+import 'package:adiman/src/rust/api/value_store.dart' as value_store;
 import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
 import 'package:flutter/material.dart';
 import 'package:adiman/widgets/miniplayer.dart';
@@ -1128,7 +1128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         _musicFolderController.text);
                                     await SharedPreferencesService.instance
                                         .setString('musicFolder', expandedPath);
-				    await settings_store.updateMusicFolder(f: expandedPath);
+				    await value_store.updateMusicFolder(f: expandedPath);
                                     if (widget.onMusicFolderChanged != null) {
                                       await widget
                                           .onMusicFolderChanged!(expandedPath);

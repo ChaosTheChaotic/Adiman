@@ -1,4 +1,4 @@
-use crate::api::settings_store::MUSIC_FOLDER;
+use crate::api::value_store::MUSIC_FOLDER;
 use extism::{host_fn, CurrentPlugin, Function, PluginBuilder, UserData, Val, PTR};
 use flutter_rust_bridge::frb;
 

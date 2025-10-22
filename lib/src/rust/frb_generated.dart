@@ -7,7 +7,7 @@ import 'api/acoustid.dart';
 import 'api/color_extractor.dart';
 import 'api/music_handler.dart';
 import 'api/plugin_man.dart';
-import 'api/settings_store.dart';
+import 'api/value_store.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -73,7 +73,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1184025928;
+  int get rustContentHash => -2104123388;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -228,7 +228,7 @@ abstract class RustLibApi extends BaseApi {
 
   Future<int> crateApiMusicHandlerTrackNum({required String device});
 
-  Future<void> crateApiSettingsStoreUpdateMusicFolder({required String f});
+  Future<void> crateApiValueStoreUpdateMusicFolder({required String f});
 
   Future<void> crateApiMusicHandlerWriteMeta({required SongMetadata meta});
 
@@ -1783,7 +1783,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<void> crateApiSettingsStoreUpdateMusicFolder({required String f}) {
+  Future<void> crateApiValueStoreUpdateMusicFolder({required String f}) {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
@@ -1795,13 +1795,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         decodeSuccessData: sse_decode_unit,
         decodeErrorData: null,
       ),
-      constMeta: kCrateApiSettingsStoreUpdateMusicFolderConstMeta,
+      constMeta: kCrateApiValueStoreUpdateMusicFolderConstMeta,
       argValues: [f],
       apiImpl: this,
     ));
   }
 
-  TaskConstMeta get kCrateApiSettingsStoreUpdateMusicFolderConstMeta =>
+  TaskConstMeta get kCrateApiValueStoreUpdateMusicFolderConstMeta =>
       const TaskConstMeta(
         debugName: "update_music_folder",
         argNames: ["f"],
