@@ -73,7 +73,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -2104123388;
+  int get rustContentHash => -1543555805;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -227,6 +227,8 @@ abstract class RustLibApi extends BaseApi {
   Future<bool> crateApiMusicHandlerSwitchToPreloadedNow();
 
   Future<int> crateApiMusicHandlerTrackNum({required String device});
+
+  Future<void> crateApiValueStoreUpdateCurrentSong({required SongMetadata s});
 
   Future<void> crateApiValueStoreUpdateMusicFolder({required String f});
 
@@ -1783,13 +1785,38 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiValueStoreUpdateCurrentSong({required SongMetadata s}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_box_autoadd_song_metadata(s, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 60, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_unit,
+        decodeErrorData: null,
+      ),
+      constMeta: kCrateApiValueStoreUpdateCurrentSongConstMeta,
+      argValues: [s],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiValueStoreUpdateCurrentSongConstMeta =>
+      const TaskConstMeta(
+        debugName: "update_current_song",
+        argNames: ["s"],
+      );
+
+  @override
   Future<void> crateApiValueStoreUpdateMusicFolder({required String f}) {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_String(f, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 60, port: port_);
+            funcId: 61, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_unit,
@@ -1814,7 +1841,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_box_autoadd_song_metadata(meta, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 61, port: port_);
+            funcId: 62, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_unit,
