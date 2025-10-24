@@ -1,4 +1,5 @@
 use crate::api::{
+    music_handler::get_cvol,
     utils::{fpre, validate_path},
     value_store::{acquire_read_lock, check_value_store_state},
 };
@@ -205,6 +206,24 @@ host_fn!(get_file_extension_nightly(user_data: (); path: String) -> String {
 });
 
 #[frb(ignore)]
+host_fn!(rename_file(user_data: (); old: String, new: String) -> bool {
+    if !(validate_path(&old) || validate_path(&new)) {
+        return Ok(false);
+    }
+    fs::rename(old, new)?;
+    Ok(true)
+});
+
+#[frb(ignore)]
+host_fn!(copy_file(user_data: (); from: String, to: String) -> bool {
+    if !(validate_path(&from) || validate_path(&to)) {
+        return Ok(false)
+    }
+    fs::copy(from, to)?;
+    Ok(true)
+});
+
+#[frb(ignore)]
 host_fn!(get_arch() -> &str {
     Ok(std::env::consts::ARCH)
 });
@@ -212,6 +231,11 @@ host_fn!(get_arch() -> &str {
 #[frb(ignore)]
 host_fn!(get_time() -> i64 {
     Ok(chrono::Utc::now().timestamp())
+});
+
+#[frb(ignore)]
+host_fn!(get_current_vol() -> f32 {
+    Ok(get_cvol())
 });
 
 // A macro to decide how to format the functions for me
@@ -268,10 +292,13 @@ pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
         generic_func!(list_dir(path: &str) -> &str),
         generic_func!(join_paths(path1: &str, path2: &str) -> &str),
         generic_func!(file_size(path: &str) -> u64),
+        generic_func!(rename_file(old: String, new: String) -> bool),
+        generic_func!(copy_file(from: String, to: String) -> bool),
         generic_func!(get_arch() -> &str),
         generic_func!(get_time() -> &str),
         generic_func!(get_file_extension_std(path: &str) -> &str),
         generic_func!(get_file_extension_nightly(path: &str) -> &str),
+        generic_func!(get_current_vol() -> f32),
     ];
     b.with_functions(f)
 }
