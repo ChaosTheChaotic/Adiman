@@ -1,4 +1,4 @@
-use crate::api::utils::fpre;
+use crate::api::{utils::fpre, value_store::update_store};
 use atomic_float::AtomicF32;
 use audiotags::Tag;
 use cd_audio::{
@@ -6,6 +6,8 @@ use cd_audio::{
     sopen_cd_stream, sread_cd_stream, sseek_cd_stream, strack_duration, strack_num, sverify_audio,
     SCDStream,
 };
+use extism::convert::Json;
+use extism::{FromBytes, ToBytes};
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
@@ -235,7 +237,8 @@ enum PlayerMessage {
     SwitchToPreloaded,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToBytes, FromBytes)]
+#[encoding(Json)]
 pub struct SongMetadata {
     pub title: String,
     pub artist: String,
@@ -244,6 +247,20 @@ pub struct SongMetadata {
     pub path: String,
     pub album_art: Option<Vec<u8>>,
     pub genre: String,
+}
+
+impl Default for SongMetadata {
+    fn default() -> Self {
+        Self {
+            title: "Unknown Title".to_string(),
+            artist: "Unknown Artist".to_string(),
+            album: "Unknown Album".to_string(),
+            duration: 0,
+            path: "".to_string(),
+            album_art: None,
+            genre: "Unknown Genre".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -1275,6 +1292,7 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
 }
 
 pub fn play_song(path: String) -> bool {
+    update_store().set_current_song(extract_metadata(&PathBuf::from(path.clone()).as_path()).unwrap());
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.play(&path)
     } else {

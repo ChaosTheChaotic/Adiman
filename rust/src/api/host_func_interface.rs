@@ -1,4 +1,4 @@
-use crate::api::value_store::{check_value_store_state, acquire_read_lock};
+use crate::api::{value_store::{check_value_store_state, acquire_read_lock}};
 use extism::{host_fn, CurrentPlugin, Function, PluginBuilder, UserData, Val, PTR};
 use flutter_rust_bridge::frb;
 
@@ -23,6 +23,23 @@ host_fn!(get_music_folder() -> String {
             }
         }
         Err(e) => Ok(format!("ERR: Failed to aquire read lock: {}", e)),
+    }
+});
+
+#[frb(ignore)]
+host_fn!(get_current_song() -> Option<crate::api::music_handler::SongMetadata> {
+    if !check_value_store_state() {
+        return Ok(None);
+    }
+    match acquire_read_lock() {
+        Ok(guard) => {
+            if let Some(state) = guard.as_ref() {
+                Ok(state.current_song.clone())
+            } else {
+                Ok(None)
+            }
+        }
+        Err(_) => Ok(None)
     }
 });
 
@@ -67,6 +84,7 @@ pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
         generic_func_template_p("pprint", pprint),
         generic_func_template_r("get_music_folder", get_music_folder),
         generic_func_template_r("get_store_state", get_store_state),
+        generic_func_template_r("get_current_song", get_current_song),
     ];
     b.with_functions(f)
 }
