@@ -65,6 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _vimKeybindings = false;
   String _spotdlFlags = '';
   String _pluginDir = '';
+  String _pluginRwDir = '';
   bool _fadeIn = false;
   bool _mSn = false;
   bool _breathe = true;
@@ -89,6 +90,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _waveformBarsController;
   late TextEditingController _particleCountController;
   late TextEditingController _pluginDirController;
+  late TextEditingController _pluginRwDirController;
 
   final GlobalKey<MiniPlayerState> _miniPlayerKey =
       GlobalKey<MiniPlayerState>();
@@ -101,6 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _currentColor = widget.dominantColor;
     _musicFolderController = TextEditingController(text: widget.musicFolder);
     _pluginDirController = TextEditingController(text: _pluginDir);
+    _pluginRwDirController = TextEditingController(text: _pluginRwDir);
     _escapeNode = FocusNode();
     _escapeNode.requestFocus();
     defaultThemeColorNotifier.addListener(_handleThemeColorChange);
@@ -143,6 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void dispose() {
     _musicFolderController.dispose();
     _pluginDirController.dispose();
+    _pluginRwDirController.dispose();
     defaultThemeColorNotifier.removeListener(_handleThemeColorChange);
     useDominantColorsNotifier.removeListener(_updateDominantColor);
     _waveformBarsController.dispose();
@@ -207,6 +211,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SharedPreferencesService.instance.getString('spotdlFlags') ?? '';
       _pluginDir = SharedPreferencesService.instance.getString('pluginDir') ??
           '~/AdiPlugins';
+      _pluginRwDir =
+          SharedPreferencesService.instance.getString('pluginRwDir') ??
+              '~/AdiDir';
       _edgeBreathe =
           SharedPreferencesService.instance.getBool('edgeBreathe') ?? true;
       _enablePlugins =
@@ -355,6 +362,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _savePluginDir(String dir) async {
     await SharedPreferencesService.instance.setString('pluginDir', dir);
     setState(() => _pluginDir = dir);
+  }
+
+  Future<void> _savePluginRwDir(String dir) async {
+    await SharedPreferencesService.instance.setString('pluginRwDir', dir);
+    setState(() => _pluginRwDir = dir);
   }
 
   Future<void> _clearCache() async {
@@ -1423,6 +1435,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 initialValue: _pluginDir,
                                 hintText: 'Enter plugin directory path...',
                                 onChanged: _savePluginDir,
+                                icon: Broken.folder,
+                                dominantColor: _currentColor,
+                              ),
+                              SettingsTextField(
+                                title:
+                                    'Plugin R/W Directory (where can plugins read or write files)',
+                                initialValue: _pluginRwDir,
+                                hintText: 'Enter plugin r/w directory path...',
+                                onChanged: _savePluginRwDir,
                                 icon: Broken.folder,
                                 dominantColor: _currentColor,
                               ),

@@ -114,11 +114,11 @@ class _PluginsScreenState extends State<PluginsScreen>
       _isSearchExpanded = !_isSearchExpanded;
       if (_isSearchExpanded) {
         _searchAnimationController.forward();
-	Future.delayed(const Duration(milliseconds: 100), () {
-      	  if (mounted) {
-      	    _searchFocusNode.requestFocus();
-      	  }
-      	});
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            _searchFocusNode.requestFocus();
+          }
+        });
       } else {
         _searchAnimationController.reverse();
         _searchController.clear();
