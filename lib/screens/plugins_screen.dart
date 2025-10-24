@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:adiman/main.dart';
 import 'package:adiman/widgets/services.dart';
@@ -33,12 +34,41 @@ class _PluginsScreenState extends State<PluginsScreen> {
   bool _isSearchExpanded = false;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  bool _isSearchFocused = false;
+
+  late FocusNode _mainFocusNode;
 
   @override
   void initState() {
     super.initState();
     _loadPluginData();
     _searchController.addListener(_updateSearchResults);
+    _mainFocusNode = FocusNode();
+    _searchFocusNode.addListener(_handleSearchFocusChange);
+    _mainFocusNode.requestFocus();
+  }
+
+  void _handleSearchFocusChange() {
+    setState(() {
+      _isSearchFocused = _searchFocusNode.hasFocus;
+    });
+  }
+
+  void _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        if (_isSearchExpanded || _isSearchFocused) {
+          _toggleSearch();
+          _mainFocusNode.requestFocus();
+        } else {
+          Navigator.pop(context);
+        }
+      } else if (event.logicalKey == LogicalKeyboardKey.slash) {
+        if (!_isSearchExpanded) {
+          _toggleSearch();
+        }
+      }
+    }
   }
 
   void _updateSearchResults() {
@@ -61,6 +91,7 @@ class _PluginsScreenState extends State<PluginsScreen> {
       if (!_isSearchExpanded) {
         _searchController.clear();
         filteredPlugins = List.from(availablePlugins);
+        _mainFocusNode.requestFocus();
       } else {
         _searchFocusNode.requestFocus();
       }
@@ -510,237 +541,242 @@ class _PluginsScreenState extends State<PluginsScreen> {
     final textColor =
         dominantColor.computeLuminance() > 0.01 ? dominantColor : Colors.white;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.black, dominantColor],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: GlowIcon(
-              Broken.arrow_left_2,
-              color: textColor,
-              glowColor: dominantColor.withAlpha(80),
-            ),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
-          title: GlowText(
-            'Plugins',
-            glowColor: dominantColor.withAlpha(80),
-            style: TextStyle(
-              color: textColor,
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
+    return KeyboardListener(
+        focusNode: _mainFocusNode,
+        onKeyEvent: _handleKeyEvent,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.black, dominantColor],
             ),
           ),
-          actions: [
-            // Search Toggle Button
-            IconButton(
-              icon: Icon(
-                _isSearchExpanded ? Broken.cross : Broken.search_normal,
-                color: textColor,
-              ),
-              onPressed: _toggleSearch,
-            ),
-            const SizedBox(width: 8),
-            DynamicIconButton(
-              icon: Broken.refresh,
-              onPressed: _loadPluginData,
-              backgroundColor: dominantColor,
-              size: 40,
-            ),
-            const SizedBox(width: 8),
-          ],
-        ),
-        body: Column(
-          children: [
-            // Header
-            _buildHeader(),
-
-            // Search Bar (when expanded)
-            if (_isSearchExpanded)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      dominantColor.withAlpha(20),
-                      Colors.black.withAlpha(100),
-                    ],
-                  ),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: dominantColor.withAlpha(50),
-                      width: 1,
-                    ),
-                  ),
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: GlowIcon(
+                  Broken.arrow_left_2,
+                  color: textColor,
+                  glowColor: dominantColor.withAlpha(80),
                 ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        dominantColor.withAlpha(15),
-                        Colors.black.withAlpha(30),
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: dominantColor.withAlpha(20),
-                        blurRadius: 15,
-                        spreadRadius: 2,
-                      ),
-                    ],
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+              title: GlowText(
+                'Plugins',
+                glowColor: dominantColor.withAlpha(80),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              actions: [
+                // Search Toggle Button
+                IconButton(
+                  icon: Icon(
+                    _isSearchExpanded ? Broken.cross : Broken.search_normal,
+                    color: textColor,
                   ),
-                  child: TextField(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 16,
-                    ),
-                    cursorColor: textColor,
-                    decoration: InputDecoration(
-                      hintText: 'Search plugins...',
-                      hintStyle: TextStyle(
-                        color: textColor.withAlpha(150),
-                        fontWeight: FontWeight.w300,
+                  onPressed: _toggleSearch,
+                ),
+                const SizedBox(width: 8),
+                DynamicIconButton(
+                  icon: Broken.refresh,
+                  onPressed: _loadPluginData,
+                  backgroundColor: dominantColor,
+                  size: 40,
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
+            body: Column(
+              children: [
+                // Header
+                _buildHeader(),
+
+                // Search Bar (when expanded)
+                if (_isSearchExpanded)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          dominantColor.withAlpha(20),
+                          Colors.black.withAlpha(100),
+                        ],
                       ),
-                      prefixIcon: Icon(
-                        Broken.search_normal,
-                        color: textColor.withAlpha(200),
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: Colors.transparent,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: dominantColor.withAlpha(100),
-                          width: 1.5,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: dominantColor.withAlpha(50),
+                          width: 1,
                         ),
                       ),
                     ),
-                    textInputAction: TextInputAction.search,
-                  ),
-                ),
-              ),
-
-            // Content
-            Expanded(
-              child: isLoading
-                  ? Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          dominantColor.computeLuminance() > 0.01
-                              ? dominantColor
-                              : Colors.white,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            dominantColor.withAlpha(15),
+                            Colors.black.withAlpha(30),
+                          ],
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: dominantColor.withAlpha(20),
+                            blurRadius: 15,
+                            spreadRadius: 2,
+                          ),
+                        ],
                       ),
-                    )
-                  : filteredPlugins.isEmpty
+                      child: TextField(
+                        controller: _searchController,
+                        focusNode: _searchFocusNode,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 16,
+                        ),
+                        cursorColor: textColor,
+                        decoration: InputDecoration(
+                          hintText: 'Search plugins...',
+                          hintStyle: TextStyle(
+                            color: textColor.withAlpha(150),
+                            fontWeight: FontWeight.w300,
+                          ),
+                          prefixIcon: Icon(
+                            Broken.search_normal,
+                            color: textColor.withAlpha(200),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.transparent,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: dominantColor.withAlpha(100),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                        textInputAction: TextInputAction.search,
+                      ),
+                    ),
+                  ),
+
+                // Content
+                Expanded(
+                  child: isLoading
                       ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              GlowIcon(
-                                Broken.cpu,
-                                color: Colors.white70,
-                                size: 64,
-                                glowColor: Colors.white30,
-                              ),
-                              const SizedBox(height: 20),
-                              Text(
-                                _searchController.text.isEmpty
-                                    ? 'No Plugins Found'
-                                    : 'No Matching Plugins',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                _searchController.text.isEmpty
-                                    ? 'Add plugin files to your plugin directory'
-                                    : 'Try a different search term',
-                                style: TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              Material(
-                                color: Colors.transparent,
-                                borderRadius: BorderRadius.circular(15),
-                                child: InkWell(
-                                  onTap: _loadPluginData,
-                                  borderRadius: BorderRadius.circular(15),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 12,
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              dominantColor.computeLuminance() > 0.01
+                                  ? dominantColor
+                                  : Colors.white,
+                            ),
+                          ),
+                        )
+                      : filteredPlugins.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  GlowIcon(
+                                    Broken.cpu,
+                                    color: Colors.white70,
+                                    size: 64,
+                                    glowColor: Colors.white30,
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Text(
+                                    _searchController.text.isEmpty
+                                        ? 'No Plugins Found'
+                                        : 'No Matching Plugins',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
                                     ),
-                                    decoration: BoxDecoration(
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _searchController.text.isEmpty
+                                        ? 'Add plugin files to your plugin directory'
+                                        : 'Try a different search term',
+                                    style: TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Material(
+                                    color: Colors.transparent,
+                                    borderRadius: BorderRadius.circular(15),
+                                    child: InkWell(
+                                      onTap: _loadPluginData,
                                       borderRadius: BorderRadius.circular(15),
-                                      border: Border.all(
-                                        color: dominantColor.withAlpha(100),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      'Rescan Directory',
-                                      style: TextStyle(
-                                        color: textColor,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 20,
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          borderRadius:
+                                              BorderRadius.circular(15),
+                                          border: Border.all(
+                                            color: dominantColor.withAlpha(100),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Rescan Directory',
+                                          style: TextStyle(
+                                            color: textColor,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          itemCount: filteredPlugins.length,
-                          itemBuilder: (context, index) {
-                            return _buildPluginTile(filteredPlugins[index]);
-                          },
-                        ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              itemCount: filteredPlugins.length,
+                              itemBuilder: (context, index) {
+                                return _buildPluginTile(filteredPlugins[index]);
+                              },
+                            ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
+          ),
+        ));
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _mainFocusNode.dispose();
     super.dispose();
   }
 }
