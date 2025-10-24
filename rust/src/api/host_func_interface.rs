@@ -233,6 +233,11 @@ host_fn!(get_current_vol() -> f32 {
     Ok(get_cvol())
 });
 
+#[frb(ignore)]
+host_fn!(get_song_pos() -> f32 {
+    Ok(crate::api::music_handler::get_playback_position())
+});
+
 // A macro to decide how to format the functions for me
 macro_rules! get_fn_signature {
     // With params and return
@@ -294,6 +299,7 @@ pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
         generic_func!(get_file_extension_std(path: &str) -> &str),
         generic_func!(get_file_extension_nightly(path: &str) -> &str),
         generic_func!(get_current_vol() -> f32),
+        generic_func!(get_song_pos() -> f32),
     ];
     b.with_functions(f)
 }
