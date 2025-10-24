@@ -18,36 +18,23 @@ As of update 1.3.0, Adiman now supports plugins.
 You may develop plugins in any language that [extism](https://github.com/extism/extism) supports (as it is the framework I use for plugins)
 
 ## Starting
-First create a new plugin using extism and ensure it works
-After this you may then import the host functions I provide from the app
-The following is how you might do it in rust:
-```rs
-#[host_fn]
-extern "ExtismHost" {
-    fn pprint(m: String);
-    fn get_music_folder() -> String;
-    fn get_current_song() -> Option<SongMetadata>;
-    // This function returns the state of the value store which is used to store values such as the music folder and current song
-    fn get_store_state() -> bool;
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, ToBytes, FromBytes)]
-#[encoding(Json)]
-struct SongMetadata {
-    pub title: String,
-    pub artist: String,
-    pub album: String,
-    pub duration: u64,
-    pub path: String,
-    pub album_art: Option<Vec<u8>>,
-    pub genre: String,
-}
-```
-Now you may make functions that the app will call (provided the plugin exports said functions)
-Functions that are called by the app:
-- init - When the plugin initializes, this is called
-- stop - When the plugin is disabled or stops, this is called
-- play_song - Called when a song is played
+- First create a new plugin using extism and ensure it works
+- After this you may then import the host functions I provide from the app including:
+    - Filesystem APIs
+    - App interaction APIs
+    - System info APIs
+    - Utility APIs
+    - Logging API
+- Now you may make functions that the app will call (provided the plugin exports said functions)
+- To see (and copy) all functions exported by my app see the [host_functions](host_functions.rs)
+- Functions that are called by the app:
+    - init - When the plugin initializes, this is called
+    - stop - When the plugin is disabled or stops, this is called
+    - play_song - Called when a song is played
+    - pause_song - Called when a song is paused
+    - resume_song - Called when a song is resumed
+    - seek_to_position - Called when user seeks through the song
+    - set_volume - Called when user sets volume
 
 ### A simple example plugin in rust
 ```rs
