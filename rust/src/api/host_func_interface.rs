@@ -63,9 +63,9 @@ host_fn!(create_file(user_data: (); name: String, content: Option<String>) -> bo
         return Ok(false);
     }
     if content.is_none() {
-        File::create(name)?;
+        return Ok(File::create(name).is_ok());
     } else {
-        fs::write(name, content.unwrap())?;
+        return Ok(fs::write(name, content.unwrap()).is_ok());
     }
     Ok(true)
 });
@@ -91,8 +91,7 @@ host_fn!(write_file(user_data: (); name: String, content: String) -> bool {
     if !validate_path(&name) {
         return Ok(false);
     }
-    fs::write(name, content)?;
-    Ok(true)
+    Ok(fs::write(name, content).is_ok())
 });
 
 #[frb(ignore)]
@@ -100,8 +99,7 @@ host_fn!(delete_file(user_data: (); name: String) -> bool {
     if !validate_path(&name) {
         return Ok(false);
     }
-    fs::remove_file(name)?;
-    Ok(true)
+    Ok(fs::remove_file(name).is_ok())
 });
 
 #[frb(ignore)]
@@ -109,8 +107,7 @@ host_fn!(create_dir(user_data: (); name: String) -> bool {
     if !validate_path(&name) {
         return Ok(false);
     }
-    fs::create_dir_all(name)?;
-    Ok(true)
+    Ok(fs::create_dir_all(name).is_ok())
 });
 
 #[frb(ignore)]
@@ -210,8 +207,7 @@ host_fn!(rename_file(user_data: (); old: String, new: String) -> bool {
     if !(validate_path(&old) || validate_path(&new)) {
         return Ok(false);
     }
-    fs::rename(old, new)?;
-    Ok(true)
+    Ok(fs::rename(old, new).is_ok())
 });
 
 #[frb(ignore)]
@@ -219,8 +215,7 @@ host_fn!(copy_file(user_data: (); from: String, to: String) -> bool {
     if !(validate_path(&from) || validate_path(&to)) {
         return Ok(false)
     }
-    fs::copy(from, to)?;
-    Ok(true)
+    Ok(fs::copy(from, to).is_ok())
 });
 
 #[frb(ignore)]
