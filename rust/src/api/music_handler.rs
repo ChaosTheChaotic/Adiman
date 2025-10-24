@@ -1316,6 +1316,7 @@ pub fn pause_song() -> bool {
 }
 
 pub fn resume_song() -> bool {
+    call_func_plugins("resume_song".to_string());
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.resume()
     } else {
@@ -1333,6 +1334,7 @@ pub fn stop_song() -> bool {
 
 pub fn set_volume(volume: f32) -> bool {
     CUR_VOL.store(volume, Ordering::SeqCst);
+    call_func_plugins("set_volume".to_string());
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.set_volume(volume.clamp(0.0, 1.0))
     } else {
@@ -1349,6 +1351,7 @@ pub fn get_playback_position() -> f32 {
 }
 
 pub fn seek_to_position(position: f32) -> bool {
+    call_func_plugins("seek_to_position".to_string());
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.seek(position)
     } else {
