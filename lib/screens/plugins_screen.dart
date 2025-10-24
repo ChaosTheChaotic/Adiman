@@ -507,9 +507,8 @@ class _PluginsScreenState extends State<PluginsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final textColor = dominantColor.computeLuminance() > 0.01
-        ? dominantColor
-        : Colors.white;
+    final textColor =
+        dominantColor.computeLuminance() > 0.01 ? dominantColor : Colors.white;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 500),
@@ -572,7 +571,8 @@ class _PluginsScreenState extends State<PluginsScreen> {
             // Search Bar (when expanded)
             if (_isSearchExpanded)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,

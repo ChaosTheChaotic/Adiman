@@ -669,11 +669,14 @@ impl AdiPluginMan {
                     continue;
                 }
             };
-            
+
             if plugin_guard.function_exists(func) {
                 let result: Result<&str, extism::Error> = plugin_guard.call(func, ());
                 if let Err(e) = result {
-                    eprintln!("Error running function '{}' on plugin '{}': {}", func, path, e);
+                    eprintln!(
+                        "Error running function '{}' on plugin '{}': {}",
+                        func, path, e
+                    );
                 }
             }
         }
@@ -859,7 +862,7 @@ pub fn set_plugin_config(path: String, key: String, value: ConfigTypes) -> Resul
 
 pub fn call_func_plugins(func: String) {
     let pmg = PLUGIN_MAN.lock().unwrap();
-    
+
     if let Some(plugin_man) = pmg.as_ref() {
         plugin_man.call_func_plugins(&func);
     } else {

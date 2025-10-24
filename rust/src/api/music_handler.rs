@@ -1,4 +1,4 @@
-use crate::api::{utils::fpre, value_store::update_store, plugin_man::call_func_plugins};
+use crate::api::{plugin_man::call_func_plugins, utils::fpre, value_store::update_store};
 use atomic_float::AtomicF32;
 use audiotags::Tag;
 use cd_audio::{
