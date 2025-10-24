@@ -24,15 +24,47 @@ class PluginsScreen extends StatefulWidget {
 class _PluginsScreenState extends State<PluginsScreen> {
   List<String> availablePlugins = [];
   List<String> loadedPlugins = [];
+  List<String> filteredPlugins = [];
   bool isLoading = true;
   Color dominantColor = defaultThemeColorNotifier.value;
   final Map<String, bool> _pluginLoadingStates = {};
   String _pluginDir = '';
 
+  bool _isSearchExpanded = false;
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+
   @override
   void initState() {
     super.initState();
     _loadPluginData();
+    _searchController.addListener(_updateSearchResults);
+  }
+
+  void _updateSearchResults() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        filteredPlugins = List.from(availablePlugins);
+      } else {
+        filteredPlugins = availablePlugins.where((pluginPath) {
+          final pluginName = _getPluginName(pluginPath).toLowerCase();
+          return pluginName.contains(query);
+        }).toList();
+      }
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearchExpanded = !_isSearchExpanded;
+      if (!_isSearchExpanded) {
+        _searchController.clear();
+        filteredPlugins = List.from(availablePlugins);
+      } else {
+        _searchFocusNode.requestFocus();
+      }
+    });
   }
 
   Future<void> _loadPluginData() async {
@@ -51,6 +83,7 @@ class _PluginsScreenState extends State<PluginsScreen> {
       if (scannedPlugins != null) {
         setState(() {
           availablePlugins = scannedPlugins;
+          filteredPlugins = List.from(availablePlugins);
         });
       }
 
@@ -461,7 +494,7 @@ class _PluginsScreenState extends State<PluginsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '${loadedPlugins.length} enabled • ${availablePlugins.length} total',
+            '${loadedPlugins.length} enabled • ${filteredPlugins.length} filtered • ${availablePlugins.length} total',
             style: TextStyle(
               color: Colors.white70,
               fontSize: 14,
@@ -474,6 +507,10 @@ class _PluginsScreenState extends State<PluginsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final textColor = dominantColor.computeLuminance() > 0.01
+        ? dominantColor
+        : Colors.white;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeInOut,
@@ -492,9 +529,7 @@ class _PluginsScreenState extends State<PluginsScreen> {
           leading: IconButton(
             icon: GlowIcon(
               Broken.arrow_left_2,
-              color: dominantColor.computeLuminance() > 0.01
-                  ? dominantColor
-                  : Colors.white,
+              color: textColor,
               glowColor: dominantColor.withAlpha(80),
             ),
             onPressed: () {
@@ -505,14 +540,21 @@ class _PluginsScreenState extends State<PluginsScreen> {
             'Plugins',
             glowColor: dominantColor.withAlpha(80),
             style: TextStyle(
-              color: dominantColor.computeLuminance() > 0.01
-                  ? dominantColor
-                  : Colors.white,
+              color: textColor,
               fontSize: 20,
               fontWeight: FontWeight.w700,
             ),
           ),
           actions: [
+            // Search Toggle Button
+            IconButton(
+              icon: Icon(
+                _isSearchExpanded ? Broken.cross : Broken.search_normal,
+                color: textColor,
+              ),
+              onPressed: _toggleSearch,
+            ),
+            const SizedBox(width: 8),
             DynamicIconButton(
               icon: Broken.refresh,
               onPressed: _loadPluginData,
@@ -527,6 +569,86 @@ class _PluginsScreenState extends State<PluginsScreen> {
             // Header
             _buildHeader(),
 
+            // Search Bar (when expanded)
+            if (_isSearchExpanded)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      dominantColor.withAlpha(20),
+                      Colors.black.withAlpha(100),
+                    ],
+                  ),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: dominantColor.withAlpha(50),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        dominantColor.withAlpha(15),
+                        Colors.black.withAlpha(30),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: dominantColor.withAlpha(20),
+                        blurRadius: 15,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 16,
+                    ),
+                    cursorColor: textColor,
+                    decoration: InputDecoration(
+                      hintText: 'Search plugins...',
+                      hintStyle: TextStyle(
+                        color: textColor.withAlpha(150),
+                        fontWeight: FontWeight.w300,
+                      ),
+                      prefixIcon: Icon(
+                        Broken.search_normal,
+                        color: textColor.withAlpha(200),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: Colors.transparent,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: dominantColor.withAlpha(100),
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                    textInputAction: TextInputAction.search,
+                  ),
+                ),
+              ),
+
             // Content
             Expanded(
               child: isLoading
@@ -539,7 +661,7 @@ class _PluginsScreenState extends State<PluginsScreen> {
                         ),
                       ),
                     )
-                  : availablePlugins.isEmpty
+                  : filteredPlugins.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -552,7 +674,9 @@ class _PluginsScreenState extends State<PluginsScreen> {
                               ),
                               const SizedBox(height: 20),
                               Text(
-                                'No Plugins Found',
+                                _searchController.text.isEmpty
+                                    ? 'No Plugins Found'
+                                    : 'No Matching Plugins',
                                 style: TextStyle(
                                   color: Colors.white70,
                                   fontSize: 18,
@@ -561,7 +685,9 @@ class _PluginsScreenState extends State<PluginsScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Add plugin files to your plugin directory',
+                                _searchController.text.isEmpty
+                                    ? 'Add plugin files to your plugin directory'
+                                    : 'Try a different search term',
                                 style: TextStyle(
                                   color: Colors.white54,
                                   fontSize: 14,
@@ -588,11 +714,7 @@ class _PluginsScreenState extends State<PluginsScreen> {
                                     child: Text(
                                       'Rescan Directory',
                                       style: TextStyle(
-                                        color:
-                                            dominantColor.computeLuminance() >
-                                                    0.01
-                                                ? dominantColor
-                                                : Colors.white,
+                                        color: textColor,
                                       ),
                                     ),
                                   ),
@@ -603,9 +725,9 @@ class _PluginsScreenState extends State<PluginsScreen> {
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          itemCount: availablePlugins.length,
+                          itemCount: filteredPlugins.length,
                           itemBuilder: (context, index) {
-                            return _buildPluginTile(availablePlugins[index]);
+                            return _buildPluginTile(filteredPlugins[index]);
                           },
                         ),
             ),
@@ -617,6 +739,8 @@ class _PluginsScreenState extends State<PluginsScreen> {
 
   @override
   void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 }
