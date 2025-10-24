@@ -1450,7 +1450,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               SettingsTextField(
                                 title:
-                                    'Plugin R/W Directory (where can plugins read or write files)',
+                                    'Plugin R/W Directory (where can plugins read or write files/directories)',
                                 initialValue: _pluginRwDir,
                                 hintText: 'Enter plugin r/w directory path...',
                                 onChanged: _savePluginRwDir,
