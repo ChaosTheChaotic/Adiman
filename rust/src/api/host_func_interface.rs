@@ -2,10 +2,7 @@ use crate::api::{
     utils::{fpre, validate_path},
     value_store::{acquire_read_lock, check_value_store_state},
 };
-use extism::{
-    convert::Json, host_fn, CurrentPlugin, FromBytes, Function, PluginBuilder, ToBytes, UserData,
-    Val, PTR,
-};
+use extism::{convert::Json, host_fn, FromBytes, Function, PluginBuilder, ToBytes, UserData, PTR};
 use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
 use std::{
