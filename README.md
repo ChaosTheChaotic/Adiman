@@ -37,7 +37,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 
 # Installing
 
-(There are only linux builds currently) Head over to [releases](https://github.com/ChaosTheChaotic/Adiman/releases/latest) (or download from artifacts if your architecture isnt there yet), download the appimage for your architecture, mark executable (if needed) and run the appimage
+(There are only linux builds currently) Head over to [releases](https://github.com/ChaosTheChaotic/Adiman/releases/latest), download the appimage for your architecture, mark executable (if needed using `chmod +x TheAppImage`) and run the appimage
 
 # Features
 
@@ -47,6 +47,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 - Intuitive UI
 - Non-intrusive UI
 - Smooth animations
+- Plugin Support (to develop or add plugins look through the [documentation](PLUGINS.md))
 - Playlists
 - Downloading songs via spotdl command line tool (requires spotdl installed and this takes a while due to all the rate limits so unfortunately you just have to wait it out)
 - Waveform seekbar
