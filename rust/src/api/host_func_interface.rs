@@ -239,7 +239,7 @@ host_fn!(get_song_pos() -> f32 {
 });
 
 #[frb(ignore)]
-host_fn!(is_playing() -> bool {
+host_fn!(get_is_playing() -> bool {
     Ok(crate::api::music_handler::is_playing())
 });
 
@@ -305,7 +305,7 @@ pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
         generic_func!(get_file_extension_nightly(path: &str) -> &str),
         generic_func!(get_current_vol() -> f32),
         generic_func!(get_song_pos() -> f32),
-        generic_func!(is_playing() -> bool),
+        generic_func!(get_is_playing() -> bool),
     ];
     b.with_functions(f)
 }
