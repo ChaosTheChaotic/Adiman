@@ -128,15 +128,23 @@ Future<void> main() async {
 }
 
 void syncRust() async {
+  final autoCreate =
+      SharedPreferencesService.instance.getBool('autoCreateDirs') ?? true;
   final home = Platform.environment['HOME'] ?? '';
   String musicFolder =
       SharedPreferencesService.instance.getString('musicFolder') ?? '~/Music';
   if (musicFolder.startsWith('~')) {
     musicFolder = musicFolder.replaceFirst('~', home);
   }
-  String pluginRwDir = SharedPreferencesService.instance.getString('pluginRwDir') ?? '~/AdiDir';
+  String pluginRwDir =
+      SharedPreferencesService.instance.getString('pluginRwDir') ?? '~/AdiDir';
   if (pluginRwDir.startsWith('~')) {
     pluginRwDir.replaceFirst('~', home);
+  }
+  final Directory pluginRwDirDir = Directory(pluginRwDir);
+  final bool rwe = await pluginRwDirDir.exists();
+  if (autoCreate && !rwe) {
+    await pluginRwDirDir.create(recursive: true);
   }
   final updater = await value_store.updateStore();
   await updater.setMusicFolder(folder: musicFolder);

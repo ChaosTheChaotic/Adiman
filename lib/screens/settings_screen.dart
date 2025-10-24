@@ -60,7 +60,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final bool _isManagingSeparators = false;
   final bool _isClearingDatabase = false;
   bool _enablePlugins = false;
-  bool _autoConvert = false;
+  bool _autoConvert = true;
+  bool _autoCreateDirs = false;
   bool _clearMp3Cache = false;
   bool _vimKeybindings = false;
   String _spotdlFlags = '';
@@ -168,6 +169,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _autoConvert =
           SharedPreferencesService.instance.getBool('autoConvert') ?? false;
+      _autoCreateDirs =
+          SharedPreferencesService.instance.getBool('autoCreateDirs') ?? true;
       _clearMp3Cache =
           SharedPreferencesService.instance.getBool('clearMp3Cache') ?? false;
       _vimKeybindings =
@@ -244,6 +247,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveAutoConvert(bool value) async {
     await SharedPreferencesService.instance.setBool('autoConvert', value);
     setState(() => _autoConvert = value);
+  }
+
+  Future<void> _saveAutoCreateDirs(bool value) async {
+    await SharedPreferencesService.instance.setBool('autoCreateDirs', value);
+    setState(() => _autoCreateDirs = value);
   }
 
   Future<void> _saveVimKeybindings(bool value) async {
@@ -1497,9 +1505,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             icon: Broken.square,
                             children: [
                               _buildSettingsSwitch(context,
-                                  title: 'Auto Convert',
+                                  title:
+                                      'Auto Convert (converts certain files to a different format)',
                                   value: _autoConvert,
-                                  onChanged: _saveAutoConvert)
+                                  onChanged: _saveAutoConvert),
+                              _buildSettingsSwitch(context,
+                                  title:
+                                      'Auto Create Directories (auto creates certain directories if they do not exist)',
+                                  value: _autoCreateDirs,
+                                  onChanged: _saveAutoCreateDirs),
                             ])
                       ],
                     ),
