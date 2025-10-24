@@ -224,8 +224,8 @@ host_fn!(copy_file(user_data: (); from: String, to: String) -> bool {
 });
 
 #[frb(ignore)]
-host_fn!(get_arch() -> &str {
-    Ok(std::env::consts::ARCH)
+host_fn!(get_arch() -> String {
+    Ok(String::from(std::env::consts::ARCH))
 });
 
 #[frb(ignore)]
