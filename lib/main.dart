@@ -139,7 +139,7 @@ void syncRust() async {
   String pluginRwDir =
       SharedPreferencesService.instance.getString('pluginRwDir') ?? '~/AdiDir';
   if (pluginRwDir.startsWith('~')) {
-    pluginRwDir.replaceFirst('~', home);
+    pluginRwDir = pluginRwDir.replaceFirst('~', home);
   }
   final Directory pluginRwDirDir = Directory(pluginRwDir);
   final bool rwe = await pluginRwDirDir.exists();
