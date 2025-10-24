@@ -1307,7 +1307,7 @@ pub fn play_song(path: String) -> bool {
 }
 
 pub fn pause_song() -> bool {
-    call_func_plugins("pause_song".to_string())
+    call_func_plugins("pause_song".to_string());
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.pause()
     } else {
