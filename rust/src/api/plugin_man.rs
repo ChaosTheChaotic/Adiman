@@ -658,6 +658,26 @@ impl AdiPluginMan {
 
         Ok(metadata_content)
     }
+
+    pub fn call_func_plugins(&self, func: &str) {
+        for (path, plugin_inode) in &self.plugin_meta {
+            let plugin = &plugin_inode.plugin;
+            let mut plugin_guard = match plugin.lock() {
+                Ok(guard) => guard,
+                Err(e) => {
+                    eprintln!("Failed to lock plugin mutex for {}: {}", path, e);
+                    continue;
+                }
+            };
+            
+            if plugin_guard.function_exists(func) {
+                let result: Result<&str, extism::Error> = plugin_guard.call(func, ());
+                if let Err(e) = result {
+                    eprintln!("Error running function '{}' on plugin '{}': {}", func, path, e);
+                }
+            }
+        }
+    }
 }
 
 unsafe impl Send for AdiPluginMan {}
@@ -834,5 +854,15 @@ pub fn set_plugin_config(path: String, key: String, value: ConfigTypes) -> Resul
             eprintln!("{}", format!("{e}"));
             Err(format!("Failed to set plugin config: {e}"))
         }
+    }
+}
+
+pub fn call_func_plugins(func: String) {
+    let pmg = PLUGIN_MAN.lock().unwrap();
+    
+    if let Some(plugin_man) = pmg.as_ref() {
+        plugin_man.call_func_plugins(&func);
+    } else {
+        eprintln!("{}", PluginManErr::PluginManNotLoaded);
     }
 }

@@ -82,6 +82,7 @@ impl ValueStore {
 }
 
 #[frb(opaque)]
+#[derive(Clone)]
 pub struct ValueStoreUpdater {
     pub music_folder: Option<String>,
     pub current_song: CurrentSongUpdate,

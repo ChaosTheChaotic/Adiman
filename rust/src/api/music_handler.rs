@@ -1,4 +1,4 @@
-use crate::api::{utils::fpre, value_store::update_store};
+use crate::api::{utils::fpre, value_store::update_store, plugin_man::call_func_plugins};
 use atomic_float::AtomicF32;
 use audiotags::Tag;
 use cd_audio::{
@@ -1292,8 +1292,13 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
 }
 
 pub fn play_song(path: String) -> bool {
-    update_store()
-        .set_current_song(extract_metadata(&PathBuf::from(path.clone()).as_path()).unwrap());
+    let mut updater = update_store();
+    updater.set_current_song(extract_metadata(&PathBuf::from(path.clone()).as_path()).unwrap());
+    let r = updater.apply();
+    if r.is_err() {
+        println!("Failed to apply changes to the store: {}", r.unwrap_err());
+    }
+    call_func_plugins("play_song".to_string());
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.play(&path)
     } else {
