@@ -1,4 +1,4 @@
-use crate::api::value_store::{aquire_read_lock, check_value_store_state};
+use crate::api::value_store::{check_value_store_state, acquire_read_lock};
 use extism::{host_fn, CurrentPlugin, Function, PluginBuilder, UserData, Val, PTR};
 use flutter_rust_bridge::frb;
 
@@ -13,7 +13,7 @@ host_fn!(get_music_folder() -> String {
     if !check_value_store_state() {
         return Ok(format!("ERR: Value store state was false"))
     }
-    match aquire_read_lock() {
+    match acquire_read_lock() {
         Ok(guard) => {
             // Use as_ref() to get Option<&ValueStore> instead of moving
             if let Some(state) = guard.as_ref() {

@@ -4,15 +4,76 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../frb_generated.dart';
+import 'music_handler.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
+part 'value_store.freezed.dart';
 
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ValueStore`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`
-// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `aquire_read_lock`, `check_value_store_state`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `acquire_read_lock`, `apply_update`, `check_value_store_state`
 // These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `default`, `new`, `update_music_folder`
 
 Future<void> initValueStore() =>
     RustLib.instance.api.crateApiValueStoreInitValueStore();
 
-Future<void> updateMusicFolder({required String folder}) =>
-    RustLib.instance.api.crateApiValueStoreUpdateMusicFolder(folder: folder);
+Future<void> updateValueStore({required ValueStoreUpdate update}) =>
+    RustLib.instance.api.crateApiValueStoreUpdateValueStore(update: update);
+
+Future<ValueStoreUpdater> updateStore() =>
+    RustLib.instance.api.crateApiValueStoreUpdateStore();
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ValueStoreUpdater>>
+abstract class ValueStoreUpdater implements RustOpaqueInterface {
+  Future<void> apply();
+
+  CurrentSongUpdate get currentSong;
+
+  String? get musicFolder;
+
+  set currentSong(CurrentSongUpdate currentSong);
+
+  set musicFolder(String? musicFolder);
+
+  Future<void> clearCurrentSong();
+
+  // HINT: Make it `#[frb(sync)]` to let it become the default constructor of Dart class.
+  static Future<ValueStoreUpdater> newInstance() =>
+      RustLib.instance.api.crateApiValueStoreValueStoreUpdaterNew();
+
+  Future<void> setCurrentSong({required SongMetadata song});
+
+  Future<void> setMusicFolder({required String folder});
+}
+
+@freezed
+sealed class CurrentSongUpdate with _$CurrentSongUpdate {
+  const CurrentSongUpdate._();
+
+  const factory CurrentSongUpdate.noChange() = CurrentSongUpdate_NoChange;
+  const factory CurrentSongUpdate.setToNone() = CurrentSongUpdate_SetToNone;
+  const factory CurrentSongUpdate.setToSome(
+    SongMetadata field0,
+  ) = CurrentSongUpdate_SetToSome;
+}
+
+class ValueStoreUpdate {
+  final String? musicFolder;
+  final CurrentSongUpdate currentSong;
+
+  const ValueStoreUpdate({
+    this.musicFolder,
+    required this.currentSong,
+  });
+
+  @override
+  int get hashCode => musicFolder.hashCode ^ currentSong.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ValueStoreUpdate &&
+          runtimeType == other.runtimeType &&
+          musicFolder == other.musicFolder &&
+          currentSong == other.currentSong;
+}

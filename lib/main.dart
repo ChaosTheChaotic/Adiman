@@ -127,14 +127,16 @@ Future<void> main() async {
   runApp(const Adiman());
 }
 
-void syncRust() {
+void syncRust() async {
   String musicFolder =
       SharedPreferencesService.instance.getString('musicFolder') ?? '~/Music';
   if (musicFolder.startsWith('~')) {
     final home = Platform.environment['HOME'] ?? '';
     musicFolder = musicFolder.replaceFirst('~', home);
   }
-  value_store.updateMusicFolder(folder: musicFolder);
+  final updater = await value_store.updateStore();
+  await updater.setMusicFolder(folder: musicFolder);
+  await updater.apply();
 }
 
 class Adiman extends StatefulWidget {
