@@ -114,6 +114,7 @@ Future<void> main() async {
   await RustLib.init();
   await rust_api.initializePlayer();
   await plugin_api.initPluginMan();
+  await value_store.initValueStore();
   globalService = AdimanService();
   VolumeController();
   sqfliteFfiInit();
@@ -133,7 +134,7 @@ void syncRust() {
     final home = Platform.environment['HOME'] ?? '';
     musicFolder = musicFolder.replaceFirst('~', home);
   }
-  value_store.updateMusicFolder(f: musicFolder);
+  value_store.updateMusicFolder(folder: musicFolder);
 }
 
 class Adiman extends StatefulWidget {

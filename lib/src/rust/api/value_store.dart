@@ -4,11 +4,15 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../frb_generated.dart';
-import 'music_handler.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-Future<void> updateMusicFolder({required String f}) =>
-    RustLib.instance.api.crateApiValueStoreUpdateMusicFolder(f: f);
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ValueStore`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `aquire_read_lock`, `check_value_store_state`
+// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `default`, `new`, `update_music_folder`
 
-Future<void> updateCurrentSong({required SongMetadata s}) =>
-    RustLib.instance.api.crateApiValueStoreUpdateCurrentSong(s: s);
+Future<void> initValueStore() =>
+    RustLib.instance.api.crateApiValueStoreInitValueStore();
+
+Future<void> updateMusicFolder({required String folder}) =>
+    RustLib.instance.api.crateApiValueStoreUpdateMusicFolder(folder: folder);

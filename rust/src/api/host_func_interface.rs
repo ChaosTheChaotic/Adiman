@@ -1,4 +1,4 @@
-use crate::api::value_store::MUSIC_FOLDER;
+use crate::api::value_store::{aquire_read_lock, check_value_store_state};
 use extism::{host_fn, CurrentPlugin, Function, PluginBuilder, UserData, Val, PTR};
 use flutter_rust_bridge::frb;
 
@@ -10,10 +10,26 @@ host_fn!(pprint(user_data: (); m: String) {
 
 #[frb(ignore)]
 host_fn!(get_music_folder() -> String {
-    let g = MUSIC_FOLDER.lock().unwrap();
-    Ok((*g).clone())
+    if !check_value_store_state() {
+        return Ok(format!("ERR: Value store state was false"))
+    }
+    match aquire_read_lock() {
+        Ok(guard) => {
+            // Use as_ref() to get Option<&ValueStore> instead of moving
+            if let Some(state) = guard.as_ref() {
+                Ok(state.music_folder.clone())
+            } else {
+                Ok("ERR: ValueStore not initialized".to_string())
+            }
+        }
+        Err(e) => Ok(format!("ERR: Failed to aquire read lock: {}", e)),
+    }
 });
 
+#[frb(ignore)]
+host_fn!(get_store_state() -> bool {
+    Ok(check_value_store_state())
+});
 // A template set that most functions I add will conform to
 fn generic_func_template_pr<F>(name: &str, func: F) -> Function
 where
@@ -50,6 +66,7 @@ pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
     let f = vec![
         generic_func_template_p("pprint", pprint),
         generic_func_template_r("get_music_folder", get_music_folder),
+        generic_func_template_r("get_store_state", get_store_state),
     ];
     b.with_functions(f)
 }
