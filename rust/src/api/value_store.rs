@@ -50,7 +50,7 @@ impl ValueStore {
             ..Default::default()
         }
     }
-    
+
     pub fn update_music_folder(&mut self, folder: String) -> Result<(), String> {
         let fpbuf: PathBuf = PathBuf::from(&folder);
         if fpbuf.exists() && fpbuf.is_dir() {
@@ -60,23 +60,23 @@ impl ValueStore {
             Err("The provided folder is not a folder or does not exist".to_string())
         }
     }
-    
+
     #[frb(ignore)]
     pub fn apply_update(&mut self, update: ValueStoreUpdate) -> Result<(), String> {
         if let Some(folder) = update.music_folder {
             self.update_music_folder(folder)?;
         }
-        
+
         match update.current_song {
-            CurrentSongUpdate::NoChange => {},
+            CurrentSongUpdate::NoChange => {}
             CurrentSongUpdate::SetToNone => {
                 self.current_song = None;
-            },
+            }
             CurrentSongUpdate::SetToSome(song) => {
                 self.current_song = Some(song);
             }
         }
-        
+
         Ok(())
     }
 }
@@ -94,25 +94,25 @@ impl ValueStoreUpdater {
             current_song: CurrentSongUpdate::NoChange,
         }
     }
-    
+
     #[frb]
     pub fn set_music_folder(&mut self, folder: String) -> &mut Self {
         self.music_folder = Some(folder);
         self
     }
-    
+
     #[frb]
     pub fn set_current_song(&mut self, song: SongMetadata) -> &mut Self {
         self.current_song = CurrentSongUpdate::SetToSome(song);
         self
     }
-    
+
     #[frb]
     pub fn clear_current_song(&mut self) -> &mut Self {
         self.current_song = CurrentSongUpdate::SetToNone;
         self
     }
-    
+
     #[frb]
     pub fn apply(self) -> Result<(), String> {
         let update = ValueStoreUpdate {
@@ -148,7 +148,8 @@ pub fn check_value_store_state() -> bool {
 }
 
 #[frb(ignore)]
-pub fn acquire_read_lock() -> Result<std::sync::RwLockReadGuard<'static, Option<ValueStore>>, String> {
+pub fn acquire_read_lock() -> Result<std::sync::RwLockReadGuard<'static, Option<ValueStore>>, String>
+{
     let store = VALUE_STORE.read().map_err(|e| {
         STORE_STATE.store(false, Ordering::SeqCst);
         format!("Failed to acquire read lock to VALUE_STORE: {}", e)
@@ -161,12 +162,12 @@ pub fn update_value_store(update: ValueStoreUpdate) -> Result<(), String> {
         STORE_STATE.store(false, Ordering::SeqCst);
         format!("Failed to acquire write lock on VALUE_STORE: {}", e)
     })?;
-    
-    if store.is_none() { 
-        STORE_STATE.store(false, Ordering::SeqCst); 
+
+    if store.is_none() {
+        STORE_STATE.store(false, Ordering::SeqCst);
         return Err("The VALUE_STORE is None".to_string());
     }
-    
+
     store.as_mut().unwrap().apply_update(update)
 }
 

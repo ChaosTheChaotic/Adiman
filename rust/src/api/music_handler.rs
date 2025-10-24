@@ -1292,7 +1292,8 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
 }
 
 pub fn play_song(path: String) -> bool {
-    update_store().set_current_song(extract_metadata(&PathBuf::from(path.clone()).as_path()).unwrap());
+    update_store()
+        .set_current_song(extract_metadata(&PathBuf::from(path.clone()).as_path()).unwrap());
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.play(&path)
     } else {

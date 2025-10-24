@@ -1,4 +1,4 @@
-use crate::api::{value_store::{check_value_store_state, acquire_read_lock}};
+use crate::api::value_store::{acquire_read_lock, check_value_store_state};
 use extism::{host_fn, CurrentPlugin, Function, PluginBuilder, UserData, Val, PTR};
 use flutter_rust_bridge::frb;
 
@@ -49,6 +49,7 @@ host_fn!(get_store_state() -> bool {
 });
 // A template set that most functions I add will conform to
 fn generic_func_template_pr<F>(name: &str, func: F) -> Function
+// Generic function with param and return
 where
     F: Sync
         + Send
@@ -59,6 +60,7 @@ where
 }
 
 fn generic_func_template_r<F>(name: &str, func: F) -> Function
+// Generic function with return
 where
     F: Sync
         + Send
@@ -69,6 +71,7 @@ where
 }
 
 fn generic_func_template_p<F>(name: &str, func: F) -> Function
+// Generic function with param
 where
     F: Sync
         + Send

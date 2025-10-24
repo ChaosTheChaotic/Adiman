@@ -1128,9 +1128,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         _musicFolderController.text);
                                     await SharedPreferencesService.instance
                                         .setString('musicFolder', expandedPath);
-				    final updater = await value_store.updateStore();
-				    await updater.setMusicFolder(folder: expandedPath);
-				    updater.apply();
+                                    final updater =
+                                        await value_store.updateStore();
+                                    await updater.setMusicFolder(
+                                        folder: expandedPath);
+                                    updater.apply();
                                     if (widget.onMusicFolderChanged != null) {
                                       await widget
                                           .onMusicFolderChanged!(expandedPath);
