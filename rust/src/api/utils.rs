@@ -31,3 +31,23 @@ pub fn fpre(fpath: &Path) -> Option<&OsStr> {
         .map(split_file_at_dot)
         .and_then(|(before, _after)| Some(before))
 }
+
+#[frb(ignore)]
+pub fn check_dir(folder: impl AsRef<std::path::Path>) -> bool {
+    folder.as_ref().exists() && folder.as_ref().is_dir()
+}
+
+#[frb(ignore)]
+pub fn validate_path(name: impl AsRef<str>) -> bool {
+    let path = name.as_ref();
+    if path.contains("..")
+        || path.starts_with('/')
+        || path.starts_with('~')
+        || path.is_empty()
+        || path.chars().any(|c| c.is_control() || c == '\0')
+    {
+        false
+    } else {
+        true
+    }
+}

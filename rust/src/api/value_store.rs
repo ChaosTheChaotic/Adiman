@@ -1,4 +1,4 @@
-use crate::api::music_handler::SongMetadata;
+use crate::api::{music_handler::SongMetadata, utils::check_dir};
 use flutter_rust_bridge::frb;
 use std::{
     path::PathBuf,
@@ -18,6 +18,7 @@ pub static VALUE_STORE: RwLock<Option<ValueStore>> = RwLock::new(None);
 pub struct ValueStore {
     pub music_folder: String,
     pub current_song: Option<SongMetadata>,
+    pub plugin_rw_dir: String,
 }
 
 #[derive(Clone)]
@@ -30,16 +31,16 @@ pub enum CurrentSongUpdate {
 pub struct ValueStoreUpdate {
     pub music_folder: Option<String>,
     pub current_song: CurrentSongUpdate,
+    pub plugin_rw_dir: Option<String>,
 }
 
 impl Default for ValueStore {
     fn default() -> Self {
+        let home_dir: PathBuf = PathBuf::from(std::env::var("HOME").unwrap_or("/home".to_string()));
         Self {
-            music_folder: PathBuf::from(std::env::var("HOME").unwrap_or("/home".to_string()))
-                .join("Music")
-                .to_string_lossy()
-                .to_string(),
+            music_folder: home_dir.join("Music").to_string_lossy().to_string(),
             current_song: None,
+            plugin_rw_dir: home_dir.join("AdiDir").to_string_lossy().to_string(),
         }
     }
 }
@@ -52,9 +53,17 @@ impl ValueStore {
     }
 
     pub fn update_music_folder(&mut self, folder: String) -> Result<(), String> {
-        let fpbuf: PathBuf = PathBuf::from(&folder);
-        if fpbuf.exists() && fpbuf.is_dir() {
+        if check_dir(&folder) {
             self.music_folder = folder;
+            Ok(())
+        } else {
+            Err("The provided folder is not a folder or does not exist".to_string())
+        }
+    }
+
+    pub fn update_plugin_rw_dir(&mut self, folder: String) -> Result<(), String> {
+        if check_dir(&folder) {
+            self.plugin_rw_dir = folder;
             Ok(())
         } else {
             Err("The provided folder is not a folder or does not exist".to_string())
@@ -65,6 +74,10 @@ impl ValueStore {
     pub fn apply_update(&mut self, update: ValueStoreUpdate) -> Result<(), String> {
         if let Some(folder) = update.music_folder {
             self.update_music_folder(folder)?;
+        }
+
+        if let Some(folder) = update.plugin_rw_dir {
+            self.update_plugin_rw_dir(folder)?;
         }
 
         match update.current_song {
@@ -86,6 +99,7 @@ impl ValueStore {
 pub struct ValueStoreUpdater {
     pub music_folder: Option<String>,
     pub current_song: CurrentSongUpdate,
+    pub plugin_rw_dir: Option<String>,
 }
 
 impl ValueStoreUpdater {
@@ -93,11 +107,18 @@ impl ValueStoreUpdater {
         Self {
             music_folder: None,
             current_song: CurrentSongUpdate::NoChange,
+            plugin_rw_dir: None,
         }
     }
 
     #[frb]
     pub fn set_music_folder(&mut self, folder: String) -> &mut Self {
+        self.music_folder = Some(folder);
+        self
+    }
+
+    #[frb]
+    pub fn set_plugin_rw_dir(&mut self, folder: String) -> &mut Self {
         self.music_folder = Some(folder);
         self
     }
@@ -119,6 +140,7 @@ impl ValueStoreUpdater {
         let update = ValueStoreUpdate {
             music_folder: self.music_folder,
             current_song: self.current_song,
+            plugin_rw_dir: self.plugin_rw_dir,
         };
         update_value_store(update)
     }

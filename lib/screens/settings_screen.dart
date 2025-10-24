@@ -366,6 +366,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _savePluginRwDir(String dir) async {
     await SharedPreferencesService.instance.setString('pluginRwDir', dir);
+    final updater = await value_store.updateStore();
+    updater.setPluginRwDir(folder: dir);
     setState(() => _pluginRwDir = dir);
   }
 

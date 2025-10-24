@@ -28,6 +28,7 @@ rusty-chromaprint = "0.3.0"
 symphonia = "0.5.5"
 reqwest = { version = "0.12.24", features = ["blocking", "json"] }
 envcrypt = "0.5.0"
+chrono = "0.4.42"
 
 [build-dependencies]
 flutter_rust_bridge_codegen = "=2.11.1"

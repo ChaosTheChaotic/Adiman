@@ -12,7 +12,7 @@ part 'value_store.freezed.dart';
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ValueStore`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`
 // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `acquire_read_lock`, `apply_update`, `check_value_store_state`
-// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `default`, `new`, `update_music_folder`
+// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `default`, `new`, `update_music_folder`, `update_plugin_rw_dir`
 
 Future<void> initValueStore() =>
     RustLib.instance.api.crateApiValueStoreInitValueStore();
@@ -31,9 +31,13 @@ abstract class ValueStoreUpdater implements RustOpaqueInterface {
 
   String? get musicFolder;
 
+  String? get pluginRwDir;
+
   set currentSong(CurrentSongUpdate currentSong);
 
   set musicFolder(String? musicFolder);
+
+  set pluginRwDir(String? pluginRwDir);
 
   Future<void> clearCurrentSong();
 
@@ -44,6 +48,8 @@ abstract class ValueStoreUpdater implements RustOpaqueInterface {
   Future<void> setCurrentSong({required SongMetadata song});
 
   Future<void> setMusicFolder({required String folder});
+
+  Future<void> setPluginRwDir({required String folder});
 }
 
 @freezed
@@ -60,14 +66,17 @@ sealed class CurrentSongUpdate with _$CurrentSongUpdate {
 class ValueStoreUpdate {
   final String? musicFolder;
   final CurrentSongUpdate currentSong;
+  final String? pluginRwDir;
 
   const ValueStoreUpdate({
     this.musicFolder,
     required this.currentSong,
+    this.pluginRwDir,
   });
 
   @override
-  int get hashCode => musicFolder.hashCode ^ currentSong.hashCode;
+  int get hashCode =>
+      musicFolder.hashCode ^ currentSong.hashCode ^ pluginRwDir.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -75,5 +84,6 @@ class ValueStoreUpdate {
       other is ValueStoreUpdate &&
           runtimeType == other.runtimeType &&
           musicFolder == other.musicFolder &&
-          currentSong == other.currentSong;
+          currentSong == other.currentSong &&
+          pluginRwDir == other.pluginRwDir;
 }

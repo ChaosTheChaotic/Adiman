@@ -128,14 +128,19 @@ Future<void> main() async {
 }
 
 void syncRust() async {
+  final home = Platform.environment['HOME'] ?? '';
   String musicFolder =
       SharedPreferencesService.instance.getString('musicFolder') ?? '~/Music';
   if (musicFolder.startsWith('~')) {
-    final home = Platform.environment['HOME'] ?? '';
     musicFolder = musicFolder.replaceFirst('~', home);
+  }
+  String pluginRwDir = SharedPreferencesService.instance.getString('pluginRwDir') ?? '~/AdiDir';
+  if (pluginRwDir.startsWith('~')) {
+    pluginRwDir.replaceFirst('~', home);
   }
   final updater = await value_store.updateStore();
   await updater.setMusicFolder(folder: musicFolder);
+  await updater.setPluginRwDir(folder: pluginRwDir);
   await updater.apply();
 }
 
