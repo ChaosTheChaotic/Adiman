@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'dart:convert';
-import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_glow/flutter_glow.dart';
 import 'package:adiman/main.dart';
 import 'package:adiman/widgets/services.dart';
 import 'package:adiman/widgets/icon_buttons.dart';
 import 'package:adiman/widgets/snackbar.dart';
-import 'package:flutter_glow/flutter_glow.dart';
 import 'package:adiman/icons/broken_icons.dart';
 import 'package:adiman/src/rust/api/plugin_man.dart' as rust_api;
 
@@ -22,7 +22,8 @@ class PluginsScreen extends StatefulWidget {
   State<PluginsScreen> createState() => _PluginsScreenState();
 }
 
-class _PluginsScreenState extends State<PluginsScreen> {
+class _PluginsScreenState extends State<PluginsScreen>
+    with SingleTickerProviderStateMixin {
   List<String> availablePlugins = [];
   List<String> loadedPlugins = [];
   List<String> filteredPlugins = [];
@@ -37,6 +38,9 @@ class _PluginsScreenState extends State<PluginsScreen> {
   bool _isSearchFocused = false;
 
   late FocusNode _mainFocusNode;
+  late AnimationController _searchAnimationController;
+  late Animation<double> _searchBarAnimation;
+  late Animation<double> _searchOpacityAnimation;
 
   @override
   void initState() {
@@ -46,6 +50,27 @@ class _PluginsScreenState extends State<PluginsScreen> {
     _mainFocusNode = FocusNode();
     _searchFocusNode.addListener(_handleSearchFocusChange);
     _mainFocusNode.requestFocus();
+
+    _searchAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+
+    _searchBarAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _searchAnimationController,
+      curve: Curves.fastEaseInToSlowEaseOut,
+    ));
+
+    _searchOpacityAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _searchAnimationController,
+      curve: Curves.easeInOut,
+    ));
   }
 
   void _handleSearchFocusChange() {
@@ -63,10 +88,9 @@ class _PluginsScreenState extends State<PluginsScreen> {
         } else {
           Navigator.pop(context);
         }
-      } else if (event.logicalKey == LogicalKeyboardKey.slash) {
-        if (!_isSearchExpanded) {
-          _toggleSearch();
-        }
+      } else if (event.logicalKey == LogicalKeyboardKey.slash &&
+          !_isSearchExpanded) {
+        _toggleSearch();
       }
     }
   }
@@ -88,12 +112,18 @@ class _PluginsScreenState extends State<PluginsScreen> {
   void _toggleSearch() {
     setState(() {
       _isSearchExpanded = !_isSearchExpanded;
-      if (!_isSearchExpanded) {
+      if (_isSearchExpanded) {
+        _searchAnimationController.forward();
+	Future.delayed(const Duration(milliseconds: 100), () {
+      	  if (mounted) {
+      	    _searchFocusNode.requestFocus();
+      	  }
+      	});
+      } else {
+        _searchAnimationController.reverse();
         _searchController.clear();
         filteredPlugins = List.from(availablePlugins);
         _mainFocusNode.requestFocus();
-      } else {
-        _searchFocusNode.requestFocus();
       }
     });
   }
@@ -536,6 +566,103 @@ class _PluginsScreenState extends State<PluginsScreen> {
     );
   }
 
+  Widget _buildAnimatedSearchBar() {
+    return SizeTransition(
+      sizeFactor: _searchBarAnimation,
+      axisAlignment: -1.0,
+      child: FadeTransition(
+        opacity: _searchOpacityAnimation,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                dominantColor.withAlpha(20),
+                Colors.black.withAlpha(100),
+              ],
+            ),
+            border: Border(
+              bottom: BorderSide(
+                color: dominantColor.withAlpha(50),
+                width: 1,
+              ),
+            ),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  dominantColor.withAlpha(15),
+                  Colors.black.withAlpha(30),
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: dominantColor.withAlpha(20),
+                  blurRadius: 15,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              style: TextStyle(
+                color: dominantColor.computeLuminance() > 0.01
+                    ? dominantColor
+                    : Colors.white,
+                fontSize: 16,
+              ),
+              cursorColor: dominantColor.computeLuminance() > 0.01
+                  ? dominantColor
+                  : Colors.white,
+              decoration: InputDecoration(
+                hintText: 'Search plugins...',
+                hintStyle: TextStyle(
+                  color: (dominantColor.computeLuminance() > 0.01
+                          ? dominantColor
+                          : Colors.white)
+                      .withAlpha(150),
+                  fontWeight: FontWeight.w300,
+                ),
+                prefixIcon: Icon(
+                  Broken.search_normal,
+                  color: (dominantColor.computeLuminance() > 0.01
+                          ? dominantColor
+                          : Colors.white)
+                      .withAlpha(200),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Colors.transparent,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: dominantColor.withAlpha(100),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+              textInputAction: TextInputAction.search,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final textColor =
@@ -581,9 +708,10 @@ class _PluginsScreenState extends State<PluginsScreen> {
               actions: [
                 // Search Toggle Button
                 IconButton(
-                  icon: Icon(
+                  icon: GlowIcon(
                     _isSearchExpanded ? Broken.cross : Broken.search_normal,
                     color: textColor,
+                    glowColor: dominantColor.withAlpha(80),
                   ),
                   onPressed: _toggleSearch,
                 ),
@@ -599,91 +727,8 @@ class _PluginsScreenState extends State<PluginsScreen> {
             ),
             body: Column(
               children: [
-                // Header
                 _buildHeader(),
-
-                // Search Bar (when expanded)
-                if (_isSearchExpanded)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          dominantColor.withAlpha(20),
-                          Colors.black.withAlpha(100),
-                        ],
-                      ),
-                      border: Border(
-                        bottom: BorderSide(
-                          color: dominantColor.withAlpha(50),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            dominantColor.withAlpha(15),
-                            Colors.black.withAlpha(30),
-                          ],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: dominantColor.withAlpha(20),
-                            blurRadius: 15,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        focusNode: _searchFocusNode,
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 16,
-                        ),
-                        cursorColor: textColor,
-                        decoration: InputDecoration(
-                          hintText: 'Search plugins...',
-                          hintStyle: TextStyle(
-                            color: textColor.withAlpha(150),
-                            fontWeight: FontWeight.w300,
-                          ),
-                          prefixIcon: Icon(
-                            Broken.search_normal,
-                            color: textColor.withAlpha(200),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Colors.transparent,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: dominantColor.withAlpha(100),
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                        textInputAction: TextInputAction.search,
-                      ),
-                    ),
-                  ),
-
-                // Content
+                _buildAnimatedSearchBar(),
                 Expanded(
                   child: isLoading
                       ? Center(
@@ -774,6 +819,7 @@ class _PluginsScreenState extends State<PluginsScreen> {
 
   @override
   void dispose() {
+    _searchAnimationController.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     _mainFocusNode.dispose();
@@ -851,7 +897,6 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
     });
 
     try {
-      // Convert the new value to the appropriate ConfigTypes using the ctype
       final configValue = _convertToConfigType(newValue, ctype);
 
       final result = await rust_api.setPluginConfig(
@@ -861,7 +906,6 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
       );
 
       if (result.contains('Updated config')) {
-        // Update local state
         setState(() {
           if (_pluginMetadata != null && _pluginMetadata!['rpc'] != null) {
             final rpcArray = _pluginMetadata!['rpc'] as List<dynamic>;
@@ -1346,7 +1390,6 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
               ),
             ),
 
-            // Content
             Expanded(
               child: _isLoading
                   ? Center(
