@@ -68,6 +68,9 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 - Auto conversion of non-mp3 songs via ffmpeg (if you have many of these files you might have to wait a bit before reloading the library)
 - Horribly inefficent code
 
+# Plugin development
+You may find plugin development in the [PLUGINS.md](PLUGINS.md#developing-plugins)
+
 # Screenshots
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
