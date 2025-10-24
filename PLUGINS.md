@@ -15,7 +15,7 @@ As of update 1.3.0, Adiman now supports plugins.
 - Contact the plugin developer for help
 
 # Developing plugins
-You may develop plugins in any language that extism supports (as it is the framework I use for plugins)
+You may develop plugins in any language that [extism](https://github.com/extism/extism) supports (as it is the framework I use for plugins)
 
 ## Starting
 First create a new plugin using extism and ensure it works
