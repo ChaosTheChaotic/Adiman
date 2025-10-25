@@ -58,64 +58,91 @@ host_fn!(get_store_state() -> bool {
 });
 
 #[frb(ignore)]
-host_fn!(create_file(user_data: (); name: String, content: Option<String>) -> bool {
-    if !validate_path(&name) {
+host_fn!(create_file(user_data: (); path: String, content: Option<String>) -> bool {
+    if !validate_path(&path) {
         return Ok(false);
     }
     if content.is_none() {
-        return Ok(File::create(name).is_ok());
+        return Ok(File::create(path).is_ok());
     } else {
-        return Ok(fs::write(name, content.unwrap()).is_ok());
+        return Ok(fs::write(path, content.unwrap()).is_ok());
     }
     Ok(true)
 });
 
 #[frb(ignore)]
-host_fn!(check_entity_exists(user_data: (); name: String) -> bool {
-    if !validate_path(&name) {
+host_fn!(check_entity_exists(user_data: (); path: String, follow_symlinks: bool) -> bool {
+    if !validate_path(&path) {
         return Ok(false);
     }
-    Ok(PathBuf::from(name).exists())
+    if !follow_symlinks {
+        return Ok(PathBuf::from(path).exists());
+    } else {
+        return match fs::metadata(path) {
+            Ok(_) => Ok(true),
+            Err(_) => Ok(false),
+        };
+    }
 });
 
 #[frb(ignore)]
-host_fn!(entity_is_dir(user_data: (); name: String) -> bool {
-    if !validate_path(&name) {
-        return Ok(false);
+host_fn!(entity_type(user_data: (); path: String, follow_symlinks: bool) -> Option<EntityType> {
+    if !validate_path(&path) {
+        return Ok(None);
     }
-    Ok(PathBuf::from(name).is_dir())
+    if !follow_symlinks {
+        let pbn = PathBuf::from(path);
+        if pbn.is_dir() {
+            return Ok(Some(EntityType::Directory));
+        } else if pbn.is_symlink() {
+            return Ok(Some(EntityType::Symlink));
+        } else {
+            return Ok(Some(EntityType::File));
+        }
+    } else {
+        return match fs::metadata(path) {
+            Ok(m) => {
+                if m.is_dir() {
+                    return Ok(Some(EntityType::Directory));
+                } else {
+                    return Ok(Some(EntityType::File));
+                }
+            },
+            Err(_) => Ok(None),
+        }
+    }
 });
 
 #[frb(ignore)]
-host_fn!(write_file(user_data: (); name: String, content: String) -> bool {
-    if !validate_path(&name) {
+host_fn!(write_file(user_data: (); path: String, content: String) -> bool {
+    if !validate_path(&path) {
         return Ok(false);
     }
-    Ok(fs::write(name, content).is_ok())
+    Ok(fs::write(path, content).is_ok())
 });
 
 #[frb(ignore)]
-host_fn!(delete_file(user_data: (); name: String) -> bool {
-    if !validate_path(&name) {
+host_fn!(delete_file(user_data: (); path: String) -> bool {
+    if !validate_path(&path) {
         return Ok(false);
     }
-    Ok(fs::remove_file(name).is_ok())
+    Ok(fs::remove_file(path).is_ok())
 });
 
 #[frb(ignore)]
-host_fn!(create_dir(user_data: (); name: String) -> bool {
-    if !validate_path(&name) {
+host_fn!(create_dir(user_data: (); path: String) -> bool {
+    if !validate_path(&path) {
         return Ok(false);
     }
-    Ok(fs::create_dir_all(name).is_ok())
+    Ok(fs::create_dir_all(path).is_ok())
 });
 
 #[frb(ignore)]
-host_fn!(read_file(user_data: (); name: String) -> String {
-    if !validate_path(&name) {
+host_fn!(read_file(user_data: (); path: String) -> String {
+    if !validate_path(&path) {
         return Ok("ERR: Invalid path".to_string());
     }
-    match fs::read_to_string(name) {
+    match fs::read_to_string(path) {
         Ok(content) => Ok(content),
         Err(e) => Ok(format!("ERR: {}", e)),
     }
@@ -126,12 +153,13 @@ host_fn!(read_file(user_data: (); name: String) -> String {
 pub enum EntityType {
     File,
     Directory,
+    Symlink,
 }
 
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]
 #[encoding(Json)]
 pub struct DirEntity {
-    pub name: String,
+    pub path: String,
     pub entity_type: EntityType,
 }
 
@@ -142,7 +170,7 @@ pub struct DirEntities {
 }
 
 #[frb(ignore)]
-host_fn!(list_dir(user_data: (); path: String) -> DirEntities {
+host_fn!(list_dir(user_data: (); path: String, follow_symlinks: bool) -> DirEntities {
     if !validate_path(&path) {
         return Ok(DirEntities { contents: Vec::new() });
     }
@@ -151,16 +179,27 @@ host_fn!(list_dir(user_data: (); path: String) -> DirEntities {
             let mut results: Vec<DirEntity> = Vec::new();
             for entry in entries {
                 if let Ok(entry) = entry {
-                    if let Some(file_name) = entry.file_name().to_str() {
-                        if let Ok(file_type) = entry.metadata() {
+                    if !follow_symlinks {
+                        if let Some(file_path) = entry.file_name().to_str() {
+                            if let Ok(file_type) = entry.file_type() {
+                                let entity_type = match () {
+                                    _ if file_type.is_dir() => EntityType::Directory,
+                                    _ if file_type.is_symlink() => EntityType::Symlink,
+                                    _ => EntityType::File,
+                                };
+                                results.push(DirEntity {
+                                    path: file_path.to_string(),
+                                    entity_type,
+                                })
+                            }
+                        }
+                    } else {
+                        if let Ok(m) = fs::metadata(entry.path()) {
                             let entity_type = match () {
-                                _ if file_type.is_dir() => EntityType::Directory,
+                                _ if m.is_dir() => EntityType::Directory,
                                 _ => EntityType::File,
                             };
-                            results.push(DirEntity {
-                                name: file_name.to_string(),
-                                entity_type,
-                            })
+                            results.push(DirEntity { path: entry.file_name().to_string_lossy().to_string(), entity_type, })
                         }
                     }
                 }
@@ -178,11 +217,11 @@ host_fn!(join_paths(user_data: (); base: String, segment: String) -> String {
 });
 
 #[frb(ignore)]
-host_fn!(file_size(user_data: (); name: String) -> u64 {
-    if !validate_path(&name) {
+host_fn!(file_size(user_data: (); path: String) -> u64 {
+    if !validate_path(&path) {
         return Ok(0);
     }
-    match fs::metadata(name) {
+    match fs::metadata(path) {
         Ok(metadata) => Ok(metadata.len()),
         Err(_) => Ok(0),
     }
@@ -246,23 +285,23 @@ host_fn!(get_is_playing() -> bool {
 // A macro to decide how to format the functions for me
 macro_rules! get_fn_signature {
     // With params and return
-    (($func:ident) fn $name:ident($($param:tt)+) -> $ret:ty) => {
-        Function::new(stringify!($name), [PTR], [PTR], UserData::new(()), $func)
+    (($func:ident) fn $path:ident($($param:tt)+) -> $ret:ty) => {
+        Function::new(stringify!($path), [PTR], [PTR], UserData::new(()), $func)
     };
 
     // With return only
-    (($func:ident) fn $name:ident() -> $ret:ty) => {
-        Function::new(stringify!($name), [], [PTR], UserData::new(()), $func)
+    (($func:ident) fn $path:ident() -> $ret:ty) => {
+        Function::new(stringify!($path), [], [PTR], UserData::new(()), $func)
     };
 
     // With params only
-    (($func:ident) fn $name:ident($($param:tt)+)) => {
-        Function::new(stringify!($name), [PTR], [], UserData::new(()), $func)
+    (($func:ident) fn $path:ident($($param:tt)+)) => {
+        Function::new(stringify!($path), [PTR], [], UserData::new(()), $func)
     };
 
     // No params or return
-    (($func:ident) fn $name:ident()) => {
-        Function::new(stringify!($name), [], [], UserData::new(()), $func)
+    (($func:ident) fn $path:ident()) => {
+        Function::new(stringify!($path), [], [], UserData::new(()), $func)
     };
 }
 
@@ -284,25 +323,25 @@ macro_rules! generic_func {
 #[frb(ignore)]
 pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
     let f = vec![
-        generic_func!(pprint(text: &str)),
-        generic_func!(get_music_folder() -> &str),
-        generic_func!(get_store_state() -> &str),
-        generic_func!(get_current_song() -> &str),
-        generic_func!(create_file(path: &str) -> bool),
-        generic_func!(check_entity_exists(path: &str) -> bool),
-        generic_func!(entity_is_dir(path: &str) -> bool),
-        generic_func!(write_file(path: &str, content: &str) -> bool),
-        generic_func!(delete_file(path: &str) -> bool),
-        generic_func!(create_dir(path: &str) -> bool),
-        generic_func!(list_dir(path: &str) -> &str),
-        generic_func!(join_paths(path1: &str, path2: &str) -> &str),
-        generic_func!(file_size(path: &str) -> u64),
+        generic_func!(pprint(text: String)),
+        generic_func!(get_music_folder() -> String),
+        generic_func!(get_store_state() -> String),
+        generic_func!(get_current_song() -> String),
+        generic_func!(create_file(path: String, content: Option<String>) -> bool),
+        generic_func!(check_entity_exists(path: String, follow_symlinks: bool) -> bool),
+        generic_func!(entity_type(path: String, follow_symlinks: bool) -> Option<EntityType>),
+        generic_func!(write_file(path: String, content: String) -> bool),
+        generic_func!(delete_file(path: String) -> bool),
+        generic_func!(create_dir(path: String) -> bool),
+        generic_func!(list_dir(path: String, follow_symlinks: bool) -> String),
+        generic_func!(join_paths(path1: String, path2: String) -> String),
+        generic_func!(file_size(path: String) -> u64),
         generic_func!(rename_file(old: String, new: String) -> bool),
         generic_func!(copy_file(from: String, to: String) -> bool),
-        generic_func!(get_arch() -> &str),
-        generic_func!(get_time() -> &str),
-        generic_func!(get_file_extension_std(path: &str) -> &str),
-        generic_func!(get_file_extension_nightly(path: &str) -> &str),
+        generic_func!(get_arch() -> String),
+        generic_func!(get_time() -> String),
+        generic_func!(get_file_extension_std(path: String) -> String),
+        generic_func!(get_file_extension_nightly(path: String) -> String),
         generic_func!(get_current_vol() -> f32),
         generic_func!(get_song_pos() -> f32),
         generic_func!(get_is_playing() -> bool),
