@@ -1461,7 +1461,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             children: [
                               _buildSettingsSwitch(
                                 context,
-                                title: 'Enable plugins',
+                                title: 'Enable Plugins (some changes may require restart)',
                                 value: _enablePlugins,
                                 onChanged: _saveEnablePlugins,
                               ),
