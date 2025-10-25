@@ -654,8 +654,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await SharedPreferencesService.instance.setBool('unsafeAPIs', value);
 
     final updater = await value_store.updateStore();
-    updater.setUnsafeApis(value: value);
-    updater.apply();
+    await updater.setUnsafeApis(value: value);
+    await updater.apply();
 
     if (mounted) {
       setState(() => _unsafeAPIs = value);
