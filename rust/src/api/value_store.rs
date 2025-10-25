@@ -119,7 +119,7 @@ impl ValueStoreUpdater {
 
     #[frb]
     pub fn set_plugin_rw_dir(&mut self, folder: String) -> &mut Self {
-        self.music_folder = Some(folder);
+        self.plugin_rw_dir = Some(folder);
         self
     }
 
