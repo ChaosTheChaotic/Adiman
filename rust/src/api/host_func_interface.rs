@@ -11,6 +11,22 @@ use std::{
     path::PathBuf,
 };
 
+fn confine_path(path: impl AsRef<std::path::Path>) -> Result<String, ()> {
+    let path = path.as_ref();
+    let plugin_rw_dir: String = match acquire_read_lock() {
+        Ok(guard) => {
+            if let Some(state) = guard.as_ref() {
+                state.plugin_rw_dir.clone()
+            } else {
+                return Err(());
+            }
+        },
+        Err(_) => return Err(()),
+    };
+    let prwd = PathBuf::from(plugin_rw_dir);
+    Ok(prwd.join(path).to_string_lossy().to_string())
+}
+
 #[frb(ignore)]
 host_fn!(pprint(user_data: (); m: String) {
     println!("[PLUGIN LOG]: {m}");
@@ -62,10 +78,14 @@ host_fn!(create_file(user_data: (); path: String, content: Option<String>) -> bo
     if !validate_path(&path) {
         return Ok(false);
     }
+    let joined_path: String = match confine_path(&path) {
+        Ok(p) => p,
+        Err(_) => return Ok(false),
+    };
     if content.is_none() {
-        return Ok(File::create(path).is_ok());
+        return Ok(File::create(&joined_path).is_ok());
     } else {
-        return Ok(fs::write(path, content.unwrap()).is_ok());
+        return Ok(fs::write(&joined_path, content.unwrap()).is_ok());
     }
     Ok(true)
 });
@@ -75,10 +95,14 @@ host_fn!(check_entity_exists(user_data: (); path: String, follow_symlinks: bool)
     if !validate_path(&path) {
         return Ok(false);
     }
+    let joined_path: String = match confine_path(&path) {
+        Ok(p) => p,
+        Err(_) => return Ok(false),
+    };
     if !follow_symlinks {
-        return Ok(PathBuf::from(path).exists());
+        return Ok(PathBuf::from(&joined_path).exists());
     } else {
-        return match fs::metadata(path) {
+        return match fs::metadata(&joined_path) {
             Ok(_) => Ok(true),
             Err(_) => Ok(false),
         };
@@ -90,8 +114,12 @@ host_fn!(entity_type(user_data: (); path: String, follow_symlinks: bool) -> Opti
     if !validate_path(&path) {
         return Ok(None);
     }
+    let joined_path: String = match confine_path(&path) {
+        Ok(p) => p,
+        Err(_) => return Ok(None),
+    };
     if !follow_symlinks {
-        let pbn = PathBuf::from(path);
+        let pbn = PathBuf::from(&joined_path);
         if pbn.is_dir() {
             return Ok(Some(EntityType::Directory));
         } else if pbn.is_symlink() {
@@ -100,7 +128,7 @@ host_fn!(entity_type(user_data: (); path: String, follow_symlinks: bool) -> Opti
             return Ok(Some(EntityType::File));
         }
     } else {
-        return match fs::metadata(path) {
+        return match fs::metadata(&joined_path) {
             Ok(m) => {
                 if m.is_dir() {
                     return Ok(Some(EntityType::Directory));
@@ -118,7 +146,11 @@ host_fn!(write_file(user_data: (); path: String, content: String) -> bool {
     if !validate_path(&path) {
         return Ok(false);
     }
-    Ok(fs::write(path, content).is_ok())
+    let joined_path: String = match confine_path(&path) {
+        Ok(p) => p,
+        Err(_) => return Ok(false),
+    };
+    Ok(fs::write(&joined_path, content).is_ok())
 });
 
 #[frb(ignore)]
@@ -126,7 +158,11 @@ host_fn!(delete_file(user_data: (); path: String) -> bool {
     if !validate_path(&path) {
         return Ok(false);
     }
-    Ok(fs::remove_file(path).is_ok())
+    let joined_path: String = match confine_path(&path) {
+        Ok(p) => p,
+        Err(_) => return Ok(false),
+    };
+    Ok(fs::remove_file(&joined_path).is_ok())
 });
 
 #[frb(ignore)]
@@ -134,7 +170,11 @@ host_fn!(create_dir(user_data: (); path: String) -> bool {
     if !validate_path(&path) {
         return Ok(false);
     }
-    Ok(fs::create_dir_all(path).is_ok())
+    let joined_path: String = match confine_path(&path) {
+        Ok(p) => p,
+        Err(_) => return Ok(false),
+    };
+    Ok(fs::create_dir_all(&joined_path).is_ok())
 });
 
 #[frb(ignore)]
@@ -142,7 +182,11 @@ host_fn!(read_file(user_data: (); path: String) -> String {
     if !validate_path(&path) {
         return Ok("ERR: Invalid path".to_string());
     }
-    match fs::read_to_string(path) {
+    let joined_path: String = match confine_path(&path) {
+        Ok(p) => p,
+        Err(_) => return Ok("ERR: Failed to confine path to the plugin r/w dir".to_string()),
+    };
+    match fs::read_to_string(&joined_path) {
         Ok(content) => Ok(content),
         Err(e) => Ok(format!("ERR: {}", e)),
     }
@@ -174,7 +218,11 @@ host_fn!(list_dir(user_data: (); path: String, follow_symlinks: bool) -> DirEnti
     if !validate_path(&path) {
         return Ok(DirEntities { contents: Vec::new() });
     }
-    match fs::read_dir(path) {
+    let joined_path: String = match confine_path(&path) {
+        Ok(p) => p,
+        Err(_) => return Ok(DirEntities { contents: Vec::new() }),
+    };
+    match fs::read_dir(&joined_path) {
         Ok(entries) => {
             let mut results: Vec<DirEntity> = Vec::new();
             for entry in entries {
@@ -221,7 +269,11 @@ host_fn!(file_size(user_data: (); path: String) -> u64 {
     if !validate_path(&path) {
         return Ok(0);
     }
-    match fs::metadata(path) {
+    let joined_path: String = match confine_path(&path) {
+        Ok(p) => p,
+        Err(_) => return Ok(0),
+    };
+    match fs::metadata(&joined_path) {
         Ok(metadata) => Ok(metadata.len()),
         Err(_) => Ok(0),
     }
@@ -229,7 +281,14 @@ host_fn!(file_size(user_data: (); path: String) -> u64 {
 
 #[frb(ignore)]
 host_fn!(get_file_extension_std(user_data: (); path: String) -> String {
-    Ok(PathBuf::from(path)
+    if !validate_path(&path) {
+        return Ok("".to_string());
+    }
+    let joined_path: String = match confine_path(&path) {
+        Ok(p) => p,
+        Err(_) => return Ok("".to_string()),
+    };
+    Ok(PathBuf::from(&joined_path)
         .extension()
         .and_then(|ext| ext.to_str())
         .unwrap_or("")
@@ -238,7 +297,14 @@ host_fn!(get_file_extension_std(user_data: (); path: String) -> String {
 
 #[frb(ignore)]
 host_fn!(get_file_extension_nightly(user_data: (); path: String) -> String {
-    Ok(fpre(&PathBuf::from(path).as_path()).unwrap_or_default().to_string_lossy().to_string())
+    if !validate_path(&path) {
+        return Ok("".to_string());
+    }
+    let joined_path: String = match confine_path(&path) {
+        Ok(p) => p,
+        Err(_) => return Ok("".to_string()),
+    };
+    Ok(fpre(&PathBuf::from(&joined_path).as_path()).unwrap_or_default().to_string_lossy().to_string())
 });
 
 #[frb(ignore)]
@@ -246,7 +312,15 @@ host_fn!(rename_file(user_data: (); old: String, new: String) -> bool {
     if !(validate_path(&old) || validate_path(&new)) {
         return Ok(false);
     }
-    Ok(fs::rename(old, new).is_ok())
+    let joined_path_old: String = match confine_path(&old) {
+        Ok(p) => p,
+        Err(_) => return Ok(false),
+    };
+    let joined_path_new: String = match confine_path(&new) {
+        Ok(p) => p,
+        Err(_) => return Ok(false),
+    };
+    Ok(fs::rename(&joined_path_old, &joined_path_new).is_ok())
 });
 
 #[frb(ignore)]
@@ -254,7 +328,15 @@ host_fn!(copy_file(user_data: (); from: String, to: String) -> bool {
     if !(validate_path(&from) || validate_path(&to)) {
         return Ok(false)
     }
-    Ok(fs::copy(from, to).is_ok())
+    let joined_path_from: String = match confine_path(&from) {
+        Ok(p) => p,
+        Err(_) => return Ok(false),
+    };
+    let joined_path_to: String = match confine_path(&to) {
+        Ok(p) => p,
+        Err(_) => return Ok(false),
+    };
+    Ok(fs::copy(&joined_path_from, &joined_path_to).is_ok())
 });
 
 #[frb(ignore)]
