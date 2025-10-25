@@ -204,6 +204,7 @@ host_fn!(read_file(user_data: (); path: String) -> String {
     }
 });
 
+#[frb(ignore)]
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]
 #[encoding(Json)]
 pub enum EntityType {
@@ -212,6 +213,7 @@ pub enum EntityType {
     Symlink,
 }
 
+#[frb(ignore)]
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]
 #[encoding(Json)]
 pub struct DirEntity {
@@ -219,6 +221,7 @@ pub struct DirEntity {
     pub entity_type: EntityType,
 }
 
+#[frb(ignore)]
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]
 #[encoding(Json)]
 pub struct DirEntities {
@@ -583,6 +586,24 @@ host_fn!(unsafe_copy_file(user_data: (); from: String, to: String) -> bool {
     }
     Ok(fs::copy(&from, &to).is_ok())
 });
+
+#[frb(ignore)]
+#[derive(Serialize, Deserialize, ToBytes, FromBytes)]
+#[encoding(Json)]
+pub struct CommandTR {
+    pub name: String,
+    pub args: Option<Vec<String>>,
+}
+
+#[frb(ignore)]
+#[derive(Serialize, Deserialize, ToBytes, FromBytes)]
+#[encoding(Json)]
+pub struct CommandResult {
+    pub success: bool,
+    pub exit_code: i32,
+    pub stdout: String,
+    pub stderr: String,
+}
 
 // A macro to decide how to format the functions for me
 macro_rules! get_fn_signature {
