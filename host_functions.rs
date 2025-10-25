@@ -16,6 +16,7 @@ extern "ExtismHost" {
     fn entity_type(path: String, follow_symlinks: bool) -> Option<EntityType>;
     fn write_file(path: String, content: String) -> bool;
     fn delete_file(path: String) -> bool;
+    fn delete_dir(path: String) -> bool;
     fn create_dir(path: String) -> bool;
     // Returns the error starting with ERR on failure
     fn read_file(path: String) -> String;
@@ -39,6 +40,23 @@ extern "ExtismHost" {
     fn get_song_pos() -> f32;
     // Returns if we are playing or not (paused or not)
     fn get_is_playing() -> bool;
+    // Returns if unsafe APIs are enabled
+    fn get_unsafe_api() -> bool;
+    // Unsafe filesystem functions (require unsafe APIs to be enabled)
+    fn unsafe_create_file(path: String, content: Option<String>) -> bool;
+    fn unsafe_check_entity_exists(path: String, follow_symlinks: bool) -> bool;
+    fn unsafe_entity_type(path: String, follow_symlinks: bool) -> Option<EntityType>;
+    fn unsafe_write_file(path: String, content: String) -> bool;
+    fn unsafe_delete_file(path: String) -> bool;
+    fn unsafe_delete_dir(path: String) -> bool;
+    fn unsafe_create_dir(path: String) -> bool;
+    fn unsafe_read_file(path: String) -> String;
+    fn unsafe_list_dir(path: String, follow_symlinks: bool) -> DirEntities;
+    fn unsafe_file_size(path: String) -> u64;
+    fn unsafe_rename_file(old: String, new: String) -> bool;
+    fn unsafe_copy_file(from: String, to: String) -> bool;
+    fn unsafe_get_file_extension_std(path: String) -> String;
+    fn unsafe_get_file_extension_nightly(path: String) -> String;
 }
 
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]
