@@ -7,9 +7,9 @@ use extism::{convert::Json, host_fn, FromBytes, Function, PluginBuilder, ToBytes
 use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     fs::{self, File},
     path::PathBuf,
-    collections::HashMap,
 };
 
 fn confine_path(path: impl AsRef<std::path::Path>) -> Result<String, ()> {
@@ -625,7 +625,7 @@ host_fn!(unsafe_run_command(user_data: (); command: CommandTR) -> CommandResult 
             let exit_code = output.status.code().unwrap_or(-1);
             let stdout = String::from_utf8_lossy(&output.stdout).to_string();
             let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-            
+
             Ok(CommandResult {
                 success: output.status.success(),
                 exit_code,
@@ -727,7 +727,7 @@ host_fn!(unsafe_request(user_data: (); request: HttpRequest) -> HttpResponse {
     match req_builder.send() {
         Ok(response) => {
             let status_code = response.status().as_u16();
-            
+
             // Extract headers
             let mut headers = HashMap::new();
             for (key, value) in response.headers() {
