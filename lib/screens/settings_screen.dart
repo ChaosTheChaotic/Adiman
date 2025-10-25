@@ -413,12 +413,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Colors.orange.withAlpha(50),
-                      Colors.black.withAlpha(200),
+                      widget.dominantColor.withValues(alpha: 0.15),
+                      Colors.black.withValues(alpha: 0.6),
                     ],
                   ),
                   border: Border.all(
-                    color: Colors.orange.withAlpha(100),
+                    color: widget.dominantColor.withValues(alpha: 0.3),
                     width: 1.2,
                   ),
                 ),
@@ -429,11 +429,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       GlowText(
                         'Unsafe APIs Warning',
-                        glowColor: Colors.orange.withAlpha(80),
+                        glowColor: widget.dominantColor.withValues(alpha: 0.3),
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
-                          color: Colors.orange,
+                          color: widget.dominantColor.computeLuminance() > 0.01
+                              ? widget.dominantColor
+                              : Theme.of(context).textTheme.bodyLarge?.color,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -441,7 +443,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         'Enabling Unsafe APIs gives plugins access to potentially dangerous operations.\n\n'
                         'Only enable this if you trust all installed plugins completely.',
                         style: TextStyle(
-                          color: Colors.white70,
+                          color: Theme.of(context)
+                              .textTheme
+                              .bodyLarge
+                              ?.color
+                              ?.withValues(alpha: 0.8),
                           fontSize: 14,
                         ),
                         textAlign: TextAlign.center,
@@ -459,7 +465,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           DynamicIconButton(
                             icon: Broken.tick,
                             onPressed: () => Navigator.pop(ctx, true),
-                            backgroundColor: Colors.orange,
+                            backgroundColor: widget.dominantColor,
                             size: 40,
                           ),
                         ],
@@ -472,6 +478,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       );
+      ;
 
       if (confirmed != true) {
         // User cancelled, don't enable unsafe APIs
