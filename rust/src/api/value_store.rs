@@ -19,6 +19,7 @@ pub struct ValueStore {
     pub music_folder: String,
     pub current_song: Option<SongMetadata>,
     pub plugin_rw_dir: String,
+    pub unsafe_apis: bool,
 }
 
 #[derive(Clone)]
@@ -32,6 +33,7 @@ pub struct ValueStoreUpdate {
     pub music_folder: Option<String>,
     pub current_song: CurrentSongUpdate,
     pub plugin_rw_dir: Option<String>,
+    pub unsafe_apis: Option<bool>,
 }
 
 impl Default for ValueStore {
@@ -41,6 +43,7 @@ impl Default for ValueStore {
             music_folder: home_dir.join("Music").to_string_lossy().to_string(),
             current_song: None,
             plugin_rw_dir: home_dir.join("AdiDir").to_string_lossy().to_string(),
+            unsafe_apis: false,
         }
     }
 }
@@ -80,6 +83,10 @@ impl ValueStore {
             self.update_plugin_rw_dir(folder)?;
         }
 
+        if let Some(uapis) = update.unsafe_apis {
+            self.unsafe_apis = uapis;
+        }
+
         match update.current_song {
             CurrentSongUpdate::NoChange => {}
             CurrentSongUpdate::SetToNone => {
@@ -100,6 +107,7 @@ pub struct ValueStoreUpdater {
     pub music_folder: Option<String>,
     pub current_song: CurrentSongUpdate,
     pub plugin_rw_dir: Option<String>,
+    pub unsafe_apis: Option<bool>,
 }
 
 impl ValueStoreUpdater {
@@ -108,6 +116,7 @@ impl ValueStoreUpdater {
             music_folder: None,
             current_song: CurrentSongUpdate::NoChange,
             plugin_rw_dir: None,
+            unsafe_apis: None,
         }
     }
 
@@ -120,6 +129,12 @@ impl ValueStoreUpdater {
     #[frb]
     pub fn set_plugin_rw_dir(&mut self, folder: String) -> &mut Self {
         self.plugin_rw_dir = Some(folder);
+        self
+    }
+
+    #[frb]
+    pub fn set_unsafe_apis(&mut self, value: bool) -> &mut Self {
+        self.unsafe_apis = Some(value);
         self
     }
 
@@ -141,6 +156,7 @@ impl ValueStoreUpdater {
             music_folder: self.music_folder,
             current_song: self.current_song,
             plugin_rw_dir: self.plugin_rw_dir,
+            unsafe_apis: self.unsafe_apis,
         };
         update_value_store(update)
     }

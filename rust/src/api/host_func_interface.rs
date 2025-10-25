@@ -20,7 +20,7 @@ fn confine_path(path: impl AsRef<std::path::Path>) -> Result<String, ()> {
             } else {
                 return Err(());
             }
-        },
+        }
         Err(_) => return Err(()),
     };
     let prwd = PathBuf::from(plugin_rw_dir);
