@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs::{self, File},
     path::PathBuf,
+    collections::HashMap,
 };
 
 fn confine_path(path: impl AsRef<std::path::Path>) -> Result<String, ()> {
@@ -641,6 +642,128 @@ host_fn!(unsafe_run_command(user_data: (); command: CommandTR) -> CommandResult 
     }
 });
 
+#[frb(ignore)]
+#[derive(Serialize, Deserialize, ToBytes, FromBytes)]
+#[encoding(Json)]
+pub struct HttpRequest {
+    pub url: String,
+    pub method: String, // "GET", "POST", "PUT", "DELETE", etc.
+    pub headers: Option<HashMap<String, String>>,
+    pub body: Option<String>,
+    pub timeout_seconds: Option<u64>,
+}
+
+#[frb(ignore)]
+#[derive(Serialize, Deserialize, ToBytes, FromBytes)]
+#[encoding(Json)]
+pub struct HttpResponse {
+    pub status_code: u16,
+    pub headers: HashMap<String, String>,
+    pub body: String,
+    pub success: bool,
+    pub error: Option<String>,
+}
+
+#[frb(ignore)]
+host_fn!(unsafe_request(user_data: (); request: HttpRequest) -> HttpResponse {
+    if !check_unsafe_api() {
+        return Ok(HttpResponse {
+            status_code: 0,
+            headers: HashMap::new(),
+            body: String::new(),
+            success: false,
+            error: Some("ERR: Unsafe API disabled".to_string()),
+        });
+    }
+
+    let client_builder = reqwest::blocking::Client::builder();
+    let client_builder = if let Some(timeout) = request.timeout_seconds {
+        client_builder.timeout(std::time::Duration::from_secs(timeout))
+    } else {
+        client_builder
+    };
+
+    let client = match client_builder.build() {
+        Ok(client) => client,
+        Err(e) => {
+            return Ok(HttpResponse {
+                status_code: 0,
+                headers: HashMap::new(),
+                body: String::new(),
+                success: false,
+                error: Some(format!("ERR: Failed to build HTTP client: {}", e)),
+            });
+        }
+    };
+
+    let mut req_builder = match request.method.to_uppercase().as_str() {
+        "GET" => client.get(&request.url),
+        "POST" => client.post(&request.url),
+        "PUT" => client.put(&request.url),
+        "DELETE" => client.delete(&request.url),
+        "PATCH" => client.patch(&request.url),
+        "HEAD" => client.head(&request.url),
+        _ => {
+            return Ok(HttpResponse {
+                status_code: 0,
+                headers: HashMap::new(),
+                body: String::new(),
+                success: false,
+                error: Some(format!("ERR: Unsupported HTTP method: {}", request.method)),
+            });
+        }
+    };
+
+    if let Some(headers) = request.headers {
+        for (key, value) in headers {
+            req_builder = req_builder.header(&key, value);
+        }
+    }
+
+    if let Some(body) = request.body {
+        req_builder = req_builder.body(body);
+    }
+
+    match req_builder.send() {
+        Ok(response) => {
+            let status_code = response.status().as_u16();
+            
+            // Extract headers
+            let mut headers = HashMap::new();
+            for (key, value) in response.headers() {
+                if let (Some(key_str), Ok(value_str)) = (key.as_str().to_string().into(), value.to_str()) {
+                    headers.insert(key_str, value_str.to_string());
+                }
+            }
+
+            // Read response body
+            match response.text() {
+                Ok(body) => Ok(HttpResponse {
+                    status_code,
+                    headers,
+                    body,
+                    success: status_code < 400,
+                    error: None,
+                }),
+                Err(e) => Ok(HttpResponse {
+                    status_code,
+                    headers,
+                    body: String::new(),
+                    success: false,
+                    error: Some(format!("ERR: Failed to read response body: {}", e)),
+                }),
+            }
+        }
+        Err(e) => Ok(HttpResponse {
+            status_code: 0,
+            headers: HashMap::new(),
+            body: String::new(),
+            success: false,
+            error: Some(format!("ERR: Request failed: {}", e)),
+        }),
+    }
+});
+
 // A macro to decide how to format the functions for me
 macro_rules! get_fn_signature {
     // With params and return
@@ -727,6 +850,8 @@ pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
         generic_func!(unsafe_get_file_extension_nightly(path: String) -> String),
         // Unsafe command functions
         generic_func!(unsafe_run_command(command: CommandTR) -> CommandResult),
+        // Unsafe network functions
+        generic_func!(unsafe_request(request: HttpRequest) -> HttpResponse),
     ];
     b.with_functions(f)
 }

@@ -1,5 +1,6 @@
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[host_fn]
 extern "ExtismHost" {
@@ -58,6 +59,7 @@ extern "ExtismHost" {
     fn unsafe_get_file_extension_std(path: String) -> String;
     fn unsafe_get_file_extension_nightly(path: String) -> String;
     fn unsafe_run_command(command: CommandTR) -> CommandResult;
+    fn unsafe_request(request: HttpRequest) -> HttpResponse;
 }
 
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]
@@ -110,4 +112,24 @@ pub struct CommandResult {
     pub exit_code: i32,
     pub stdout: String,
     pub stderr: String,
+}
+
+#[derive(Serialize, Deserialize, ToBytes, FromBytes)]
+#[encoding(Json)]
+pub struct HttpRequest {
+    pub url: String,
+    pub method: String, // "GET", "POST", "PUT", "DELETE", etc.
+    pub headers: Option<HashMap<String, String>>,
+    pub body: Option<String>,
+    pub timeout_seconds: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, ToBytes, FromBytes)]
+#[encoding(Json)]
+pub struct HttpResponse {
+    pub status_code: u16,
+    pub headers: HashMap<String, String>,
+    pub body: String,
+    pub success: bool,
+    pub error: Option<String>,
 }
