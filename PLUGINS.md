@@ -26,6 +26,8 @@ You may develop plugins in any language that [extism](https://github.com/extism/
     - Utility APIs
     - Logging API
     - Unsafe APIs (APIs which let you do almost anything to the system, turned off by default and heavily discouraged but can be used)
+        - Filesystem APIs
+        - Command APIs
 - To see (and copy) all functions exported by my app see the [host_functions](host_functions.rs)
 - Now you may make functions that the app will call (if the plugin exports that function)
 - Functions that are called by the app that you could add:
