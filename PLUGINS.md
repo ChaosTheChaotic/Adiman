@@ -97,3 +97,31 @@ pub fn play_song() -> FnResult<()> {
     Ok(())
 }
 ```
+## Plugin Metadata
+The above plugin would have the following json metadata in order to work
+```json
+{
+  "rpc": [
+    {
+      "ctype": "UInt",
+      "default_val": 1,
+      "key": "print_times",
+      "set_val": 1
+    }
+  ]
+}
+```
+The rpc field is an array of configs
+Each config takes
+- ctype - The type of the config that should be taken in
+    - The config type has restrictions on allowed types being
+        - Bool
+        - Int (i32, a signed 32 bit int)
+        - UInt (u32, an unsigned 32 bit int)
+        - BigInt (i128, a signed 128 bit int)
+        - BigUInt (u128, an unsigned 128 bit int),
+        - Float (f64, a 64 bit float)
+    - The BigInt and BigUInt and Float can be passed in as numbers/values or as strings
+- default_val - The default value of the config, must match the ctype set above
+- key - The key via which your plugin might access the value
+- set_val - The value set by the user and what will be passed in through the key
