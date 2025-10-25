@@ -57,6 +57,7 @@ extern "ExtismHost" {
     fn unsafe_copy_file(from: String, to: String) -> bool;
     fn unsafe_get_file_extension_std(path: String) -> String;
     fn unsafe_get_file_extension_nightly(path: String) -> String;
+    fn unsafe_run_command(command: CommandTR) -> CommandResult;
 }
 
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]
@@ -85,7 +86,7 @@ pub struct DirEntities {
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToBytes, FromBytes)]
 #[encoding(Json)]
-struct SongMetadata {
+pub struct SongMetadata {
     pub title: String,
     pub artist: String,
     pub album: String,
@@ -93,4 +94,20 @@ struct SongMetadata {
     pub path: String,
     pub album_art: Option<Vec<u8>>,
     pub genre: String,
+}
+
+#[derive(Serialize, Deserialize, ToBytes, FromBytes)]
+#[encoding(Json)]
+pub struct CommandTR {
+    pub command: String,
+    pub args: Option<Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize, ToBytes, FromBytes)]
+#[encoding(Json)]
+pub struct CommandResult {
+    pub success: bool,
+    pub exit_code: i32,
+    pub stdout: String,
+    pub stderr: String,
 }

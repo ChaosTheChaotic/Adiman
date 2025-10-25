@@ -591,7 +591,7 @@ host_fn!(unsafe_copy_file(user_data: (); from: String, to: String) -> bool {
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]
 #[encoding(Json)]
 pub struct CommandTR {
-    pub name: String,
+    pub command: String,
     pub args: Option<Vec<String>>,
 }
 
@@ -604,6 +604,42 @@ pub struct CommandResult {
     pub stdout: String,
     pub stderr: String,
 }
+
+#[frb(ignore)]
+host_fn!(unsafe_run_command(user_data: (); command: CommandTR) -> CommandResult {
+    if !check_unsafe_api() {
+        return Ok(CommandResult {
+            success: false,
+            exit_code: -1,
+            stdout: String::new(),
+            stderr: "ERR: Unsafe API disabled".to_string(),
+        })
+    }
+    let mut cmd = std::process::Command::new(command.command);
+    if let Some(args) = command.args {
+        cmd.args(args);
+    }
+    match cmd.output() {
+        Ok(output) => {
+            let exit_code = output.status.code().unwrap_or(-1);
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            
+            Ok(CommandResult {
+                success: output.status.success(),
+                exit_code,
+                stdout,
+                stderr,
+            })
+        }
+        Err(e) => Ok(CommandResult {
+            success: false,
+            exit_code: -1,
+            stdout: String::new(),
+            stderr: format!("ERR: Failed to execute command: {}", e),
+        }),
+    }
+});
 
 // A macro to decide how to format the functions for me
 macro_rules! get_fn_signature {
@@ -689,6 +725,8 @@ pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
         generic_func!(unsafe_copy_file(from: String, to: String) -> bool),
         generic_func!(unsafe_get_file_extension_std(path: String) -> String),
         generic_func!(unsafe_get_file_extension_nightly(path: String) -> String),
+        // Unsafe command functions
+        generic_func!(unsafe_run_command(command: CommandTR) -> CommandResult),
     ];
     b.with_functions(f)
 }
