@@ -9,19 +9,21 @@ extern "ExtismHost" {
     fn get_current_song() -> Option<SongMetadata>;
     // Returns the state of the value store used to store a lot of the settings which sync from dart
     fn get_store_state() -> bool;
-    fn create_file(name: String, content: Option<String>) -> bool;
-    fn check_entity_exists(name: String) -> bool;
-    fn entity_is_dir(name: String) -> bool;
-    fn write_file(name: String, content: String) -> bool;
-    fn delete_file(name: String) -> bool;
-    fn create_dir(name: String) -> bool;
-    // Retuns the error starting with ERR on failure
-    fn read_file(name: String) -> String;
-    // Returns empty on failure
-    fn list_dir(path: String) -> DirEntities;
+    fn create_file(path: String, content: Option<String>) -> bool;
+    // Check if a file/directory exists. When follow_symlinks is true, checks the target of symlinks
+    fn check_entity_exists(path: String, follow_symlinks: bool) -> bool;
+    // Get the type of entity. When follow_symlinks is true, returns the type of the symlink target
+    fn entity_type(path: String, follow_symlinks: bool) -> Option<EntityType>;
+    fn write_file(path: String, content: String) -> bool;
+    fn delete_file(path: String) -> bool;
+    fn create_dir(path: String) -> bool;
+    // Returns the error starting with ERR on failure
+    fn read_file(path: String) -> String;
+    // List directory contents. When follow_symlinks is true, symlinks are resolved to their target type
+    fn list_dir(path: String, follow_symlinks: bool) -> DirEntities;
     fn join_paths(base: String, segment: String) -> String;
     // Returns 0 as an error or if the file has nothing inside
-    fn file_size(name: String) -> u64;
+    fn file_size(path: String) -> u64;
     // Gets the extension of a file by parsing from the front (using rust std version)
     fn get_file_extension_std(path: String) -> String;
     // Gets the extension of a file by parsing from the back (using rust nightly version)
@@ -41,17 +43,19 @@ extern "ExtismHost" {
 
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]
 #[encoding(Json)]
-// Symlinks are still just files, plugins will never be returned a symlink, it will always be
-// returned the type at the end of the link
+// EntityType represents the type of filesystem entity
+// When follow_symlinks is true in host functions, symlinks return the type of their target
+// When follow_symlinks is false, symlinks are identified as Symlink
 pub enum EntityType {
     File,
     Directory,
+    Symlink,
 }
 
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]
 #[encoding(Json)]
 pub struct DirEntity {
-    pub name: String,
+    pub path: String,
     pub entity_type: EntityType,
 }
 
