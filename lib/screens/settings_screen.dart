@@ -413,19 +413,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-		      widget.dominantColor.withValues(alpha: 0.25),
-                      Colors.black.withValues(alpha: 0.8),
+                      Colors.red.withValues(alpha: 0.25),
+                      Colors.deepOrange.withValues(alpha: 0.2),
+                      Colors.black.withValues(alpha: 0.9),
                     ],
                   ),
                   border: Border.all(
-                    color: Colors.orange.withValues(alpha: 0.6),
-                    width: 2.0,
+                    color: Colors.red.withValues(alpha: 0.8),
+                    width: 2.5,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.orange.withValues(alpha: 0.3),
-                      blurRadius: 30,
-                      spreadRadius: 5,
+                      color: Colors.red.withValues(alpha: 0.4),
+                      blurRadius: 40,
+                      spreadRadius: 8,
                     ),
                   ],
                 ),
@@ -441,15 +442,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           shape: BoxShape.circle,
                           gradient: RadialGradient(
                             colors: [
-                              Colors.orange.withValues(alpha: 0.8),
-                              Colors.red.withValues(alpha: 0.4),
+                              Colors.red.withValues(alpha: 0.9),
+                              Colors.deepOrange.withValues(alpha: 0.6),
                             ],
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.orange.withValues(alpha: 0.5),
-                              blurRadius: 20,
-                              spreadRadius: 5,
+                              color: Colors.red.withValues(alpha: 0.6),
+                              blurRadius: 30,
+                              spreadRadius: 8,
                             ),
                           ],
                         ),
@@ -463,11 +464,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                       GlowText(
                         'SECURITY WARNING',
-                        glowColor: Colors.orange.withValues(alpha: 0.4),
+                        glowColor: Colors.red.withValues(alpha: 0.5),
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
-                          color: Colors.orange,
+                          color: Colors.redAccent,
                           letterSpacing: 1.2,
                         ),
                       ),
@@ -477,9 +478,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
-                          color: Colors.black.withValues(alpha: 0.4),
+                          color: Colors.black.withValues(alpha: 0.5),
                           border: Border.all(
-                            color: Colors.orange.withValues(alpha: 0.3),
+                            color: Colors.red.withValues(alpha: 0.4),
+                            width: 1.5,
                           ),
                         ),
                         child: Column(
@@ -487,7 +489,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Text(
                               'Enabling Unsafe APIs grants plugins unrestricted access to your system.',
                               style: TextStyle(
-                                color: Colors.orange.withValues(alpha: 0.9),
+                                color: Colors.redAccent.withValues(alpha: 0.9),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                                 height: 1.4,
@@ -498,11 +500,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Text(
                               'This includes:\n• Full file system access\n• Network operations\n• System commands\n• Other potentially dangerous operations',
                               style: TextStyle(
-                                color: Theme.of(context)
-                                    .textTheme
-                                    .bodyLarge
-                                    ?.color
-                                    ?.withValues(alpha: 0.9),
+                                color: Colors.white.withValues(alpha: 0.9),
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 height: 1.5,
@@ -590,15 +588,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                   colors: [
-                                    Colors.orange,
                                     Colors.red,
+                                    Colors.deepOrange,
                                   ],
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.orange.withValues(alpha: 0.5),
-                                    blurRadius: 15,
-                                    spreadRadius: 2,
+                                    color: Colors.red.withValues(alpha: 0.6),
+                                    blurRadius: 20,
+                                    spreadRadius: 3,
                                   ),
                                 ],
                               ),
@@ -665,7 +663,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
-      backgroundColor: value ? Colors.orange : _currentColor,
+      backgroundColor: value ? Colors.red : _currentColor,
       content: value
           ? 'Unsafe APIs enabled - use with caution!'
           : 'Unsafe APIs disabled',
