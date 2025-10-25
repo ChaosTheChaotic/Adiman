@@ -3209,23 +3209,35 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   );
                                 },
                               ),
-                              _buildMenuTile(
-                                icon: Broken.cpu,
-                                title: 'Plugins',
-                                onTap: () {
-                                  ScaffoldMessenger.of(context)
-                                      .hideCurrentSnackBar();
-                                  Navigator.pop(context);
-                                  Navigator.push(
-                                    context,
-                                    NamidaPageTransitions.createRoute(
-                                      PluginsScreen(
-                                        onReloadLibrary: _loadSongs,
-                                      ),
+                              SharedPreferencesService.instance
+                                          .getBool('enablePlugins') ??
+                                      false
+                                  ? _buildMenuTile(
+                                      icon: Broken.cpu,
+                                      title: 'Plugins',
+                                      onTap: () {
+                                        ScaffoldMessenger.of(context)
+                                            .hideCurrentSnackBar();
+                                        Navigator.pop(context);
+                                        Navigator.push(
+                                          context,
+                                          NamidaPageTransitions.createRoute(
+                                            PluginsScreen(
+                                              onReloadLibrary: _loadSongs,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    )
+                                  : Opacity(
+                                      opacity: 0.5,
+                                      child: AbsorbPointer(
+                                          child: _buildMenuTile(
+                                              icon: Broken.cpu,
+                                              title:
+                                                  'Plugins (enable in settings)',
+                                              onTap: () {})),
                                     ),
-                                  );
-                                },
-                              ),
                               _buildMenuTile(
                                 icon: Broken.cd,
                                 title: 'Audio CD',

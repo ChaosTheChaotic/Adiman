@@ -113,6 +113,7 @@ late final AdimanService globalService;
 Future<void> main() async {
   await RustLib.init();
   await rust_api.initializePlayer();
+  await SharedPreferencesService.init();
   if (SharedPreferencesService.instance.getBool('enablePlugins') ?? false) {
     await plugin_api.initPluginMan();
   }
@@ -122,7 +123,6 @@ Future<void> main() async {
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
   await PlaylistOrderDatabase().database;
-  await SharedPreferencesService.init();
   syncRust();
   useDominantColorsNotifier.value =
       SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
