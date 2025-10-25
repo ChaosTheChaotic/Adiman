@@ -151,6 +151,8 @@ void syncRust() async {
   final updater = await value_store.updateStore();
   await updater.setMusicFolder(folder: musicFolder);
   await updater.setPluginRwDir(folder: pluginRwDir);
+  await updater.setUnsafeApis(
+      value: SharedPreferencesService.instance.getBool('unsafeAPIs') ?? false);
   await updater.apply();
 }
 

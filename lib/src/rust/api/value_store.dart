@@ -33,11 +33,15 @@ abstract class ValueStoreUpdater implements RustOpaqueInterface {
 
   String? get pluginRwDir;
 
+  bool? get unsafeApis;
+
   set currentSong(CurrentSongUpdate currentSong);
 
   set musicFolder(String? musicFolder);
 
   set pluginRwDir(String? pluginRwDir);
+
+  set unsafeApis(bool? unsafeApis);
 
   Future<void> clearCurrentSong();
 
@@ -50,6 +54,8 @@ abstract class ValueStoreUpdater implements RustOpaqueInterface {
   Future<void> setMusicFolder({required String folder});
 
   Future<void> setPluginRwDir({required String folder});
+
+  Future<void> setUnsafeApis({required bool value});
 }
 
 @freezed
@@ -67,16 +73,21 @@ class ValueStoreUpdate {
   final String? musicFolder;
   final CurrentSongUpdate currentSong;
   final String? pluginRwDir;
+  final bool? unsafeApis;
 
   const ValueStoreUpdate({
     this.musicFolder,
     required this.currentSong,
     this.pluginRwDir,
+    this.unsafeApis,
   });
 
   @override
   int get hashCode =>
-      musicFolder.hashCode ^ currentSong.hashCode ^ pluginRwDir.hashCode;
+      musicFolder.hashCode ^
+      currentSong.hashCode ^
+      pluginRwDir.hashCode ^
+      unsafeApis.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -85,5 +96,6 @@ class ValueStoreUpdate {
           runtimeType == other.runtimeType &&
           musicFolder == other.musicFolder &&
           currentSong == other.currentSong &&
-          pluginRwDir == other.pluginRwDir;
+          pluginRwDir == other.pluginRwDir &&
+          unsafeApis == other.unsafeApis;
 }

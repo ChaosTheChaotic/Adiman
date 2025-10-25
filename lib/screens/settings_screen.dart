@@ -61,6 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final bool _isManagingSeparators = false;
   final bool _isClearingDatabase = false;
   bool _enablePlugins = false;
+  bool _unsafeAPIs = false;
   bool _autoConvert = true;
   bool _autoCreateDirs = false;
   bool _clearMp3Cache = false;
@@ -222,6 +223,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SharedPreferencesService.instance.getBool('edgeBreathe') ?? true;
       _enablePlugins =
           SharedPreferencesService.instance.getBool('enablePlugins') ?? false;
+      _unsafeAPIs =
+          SharedPreferencesService.instance.getBool('unsafeAPIs') ?? false;
       final seekbarTypeString =
           SharedPreferencesService.instance.getString('seekbarType');
       _seekbarType = seekbarTypeString == 'alt'
@@ -390,6 +393,108 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ));
       }
     }
+  }
+
+  Future<void> _saveUnsafeAPIs(bool value) async {
+    if (value) {
+      // Show warning dialog when enabling unsafe APIs
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: AnimatedPopupWrapper(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.orange.withAlpha(50),
+                      Colors.black.withAlpha(200),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: Colors.orange.withAlpha(100),
+                    width: 1.2,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GlowText(
+                        'Unsafe APIs Warning',
+                        glowColor: Colors.orange.withAlpha(80),
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.orange,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Enabling Unsafe APIs gives plugins access to potentially dangerous operations.\n\n'
+                        'Only enable this if you trust all installed plugins completely.',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          DynamicIconButton(
+                            icon: Broken.close_circle,
+                            onPressed: () => Navigator.pop(ctx, false),
+                            backgroundColor: Colors.grey,
+                            size: 40,
+                          ),
+                          DynamicIconButton(
+                            icon: Broken.tick,
+                            onPressed: () => Navigator.pop(ctx, true),
+                            backgroundColor: Colors.orange,
+                            size: 40,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      if (confirmed != true) {
+        // User cancelled, don't enable unsafe APIs
+        return;
+      }
+    }
+
+    await SharedPreferencesService.instance.setBool('unsafeAPIs', value);
+
+    final updater = await value_store.updateStore();
+    updater.setUnsafeApis(value: value);
+    updater.apply();
+
+    if (mounted) {
+      setState(() => _unsafeAPIs = value);
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
+      backgroundColor: value ? Colors.orange : _currentColor,
+      content: value
+          ? 'Unsafe APIs enabled - use with caution!'
+          : 'Unsafe APIs disabled',
+    ));
   }
 
   Future<void> _savePluginDir(String dir) async {
@@ -1483,6 +1588,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 icon: Broken.folder,
                                 dominantColor: _currentColor,
                               ),
+                              _buildSettingsSwitch(context,
+                                  title: 'Unsafe APIs',
+                                  value: _unsafeAPIs,
+                                  onChanged: _saveUnsafeAPIs),
                             ]),
                         _buildSettingsExpansionTile(
                           title: 'Keybindings',
