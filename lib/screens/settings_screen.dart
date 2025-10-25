@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
+import 'package:adiman/src/rust/api/plugin_man.dart';
 import 'package:adiman/src/rust/api/value_store.dart' as value_store;
 import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
 import 'package:flutter/material.dart';
@@ -365,6 +366,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveEnablePlugins(bool value) async {
     await SharedPreferencesService.instance.setBool('enablePlugins', value);
     setState(() => _enablePlugins = value);
+    if (value) {
+      await initPluginMan();
+      ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
+        backgroundColor: widget.dominantColor,
+        content: 'Plugins enabled - restart app for full effect',
+      ));
+    } else {
+      try {
+        final loadedPlugins = await listLoadedPlugins();
+        for (final plugin in loadedPlugins) {
+          await removePlugin(path: plugin);
+        }
+        ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
+          backgroundColor: widget.dominantColor,
+          content: 'Plugins disabled - all plugins unloaded',
+        ));
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
+          backgroundColor: widget.dominantColor,
+          content:
+              'Error disabling plugins (run in terminal for more info): $e',
+        ));
+      }
+    }
   }
 
   Future<void> _savePluginDir(String dir) async {
