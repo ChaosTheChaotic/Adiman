@@ -405,7 +405,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           elevation: 0,
           child: AnimatedPopupWrapper(
             child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+              filter: ui.ImageFilter.blur(sigmaX: 40, sigmaY: 40),
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(28),
@@ -413,60 +413,229 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      widget.dominantColor.withValues(alpha: 0.15),
-                      Colors.black.withValues(alpha: 0.6),
+		      widget.dominantColor.withValues(alpha: 0.25),
+                      Colors.black.withValues(alpha: 0.8),
                     ],
                   ),
                   border: Border.all(
-                    color: widget.dominantColor.withValues(alpha: 0.3),
-                    width: 1.2,
+                    color: Colors.orange.withValues(alpha: 0.6),
+                    width: 2.0,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.orange.withValues(alpha: 0.3),
+                      blurRadius: 30,
+                      spreadRadius: 5,
+                    ),
+                  ],
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Warning Icon with pulsing effect
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              Colors.orange.withValues(alpha: 0.8),
+                              Colors.red.withValues(alpha: 0.4),
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.orange.withValues(alpha: 0.5),
+                              blurRadius: 20,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Broken.warning_2,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
                       GlowText(
-                        'Unsafe APIs Warning',
-                        glowColor: widget.dominantColor.withValues(alpha: 0.3),
+                        'SECURITY WARNING',
+                        glowColor: Colors.orange.withValues(alpha: 0.4),
                         style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: widget.dominantColor.computeLuminance() > 0.01
-                              ? widget.dominantColor
-                              : Theme.of(context).textTheme.bodyLarge?.color,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.orange,
+                          letterSpacing: 1.2,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        'Enabling Unsafe APIs gives plugins access to potentially dangerous operations.\n\n'
-                        'Only enable this if you trust all installed plugins completely.',
-                        style: TextStyle(
-                          color: Theme.of(context)
-                              .textTheme
-                              .bodyLarge
-                              ?.color
-                              ?.withValues(alpha: 0.8),
-                          fontSize: 14,
+
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.black.withValues(alpha: 0.4),
+                          border: Border.all(
+                            color: Colors.orange.withValues(alpha: 0.3),
+                          ),
                         ),
-                        textAlign: TextAlign.center,
+                        child: Column(
+                          children: [
+                            Text(
+                              'Enabling Unsafe APIs grants plugins unrestricted access to your system.',
+                              style: TextStyle(
+                                color: Colors.orange.withValues(alpha: 0.9),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                height: 1.4,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'This includes:\n• Full file system access\n• Network operations\n• System commands\n• Other potentially dangerous operations',
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.color
+                                    ?.withValues(alpha: 0.9),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                height: 1.5,
+                              ),
+                              textAlign: TextAlign.left,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Only proceed if you completely trust ALL installed plugins.',
+                              style: TextStyle(
+                                color: Colors.red.withValues(alpha: 0.9),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                fontStyle: FontStyle.italic,
+                                height: 1.4,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
+
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          DynamicIconButton(
-                            icon: Broken.close_circle,
-                            onPressed: () => Navigator.pop(ctx, false),
-                            backgroundColor: Colors.grey,
-                            size: 40,
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.grey.withValues(alpha: 0.6),
+                                  width: 1.5,
+                                ),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.grey.withValues(alpha: 0.3),
+                                    Colors.black.withValues(alpha: 0.6),
+                                  ],
+                                ),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(16),
+                                child: InkWell(
+                                  onTap: () => Navigator.pop(ctx, false),
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14, horizontal: 16),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Broken.close_circle,
+                                          color: Colors.grey,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'CANCEL',
+                                          style: TextStyle(
+                                            color: Colors.grey,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                            letterSpacing: 0.8,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                          DynamicIconButton(
-                            icon: Broken.tick,
-                            onPressed: () => Navigator.pop(ctx, true),
-                            backgroundColor: widget.dominantColor,
-                            size: 40,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.orange,
+                                    Colors.red,
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.orange.withValues(alpha: 0.5),
+                                    blurRadius: 15,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(16),
+                                child: InkWell(
+                                  onTap: () => Navigator.pop(ctx, true),
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14, horizontal: 16),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Broken.tick,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'I UNDERSTAND',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 14,
+                                            letterSpacing: 0.8,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -478,7 +647,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       );
-      ;
 
       if (confirmed != true) {
         // User cancelled, don't enable unsafe APIs
