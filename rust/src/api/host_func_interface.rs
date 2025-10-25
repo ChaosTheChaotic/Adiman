@@ -152,7 +152,7 @@ host_fn!(list_dir(user_data: (); path: String) -> DirEntities {
             for entry in entries {
                 if let Ok(entry) = entry {
                     if let Some(file_name) = entry.file_name().to_str() {
-                        if let Ok(file_type) = entry.file_type() {
+                        if let Ok(file_type) = entry.metadata() {
                             let entity_type = match () {
                                 _ if file_type.is_dir() => EntityType::Directory,
                                 _ => EntityType::File,

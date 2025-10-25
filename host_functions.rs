@@ -41,6 +41,8 @@ extern "ExtismHost" {
 
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]
 #[encoding(Json)]
+// Symlinks are still just files, plugins will never be returned a symlink, it will always be
+// returned the type at the end of the link
 pub enum EntityType {
     File,
     Directory,
