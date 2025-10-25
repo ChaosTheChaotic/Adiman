@@ -3,9 +3,9 @@ As of update 1.3.0, Adiman now supports plugins.
 # Adding plugins
 - In the app in settings, enable plugins and specify a plugin directory (or use the default one)
 - Create a folder inside the plugin directory (optional)
-- Ensure the `.json` file (if any) has the same name as the `.wasm` file
+- Ensure the `.json` file (if any) has the same name as the `.wasm` file (the `.wasm` file is checked for first)
 - Add the `.wasm` and `.json` plugin files inside the created directry or the plugin directory
-- Go to the plugins section inside the app and enable it
+- Go to the plugins section inside the app and enable it (the set directory is scanned and valid plugins are recognised and loaded automatically)
 
 ## Troubleshooting
 - Make sure that the plugin is enabled (this happens more than you think)
@@ -92,11 +92,16 @@ pub fn stop() -> FnResult<()> {
 #[plugin_fn]
 pub fn play_song() -> FnResult<()> {
     let _ = unsafe {
-        pprint(format!("Current song: {}", get_current_song().unwrap().unwrap().title))
+        pprint(format!("Current song: {}", get_current_song()?.unwrap().title))
     };
     Ok(())
 }
 ```
+#### Other notes
+- Every host function returns a Result enum and every plugin returns a Result enum too
+- You can handle errors in communication using the `?` operator to return an error from the plugin
+- Plugin functions returns are ignored, the app just checks for errors
+
 ## Plugin Metadata
 The above plugin would have the following json metadata in order to work
 ```json
@@ -115,13 +120,14 @@ The rpc field is an array of configs
 Each config takes
 - ctype - The type of the config that should be taken in
     - The config type has restrictions on allowed types being
+        - String
         - Bool
         - Int (i32, a signed 32 bit int)
         - UInt (u32, an unsigned 32 bit int)
         - BigInt (i128, a signed 128 bit int)
         - BigUInt (u128, an unsigned 128 bit int),
         - Float (f64, a 64 bit float)
-    - The BigInt and BigUInt and Float can be passed in as numbers/values or as strings
+    - The BigInt and BigUInt can be passed in as numbers/values or as strings
 - default_val - The default value of the config, must match the ctype set above
 - key - The key via which your plugin might access the value
 - set_val - The value set by the user and what will be passed in through the key
