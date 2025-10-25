@@ -25,9 +25,9 @@ You may develop plugins in any language that [extism](https://github.com/extism/
     - System info APIs
     - Utility APIs
     - Logging API
-- Now you may make functions that the app will call (provided the plugin exports said functions)
 - To see (and copy) all functions exported by my app see the [host_functions](host_functions.rs)
-- Functions that are called by the app:
+- Now you may make functions that the app will call (if the plugin exports that function)
+- Functions that are called by the app that you could add:
     - init - When the plugin initializes, this is called
     - stop - When the plugin is disabled or stops, this is called
     - play_song - Called when a song is played
