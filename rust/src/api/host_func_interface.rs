@@ -166,6 +166,18 @@ host_fn!(delete_file(user_data: (); path: String) -> bool {
 });
 
 #[frb(ignore)]
+host_fn!(delete_dir(user_data: (); path: String) -> bool {
+    if !validate_path(&path) {
+        return Ok(false);
+    }
+    let joined_path: String = match confine_path(&path) {
+        Ok(p) => p,
+        Err(_) => return Ok(false),
+    };
+    Ok(fs::remove_dir_all(&joined_path).is_ok())
+});
+
+#[frb(ignore)]
 host_fn!(create_dir(user_data: (); path: String) -> bool {
     if !validate_path(&path) {
         return Ok(false);
@@ -228,7 +240,7 @@ host_fn!(list_dir(user_data: (); path: String, follow_symlinks: bool) -> DirEnti
             for entry in entries {
                 if let Ok(entry) = entry {
                     if !follow_symlinks {
-                        if let Some(file_path) = entry.file_name().to_str() {
+                        if let Some(file_path) = entry.path().to_str() {
                             if let Ok(file_type) = entry.file_type() {
                                 let entity_type = match () {
                                     _ if file_type.is_dir() => EntityType::Directory,
@@ -247,7 +259,7 @@ host_fn!(list_dir(user_data: (); path: String, follow_symlinks: bool) -> DirEnti
                                 _ if m.is_dir() => EntityType::Directory,
                                 _ => EntityType::File,
                             };
-                            results.push(DirEntity { path: entry.file_name().to_string_lossy().to_string(), entity_type, })
+                            results.push(DirEntity { path: entry.path().to_string_lossy().to_string(), entity_type, })
                         }
                     }
                 }
@@ -364,6 +376,214 @@ host_fn!(get_is_playing() -> bool {
     Ok(crate::api::music_handler::is_playing())
 });
 
+// Returns the value of unsafe api returning false on error because better safe than sorry
+fn check_unsafe_api() -> bool {
+    match acquire_read_lock() {
+        Ok(guard) => {
+            if let Some(store) = guard.as_ref() {
+                return store.unsafe_apis;
+            } else {
+                return false;
+            }
+        },
+        Err(_) => return false,
+    }
+}
+
+#[frb(ignore)]
+host_fn!(get_unsafe_api() -> bool {
+    Ok(check_unsafe_api())
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_create_file(user_data: (); path: String, content: Option<String>) -> bool {
+    if !check_unsafe_api() {
+        return Ok(false);
+    }
+    if content.is_some() {
+        return Ok(fs::write(&path, content.unwrap()).is_ok());
+    } else {
+        return Ok(File::create(&path).is_ok());
+    }
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_check_entity_exists(user_data: (); path: String, follow_symlinks: bool) -> bool {
+    if !check_unsafe_api() {
+        return Ok(false);
+    }
+    if follow_symlinks {
+        return Ok(match fs::metadata(&path) {
+            Ok(_) => true,
+            Err(_) => false,
+        });
+    } else {
+        return Ok(PathBuf::from(&path).exists())
+    }
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_entity_type(user_data: (); path: String, follow_symlinks: bool) -> Option<EntityType> {
+    if !check_unsafe_api() {
+        return Ok(None);
+    }
+    if follow_symlinks {
+        return Ok(match fs::metadata(&path) {
+            Ok(m) => {
+                if m.is_dir() {
+                    Some(EntityType::Directory)
+                } else {
+                    Some(EntityType::File)
+                }
+            },
+            Err(_) => None,
+        });
+    } else {
+        let pbn = PathBuf::from(&path);
+        if pbn.is_dir() {
+            return Ok(Some(EntityType::Directory));
+        } else if pbn.is_symlink() {
+            return Ok(Some(EntityType::Symlink));
+        } else {
+            return Ok(Some(EntityType::File));
+        }
+    }
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_write_file(user_data: (); path: String, content: String) -> bool {
+    if !check_unsafe_api() {
+        return Ok(false);
+    }
+    Ok(fs::write(&path, content).is_ok())
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_delete_file(user_data: (); path: String) -> bool {
+    if !check_unsafe_api() {
+        return Ok(false);
+    }
+    Ok(fs::remove_file(&path).is_ok())
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_delete_dir(user_data: (); path: String) -> bool {
+    if !check_unsafe_api() {
+        return Ok(false);
+    }
+    Ok(fs::remove_dir_all(&path).is_ok())
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_create_dir(user_data: (); path: String) -> bool {
+    if !check_unsafe_api() {
+        return Ok(false);
+    }
+    Ok(fs::create_dir_all(&path).is_ok())
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_read_file(user_data: (); path: String) -> String {
+    if !check_unsafe_api() {
+        return Ok("ERR: Unsafe API was false".to_string())
+    }
+    match fs::read_to_string(&path) {
+        Ok(c) => Ok(c),
+        Err(e) => Ok(format!("ERR: Failed to read file to string: {e}"))
+    }
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_list_dir(user_data: (); path: String, follow_symlinks: bool) -> DirEntities {
+    if !check_unsafe_api() {
+        return Ok(DirEntities { contents: Vec::new() });
+    }
+    match fs::read_dir(&path) {
+        Ok(entries) => {
+            let mut res: Vec<DirEntity> = Vec::new();
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    if !follow_symlinks {
+                        if let Some(file_path) = entry.path().to_str() {
+                            if let Ok(file_type) = entry.file_type() {
+                                let entity_type = match () {
+                                    _ if file_type.is_dir() => EntityType::Directory,
+                                    _ if file_type.is_symlink() => EntityType::Symlink,
+                                    _ => EntityType::File,
+                                };
+                                res.push(DirEntity {
+                                    path: file_path.to_string(),
+                                    entity_type,
+                                })
+                            }
+                        }
+                    } else {
+                        if let Ok(m) = fs::metadata(entry.path()) {
+                            let entity_type = match () {
+                                _ if m.is_dir() => EntityType::Directory,
+                                _ => EntityType::File,
+                            };
+                            res.push(DirEntity {
+                                path: entry.path().to_string_lossy().to_string(),
+                                entity_type,
+                            })
+                        }
+                    }
+                }
+            }
+            Ok(DirEntities { contents: res })
+        }
+        Err(_) => Ok(DirEntities { contents: Vec::new() }),
+    }
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_file_size(user_data: (); path: String) -> u64 {
+    if !check_unsafe_api() {
+        return Ok(0);
+    }
+    match fs::metadata(&path) {
+        Ok(m) => Ok(m.len()),
+        Err(_) => Ok(0),
+    }
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_get_file_extension_std(user_data: (); path: String) -> String {
+    if !check_unsafe_api() {
+        return Ok("".to_string())
+    }
+    Ok(PathBuf::from(&path)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("")
+        .to_string())
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_get_file_extension_nightly(user_data: (); path: String) -> String {
+    if !check_unsafe_api() {
+        return Ok("".to_string());
+    }
+    Ok(fpre(&PathBuf::from(&path).as_path()).unwrap_or_default().to_string_lossy().to_string())
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_rename_file(user_data: (); from: String, to: String) -> bool {
+    if !check_unsafe_api() {
+        return Ok(false);
+    }
+    Ok(fs::rename(&from, &to).is_ok())
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_copy_file(user_data: (); from: String, to: String) -> bool {
+    if !check_unsafe_api() {
+        return Ok(false);
+    }
+    Ok(fs::copy(&from, &to).is_ok())
+});
+
 // A macro to decide how to format the functions for me
 macro_rules! get_fn_signature {
     // With params and return
@@ -405,28 +625,49 @@ macro_rules! generic_func {
 #[frb(ignore)]
 pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
     let f = vec![
+        // Logging utils
         generic_func!(pprint(text: String)),
+        // Store retrival
         generic_func!(get_music_folder() -> String),
         generic_func!(get_store_state() -> bool),
         generic_func!(get_current_song() -> Option<crate::api::music_handler::SongMetadata>),
+        generic_func!(get_unsafe_api() -> bool),
+        // Safe filesystem functions
         generic_func!(create_file(path: String, content: Option<String>) -> bool),
         generic_func!(check_entity_exists(path: String, follow_symlinks: bool) -> bool),
         generic_func!(entity_type(path: String, follow_symlinks: bool) -> Option<EntityType>),
         generic_func!(write_file(path: String, content: String) -> bool),
         generic_func!(delete_file(path: String) -> bool),
+        generic_func!(delete_dir(path: String) -> bool),
         generic_func!(create_dir(path: String) -> bool),
         generic_func!(list_dir(path: String, follow_symlinks: bool) -> DirEntities),
         generic_func!(join_paths(path1: String, path2: String) -> String),
         generic_func!(file_size(path: String) -> u64),
         generic_func!(rename_file(old: String, new: String) -> bool),
         generic_func!(copy_file(from: String, to: String) -> bool),
-        generic_func!(get_arch() -> String),
-        generic_func!(get_time() -> i64),
         generic_func!(get_file_extension_std(path: String) -> String),
         generic_func!(get_file_extension_nightly(path: String) -> String),
+        // System info functions
+        generic_func!(get_arch() -> String),
+        generic_func!(get_time() -> i64),
         generic_func!(get_current_vol() -> f32),
+        // App info functions
         generic_func!(get_song_pos() -> f32),
         generic_func!(get_is_playing() -> bool),
+        // Unsafe filesystem functions
+        generic_func!(unsafe_create_file(path: String, content: Option<String>) -> bool),
+        generic_func!(unsafe_check_entity_exists(path: String, follow_symlinks: bool) -> bool),
+        generic_func!(unsafe_entity_type(path: String, follow_symlinks: bool) -> Option<EntityType>),
+        generic_func!(unsafe_write_file(path: String, content: String) -> bool),
+        generic_func!(unsafe_delete_file(path: String) -> bool),
+        generic_func!(unsafe_delete_dir(path: String) -> bool),
+        generic_func!(unsafe_create_dir(path: String) -> bool),
+        generic_func!(unsafe_list_dir(path: String, follow_symlinks: bool) -> DirEntities),
+        generic_func!(unsafe_file_size(path: String) -> u64),
+        generic_func!(unsafe_rename_file(old: String, new: String) -> bool),
+        generic_func!(unsafe_copy_file(from: String, to: String) -> bool),
+        generic_func!(unsafe_get_file_extension_std(path: String) -> String),
+        generic_func!(unsafe_get_file_extension_nightly(path: String) -> String),
     ];
     b.with_functions(f)
 }
