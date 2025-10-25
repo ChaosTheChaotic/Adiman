@@ -388,7 +388,7 @@ fn check_unsafe_api() -> bool {
             } else {
                 return false;
             }
-        },
+        }
         Err(_) => return false,
     }
 }
