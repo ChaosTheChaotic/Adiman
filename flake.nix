@@ -49,6 +49,8 @@
 	  libcdio
 	  libcdio-paranoia
 	  cdparanoia
+
+	  sqlite
         ];
 
         nativeBuildInputs = with pkgs; [
