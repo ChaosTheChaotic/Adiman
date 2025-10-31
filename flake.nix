@@ -37,7 +37,7 @@
           zlib
           
           gdb
-          flutter
+          flutter329
 	  flutter_rust_bridge_codegen
           libayatana-appindicator # For flutter notifications plugin
           gtk3
@@ -87,7 +87,7 @@
           VULKAN_LIB_DIR="${pkgs.shaderc.dev}/lib";
           VULKAN_SDK="${pkgs.vulkan-validation-layers}/share/vulkan/explicit_layer.d";
 
-          FLUTTER_ROOT = "${pkgs.flutter}";
+          FLUTTER_ROOT = "${pkgs.flutter329}";
 
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = "${pkgs.llvmPackages.clangUseLLVM}/bin/clang";
 

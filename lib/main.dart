@@ -138,6 +138,11 @@ void syncRust() async {
   if (musicFolder.startsWith('~')) {
     musicFolder = musicFolder.replaceFirst('~', home);
   }
+  final Directory musicFolderDir = Directory(musicFolder);
+  final bool mfe = await musicFolderDir.exists();
+  if (autoCreate && !mfe) {
+    await musicFolderDir.create(recursive: true);
+  }
   String pluginRwDir =
       SharedPreferencesService.instance.getString('pluginRwDir') ?? '~/AdiDir';
   if (pluginRwDir.startsWith('~')) {
