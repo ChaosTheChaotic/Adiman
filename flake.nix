@@ -98,7 +98,7 @@
           
           shellHook = ''
             export CARGO_MANIFEST_DIR=$(pwd) # This is declared here because it seems the project root is not accessible in the flake
-            export LD_LIBRARY_PATH="$(pwd)/build/linux/x64/debug/bundle/lib:$(pwd)/build/linux/x64/release/bundle/lib:$LD_LIBRARY_PATH"
+            export LD_LIBRARY_PATH="$(pwd)/build/linux/x64/debug/bundle/lib:$(pwd)/build/linux/x64/release/bundle/lib:$(pwd)/build/linux/arm64/debug/bundle/lib:$(pwd)/build/linux/arm64/release/bundle/lib:$LD_LIBRARY_PATH"
           ''; # That last line is so that dart can find the rust libs
         };
       }
