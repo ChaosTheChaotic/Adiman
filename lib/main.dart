@@ -10,6 +10,7 @@ import 'package:adiman/screens/song_selection_screen.dart';
 import 'package:adiman/widgets/volume.dart';
 import 'package:flutter/services.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 final ValueNotifier<Color> defaultThemeColorNotifier =
     ValueNotifier<Color>(const Color(0xFF383770));
@@ -75,10 +76,10 @@ ThemeData _buildDynamicTheme(BuildContext context, Color dominantColor) {
       brightness: isDark ? Brightness.dark : Brightness.light,
     ),
     textTheme: TextTheme(
-      bodyLarge: TextStyle(color: textColor),
-      bodyMedium: TextStyle(color: textColor),
-      titleLarge: TextStyle(color: textColor),
-      titleMedium: TextStyle(color: textColor),
+      bodyLarge: GoogleFonts.inter(color: textColor),
+      bodyMedium: GoogleFonts.inter(color: textColor),
+      titleLarge: GoogleFonts.inter(color: textColor),
+      titleMedium: GoogleFonts.inter(color: textColor),
     ),
     visualDensity: VisualDensity.adaptivePlatformDensity,
     iconTheme: IconThemeData(color: textColor),

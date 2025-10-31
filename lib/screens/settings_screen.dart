@@ -16,6 +16,7 @@ import 'package:flutter_glow/flutter_glow.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:adiman/icons/broken_icons.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -1287,7 +1288,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final buttonTextColor = Theme.of(context).textTheme.bodyLarge?.color;
 
     return Theme(
-        data: ThemeData(brightness: Brightness.dark),
+        data: ThemeData(
+          brightness: Brightness.dark,
+          textTheme: TextTheme(
+            bodyLarge: GoogleFonts.inter(color: textColor),
+            bodyMedium: GoogleFonts.inter(color: textColor),
+            titleLarge: GoogleFonts.inter(color: textColor),
+            titleMedium: GoogleFonts.inter(color: textColor),
+          ),
+        ),
         child: KeyboardListener(
           focusNode: _escapeNode,
           autofocus: true,
