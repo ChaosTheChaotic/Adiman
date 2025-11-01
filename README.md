@@ -34,6 +34,10 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 
 - Ffmpeg
 - Spotdl (via python if you want downloading songs to work)
+- Sqlite
+- libcdio
+- libcdio_cdda
+- cdparanoia
 
 # Installing
 
