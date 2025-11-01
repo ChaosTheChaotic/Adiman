@@ -21,6 +21,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:animated_background/animated_background.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:adiman/icons/broken_icons.dart';
 
 class MusicPlayerScreen extends StatefulWidget {
@@ -1600,7 +1601,15 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
     //return KeyboardListener(
     return Theme(
-        data: ThemeData.dark(),
+        data: ThemeData(
+          brightness: Brightness.dark,
+          textTheme: TextTheme(
+            bodyLarge: GoogleFonts.inter(color: textColor),
+            bodyMedium: GoogleFonts.inter(color: textColor),
+            titleLarge: GoogleFonts.inter(color: textColor),
+            titleMedium: GoogleFonts.inter(color: textColor),
+          ),
+        ),
         child: KeyboardListener(
           focusNode: _focusNode,
           autofocus: true,
