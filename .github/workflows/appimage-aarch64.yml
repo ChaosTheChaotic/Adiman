@@ -69,7 +69,7 @@ jobs:
 
       - name: Prepare AppDir
         run: |
-          mkdir -p Adiman.AppDir
+          mkdir -p Adiman.AppDir/deps
           cp -r build/linux/arm64/release/bundle/* Adiman.AppDir/
           cp appimagestuff/{AppRun,Adiman.desktop,Adiman.png} Adiman.AppDir/
           cp -L /usr/lib/libsqlite3.so Adiman.AppDir/deps/libsqlite3.so
