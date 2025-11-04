@@ -18,6 +18,7 @@ pub static VALUE_STORE: RwLock<Option<ValueStore>> = RwLock::new(None);
 pub struct ValueStore {
     pub music_folder: String,
     pub current_song: Option<SongMetadata>,
+    pub plugins_enabled: bool,
     pub plugin_rw_dir: String,
     pub unsafe_apis: bool,
 }
@@ -32,6 +33,7 @@ pub enum CurrentSongUpdate {
 pub struct ValueStoreUpdate {
     pub music_folder: Option<String>,
     pub current_song: CurrentSongUpdate,
+    pub plugins_enabled: Option<bool>,
     pub plugin_rw_dir: Option<String>,
     pub unsafe_apis: Option<bool>,
 }
@@ -42,6 +44,7 @@ impl Default for ValueStore {
         Self {
             music_folder: home_dir.join("Music").to_string_lossy().to_string(),
             current_song: None,
+            plugins_enabled: false,
             plugin_rw_dir: home_dir.join("AdiDir").to_string_lossy().to_string(),
             unsafe_apis: false,
         }
@@ -79,6 +82,10 @@ impl ValueStore {
             self.update_music_folder(folder)?;
         }
 
+        if let Some(pen) = update.plugins_enabled {
+            self.plugins_enabled = pen;
+        }
+
         if let Some(folder) = update.plugin_rw_dir {
             self.update_plugin_rw_dir(folder)?;
         }
@@ -106,6 +113,7 @@ impl ValueStore {
 pub struct ValueStoreUpdater {
     pub music_folder: Option<String>,
     pub current_song: CurrentSongUpdate,
+    pub plugins_enabled: Option<bool>,
     pub plugin_rw_dir: Option<String>,
     pub unsafe_apis: Option<bool>,
 }
@@ -115,6 +123,7 @@ impl ValueStoreUpdater {
         Self {
             music_folder: None,
             current_song: CurrentSongUpdate::NoChange,
+            plugins_enabled: None,
             plugin_rw_dir: None,
             unsafe_apis: None,
         }
@@ -123,6 +132,12 @@ impl ValueStoreUpdater {
     #[frb]
     pub fn set_music_folder(&mut self, folder: String) -> &mut Self {
         self.music_folder = Some(folder);
+        self
+    }
+
+    #[frb]
+    pub fn set_plugins_enabled(&mut self, val: bool) -> &mut Self {
+        self.plugins_enabled = Some(val);
         self
     }
 
@@ -155,6 +170,7 @@ impl ValueStoreUpdater {
         let update = ValueStoreUpdate {
             music_folder: self.music_folder,
             current_song: self.current_song,
+            plugins_enabled: self.plugins_enabled,
             plugin_rw_dir: self.plugin_rw_dir,
             unsafe_apis: self.unsafe_apis,
         };
