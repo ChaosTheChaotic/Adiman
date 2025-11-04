@@ -1,6 +1,6 @@
 use crate::api::{
     music_handler::get_cvol,
-    utils::{fpre, validate_path},
+    utils::{fpre, validate_path, check_unsafe_api},
     value_store::{acquire_read_lock, check_value_store_state},
 };
 use extism::{convert::Json, host_fn, FromBytes, Function, PluginBuilder, ToBytes, UserData, PTR};
@@ -380,19 +380,6 @@ host_fn!(get_is_playing() -> bool {
     Ok(crate::api::music_handler::is_playing())
 });
 
-// Returns the value of unsafe api returning false on error because better safe than sorry
-fn check_unsafe_api() -> bool {
-    match acquire_read_lock() {
-        Ok(guard) => {
-            if let Some(store) = guard.as_ref() {
-                return store.unsafe_apis;
-            } else {
-                return false;
-            }
-        }
-        Err(_) => return false,
-    }
-}
 
 #[frb(ignore)]
 host_fn!(get_unsafe_api() -> bool {

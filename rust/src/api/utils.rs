@@ -1,5 +1,6 @@
 use flutter_rust_bridge::frb;
 use std::{ffi::OsStr, path::Path};
+use crate::api::value_store::acquire_read_lock;
 
 #[frb(ignore)]
 // Stolen from rust path source code and slightly refactored since (as of writing this) its a nightly only feature and im not bothered.
@@ -49,5 +50,32 @@ pub fn validate_path(name: impl AsRef<str>) -> bool {
         false
     } else {
         true
+    }
+}
+
+// Returns the value of unsafe api returning false on error because better safe than sorry
+fn check_unsafe_api() -> bool {
+    match acquire_read_lock() {
+        Ok(guard) => {
+            if let Some(store) = guard.as_ref() {
+                return store.unsafe_apis;
+            } else {
+                return false;
+            }
+        }
+        Err(_) => return false,
+    }
+}
+
+fn check_plugins_enabled() -> bool {
+    match acquire_read_lock() {
+        Ok(guard) => {
+            if let Some(store) = guard.as_ref() {
+                return store.plugins_enabled;
+            } else {
+                return false;
+            }
+        }
+        Err(_) => return false,
     }
 }

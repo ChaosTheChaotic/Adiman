@@ -1,4 +1,4 @@
-use crate::api::host_func_interface::add_functions;
+use crate::api::{host_func_interface::add_functions, utils::check_plugins_enabled};
 pub use extism::{Manifest, Plugin, PluginBuilder, Wasm};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -861,6 +861,7 @@ pub fn set_plugin_config(path: String, key: String, value: ConfigTypes) -> Resul
 }
 
 pub fn call_func_plugins(func: String) {
+    if !check_plugins_enabled() { return false }
     let pmg = PLUGIN_MAN.lock().unwrap();
 
     if let Some(plugin_man) = pmg.as_ref() {

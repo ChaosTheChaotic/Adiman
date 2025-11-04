@@ -154,8 +154,10 @@ void syncRust() async {
   if (autoCreate && !rwe) {
     await pluginRwDirDir.create(recursive: true);
   }
+  final bool enablePlugins = SharedPreferencesService.instance.getBool('enablePlugins') ?? false;
   final updater = await value_store.updateStore();
   await updater.setMusicFolder(folder: musicFolder);
+  await updater.setEnablePlugins(val: enablePlugins);
   await updater.setPluginRwDir(folder: pluginRwDir);
   await updater.setUnsafeApis(
       value: SharedPreferencesService.instance.getBool('unsafeAPIs') ?? false);
