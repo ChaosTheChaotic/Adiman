@@ -33,6 +33,8 @@ abstract class ValueStoreUpdater implements RustOpaqueInterface {
 
   String? get pluginRwDir;
 
+  bool? get pluginsEnabled;
+
   bool? get unsafeApis;
 
   set currentSong(CurrentSongUpdate currentSong);
@@ -40,6 +42,8 @@ abstract class ValueStoreUpdater implements RustOpaqueInterface {
   set musicFolder(String? musicFolder);
 
   set pluginRwDir(String? pluginRwDir);
+
+  set pluginsEnabled(bool? pluginsEnabled);
 
   set unsafeApis(bool? unsafeApis);
 
@@ -54,6 +58,8 @@ abstract class ValueStoreUpdater implements RustOpaqueInterface {
   Future<void> setMusicFolder({required String folder});
 
   Future<void> setPluginRwDir({required String folder});
+
+  Future<void> setPluginsEnabled({required bool val});
 
   Future<void> setUnsafeApis({required bool value});
 }
@@ -72,12 +78,14 @@ sealed class CurrentSongUpdate with _$CurrentSongUpdate {
 class ValueStoreUpdate {
   final String? musicFolder;
   final CurrentSongUpdate currentSong;
+  final bool? pluginsEnabled;
   final String? pluginRwDir;
   final bool? unsafeApis;
 
   const ValueStoreUpdate({
     this.musicFolder,
     required this.currentSong,
+    this.pluginsEnabled,
     this.pluginRwDir,
     this.unsafeApis,
   });
@@ -86,6 +94,7 @@ class ValueStoreUpdate {
   int get hashCode =>
       musicFolder.hashCode ^
       currentSong.hashCode ^
+      pluginsEnabled.hashCode ^
       pluginRwDir.hashCode ^
       unsafeApis.hashCode;
 
@@ -96,6 +105,7 @@ class ValueStoreUpdate {
           runtimeType == other.runtimeType &&
           musicFolder == other.musicFolder &&
           currentSong == other.currentSong &&
+          pluginsEnabled == other.pluginsEnabled &&
           pluginRwDir == other.pluginRwDir &&
           unsafeApis == other.unsafeApis;
 }

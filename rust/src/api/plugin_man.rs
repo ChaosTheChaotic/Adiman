@@ -861,7 +861,7 @@ pub fn set_plugin_config(path: String, key: String, value: ConfigTypes) -> Resul
 }
 
 pub fn call_func_plugins(func: String) {
-    if !check_plugins_enabled() { return false }
+    if !check_plugins_enabled() { return }
     let pmg = PLUGIN_MAN.lock().unwrap();
 
     if let Some(plugin_man) = pmg.as_ref() {
