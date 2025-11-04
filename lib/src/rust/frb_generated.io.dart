@@ -7,6 +7,7 @@ import 'api/acoustid.dart';
 import 'api/color_extractor.dart';
 import 'api/music_handler.dart';
 import 'api/plugin_man.dart';
+import 'api/utils.dart';
 import 'api/value_store.dart';
 import 'dart:async';
 import 'dart:convert';

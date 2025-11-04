@@ -54,7 +54,7 @@ pub fn validate_path(name: impl AsRef<str>) -> bool {
 }
 
 // Returns the value of unsafe api returning false on error because better safe than sorry
-fn check_unsafe_api() -> bool {
+pub fn check_unsafe_api() -> bool {
     match acquire_read_lock() {
         Ok(guard) => {
             if let Some(store) = guard.as_ref() {
@@ -67,7 +67,7 @@ fn check_unsafe_api() -> bool {
     }
 }
 
-fn check_plugins_enabled() -> bool {
+pub fn check_plugins_enabled() -> bool {
     match acquire_read_lock() {
         Ok(guard) => {
             if let Some(store) = guard.as_ref() {
