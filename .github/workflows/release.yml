@@ -29,7 +29,7 @@ jobs:
             libgtk-3-0 libgtk-3-dev \
             libblkid1 liblzma5 \
             libasound2-dev libpulse-dev \
-            cmake ninja-build clang cdparanoia libcdio-dev libcdio-cdda-dev libcdio-paranoia-dev libcdparanoia-dev sqlite3 libsqlite3-dev
+            cmake ninja-build clang cdparanoia libcdio-dev libcdio-cdda-dev libcdio-paranoia-dev libcdparanoia-dev sqlite3
           sudo modprobe fuse
 
       - name: Setup Flutter
@@ -68,7 +68,6 @@ jobs:
           mkdir -p Adiman.AppDir/deps
           cp -r build/linux/x64/release/bundle/* Adiman.AppDir/
           cp appimagestuff/{AppRun,Adiman.desktop,Adiman.png} Adiman.AppDir/
-          cp -L /usr/lib/libsqlite3.so Adiman.AppDir/deps/libsqlite3.so
           cp -L /usr/lib/libcdio.so Adiman.AppDir/deps/libcdio.so
           cp -L /usr/lib/libcdda_interface.so Adiman.AppDir/deps/libcdda_interface.so
           chmod +x Adiman.AppDir/AppRun
@@ -101,7 +100,7 @@ jobs:
             libblkid1 liblzma5 \
             libasound2-dev libpulse-dev \
             cmake ninja-build clang \
-            libgirepository1.0-dev gir1.2-gtk-3.0 cdparanoia libcdio-dev libcdio-cdda-dev libcdio-paranoia-dev libcdparanoia-dev sqlite3 libsqlite3-dev
+            libgirepository1.0-dev gir1.2-gtk-3.0 cdparanoia libcdio-dev libcdio-cdda-dev libcdio-paranoia-dev libcdparanoia-dev
           sudo modprobe fuse
           sudo ln -s /usr/lib/aarch64-linux-gnu/libgirepository-1.0.so /usr/lib/libgirepository-1.0.so
 
@@ -146,7 +145,6 @@ jobs:
           mkdir -p Adiman.AppDir/deps
           cp -r build/linux/arm64/release/bundle/* Adiman.AppDir/
           cp appimagestuff/{AppRun,Adiman.desktop,Adiman.png} Adiman.AppDir/
-          cp -L /usr/lib/libsqlite3.so Adiman.AppDir/deps/libsqlite3.so
           cp -L /usr/lib/libcdio.so Adiman.AppDir/deps/libcdio.so
           cp -L /usr/lib/libcdda_interface.so Adiman.AppDir/deps/libcdda_interface.so
           chmod +x Adiman.AppDir/AppRun
