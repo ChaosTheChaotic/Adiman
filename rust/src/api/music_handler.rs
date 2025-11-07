@@ -930,7 +930,6 @@ impl AudioPlayer {
         }
     }
 
-    // Modified play method to start monitoring
     fn play(&self, path: &str) -> bool {
         self.stop();
         {
