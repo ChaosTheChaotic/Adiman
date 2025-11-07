@@ -10,6 +10,7 @@ import 'package:adiman/widgets/miniplayer.dart';
 import 'music_player_screen.dart';
 import 'package:flutter_glow/flutter_glow.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:adiman/icons/broken_icons.dart';
 import 'package:adiman/widgets/snackbar.dart';
 import 'package:adiman/widgets/icon_buttons.dart';
@@ -134,7 +135,15 @@ class _DownloadScreenState extends State<DownloadScreen>
   @override
   Widget build(BuildContext context) {
     return Theme(
-        data: ThemeData.dark(),
+        data: ThemeData(
+          brightness: Brightness.dark,
+          textTheme: TextTheme(
+            bodyLarge: GoogleFonts.inter(color: Colors.white),
+            bodyMedium: GoogleFonts.inter(color: Colors.white),
+            titleLarge: GoogleFonts.inter(color: Colors.white),
+            titleMedium: GoogleFonts.inter(color: Colors.white),
+          ),
+        ),
         child: KeyboardListener(
           focusNode: _focusNode,
           autofocus: true,
