@@ -807,6 +807,7 @@ pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
         generic_func!(delete_file(path: String) -> bool),
         generic_func!(delete_dir(path: String) -> bool),
         generic_func!(create_dir(path: String) -> bool),
+        generic_func!(read_file(path: String) -> String),
         generic_func!(list_dir(path: String, follow_symlinks: bool) -> DirEntities),
         generic_func!(join_paths(path1: String, path2: String) -> String),
         generic_func!(file_size(path: String) -> u64),
