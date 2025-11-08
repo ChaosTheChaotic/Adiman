@@ -753,19 +753,25 @@ host_fn!(unsafe_request(user_data: (); request: HttpRequest) -> HttpResponse {
 
 // A macro to decide how to format the functions for me
 macro_rules! get_fn_signature {
-    // With params and return
-    (($func:ident) fn $path:ident($($param:tt)+) -> $ret:ty) => {
-        Function::new(stringify!($path), [PTR], [PTR], UserData::new(()), $func)
+    // With params and return - count the parameters to determine the correct signature
+    (($func:ident) fn $path:ident($($param:ident: $param_type:ty),+) -> $ret:ty) => {
+        {
+            let param_count = count_params!($($param),+);
+            Function::new(stringify!($path), vec![PTR; param_count], [PTR], UserData::new(()), $func)
+        }
     };
 
-    // With return only
+    // With return only - no parameters
     (($func:ident) fn $path:ident() -> $ret:ty) => {
         Function::new(stringify!($path), [], [PTR], UserData::new(()), $func)
     };
 
-    // With params only
-    (($func:ident) fn $path:ident($($param:tt)+)) => {
-        Function::new(stringify!($path), [PTR], [], UserData::new(()), $func)
+    // With params only - no return
+    (($func:ident) fn $path:ident($($param:ident: $param_type:ty),+)) => {
+        {
+            let param_count = count_params!($($param),+);
+            Function::new(stringify!($path), vec![PTR; param_count], [], UserData::new(()), $func)
+        }
     };
 
     // No params or return
@@ -774,17 +780,27 @@ macro_rules! get_fn_signature {
     };
 }
 
+macro_rules! count_params {
+    () => (0);
+    ($first:ident) => (1);
+    ($first:ident, $($rest:ident),+) => (1 + count_params!($($rest),+));
+}
+
 // The main macro
 macro_rules! generic_func {
-    ($func:ident($($input:tt)*) -> $ret:ty) => {
-        get_fn_signature!(($func) fn $func($($input)*) -> $ret)
+    ($func:ident($($param:ident: $param_type:ty),+) -> $ret:ty) => {
+        get_fn_signature!(($func) fn $func($($param: $param_type),+) -> $ret)
     };
 
-    ($func:ident($($input:tt)*)) => {
-        get_fn_signature!(($func) fn $func($($input)*))
+    ($func:ident($($param:ident: $param_type:ty),+)) => {
+        get_fn_signature!(($func) fn $func($($param: $param_type),+))
     };
 
-    ($func:ident) => {
+    ($func:ident() -> $ret:ty) => {
+        get_fn_signature!(($func) fn $func() -> $ret)
+    };
+
+    ($func:ident()) => {
         get_fn_signature!(($func) fn $func())
     };
 }
