@@ -154,7 +154,8 @@ void syncRust() async {
   if (autoCreate && !rwe) {
     await pluginRwDirDir.create(recursive: true);
   }
-  final bool enablePlugins = SharedPreferencesService.instance.getBool('enablePlugins') ?? false;
+  final bool enablePlugins =
+      SharedPreferencesService.instance.getBool('enablePlugins') ?? false;
   final updater = await value_store.updateStore();
   await updater.setMusicFolder(folder: musicFolder);
   await updater.setPluginsEnabled(val: enablePlugins);
@@ -175,7 +176,8 @@ class _AdimanState extends State<Adiman> {
   @override
   void initState() {
     super.initState();
-    if (SharedPreferencesService.instance.getBool('enableAutoUpdater') ?? false) {
+    if (SharedPreferencesService.instance.getBool('enableAutoUpdater') ??
+        false) {
       WidgetsFlutterBinding.ensureInitialized();
       runUpdater();
     }

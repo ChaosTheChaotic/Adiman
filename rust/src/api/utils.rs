@@ -1,10 +1,10 @@
 use crate::api::value_store::acquire_read_lock;
 use flutter_rust_bridge::frb;
-use std::{ffi::OsStr, path::Path};
-use std::os::unix::fs::PermissionsExt;
-use tokio::io::AsyncWriteExt;
 use futures::StreamExt;
-
+use reqwest::header::USER_AGENT;
+use std::os::unix::fs::PermissionsExt;
+use std::{ffi::OsStr, path::Path};
+use tokio::io::AsyncWriteExt;
 
 #[frb(ignore)]
 // Stolen from rust path source code and slightly refactored since (as of writing this) its a nightly only feature and im not bothered.
@@ -86,8 +86,14 @@ pub fn check_plugins_enabled() -> bool {
 
 pub async fn get_latest_version() -> Option<String> {
     let url = "https://api.github.com/repos/ChaosTheChaotic/Adiman/releases/latest";
+    let client = reqwest::Client::new();
 
-    let response = match reqwest::get(url).await {
+    let response = match client
+        .get(url)
+        .header(USER_AGENT, "Adiman_Updater")
+        .send()
+        .await
+    {
         Ok(res) => res,
         Err(e) => {
             println!("Error making request to {}: {}", url, e);
@@ -147,7 +153,9 @@ pub async fn update_executable(arch: String, expath: String) -> bool {
         return false;
     }
 
-    let download_url = format!("https://github.com/ChaosTheChaotic/Adiman/releases/latest/download/Adiman-{darch}.AppImage");
+    let download_url = format!(
+        "https://github.com/ChaosTheChaotic/Adiman/releases/latest/download/Adiman-{darch}.AppImage"
+    );
     let temp_path = dtr.join(format!("Adiman-{darch}-new.AppImage"));
 
     if let Err(e) = download_file(&download_url, &temp_path).await {
@@ -175,10 +183,13 @@ pub async fn update_executable(arch: String, expath: String) -> bool {
     true
 }
 
-async fn download_file(url: &str, path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+async fn download_file(
+    url: &str,
+    path: &std::path::Path,
+) -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
     let response = client.get(url).send().await?;
-    
+
     if !response.status().is_success() {
         return Err(format!("HTTP error: {}", response.status()).into());
     }
@@ -190,7 +201,7 @@ async fn download_file(url: &str, path: &std::path::Path) -> Result<(), Box<dyn 
         let chunk = chunk?;
         file.write_all(&chunk).await?;
     }
-    
+
     file.flush().await?;
     Ok(())
 }

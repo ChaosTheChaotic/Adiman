@@ -225,7 +225,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SharedPreferencesService.instance.getBool('edgeBreathe') ?? true;
       _enablePlugins =
           SharedPreferencesService.instance.getBool('enablePlugins') ?? false;
-      _enableAutoUpdater = SharedPreferencesService.instance.getBool('enableAutoUpdater') ?? false;
+      _enableAutoUpdater =
+          SharedPreferencesService.instance.getBool('enableAutoUpdater') ??
+              false;
       _unsafeAPIs =
           SharedPreferencesService.instance.getBool('unsafeAPIs') ?? false;
       final seekbarTypeString =
@@ -1841,12 +1843,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       'Auto Create Directories (auto creates certain directories if they do not exist)',
                                   value: _autoCreateDirs,
                                   onChanged: _saveAutoCreateDirs),
-			      _buildSettingsSwitch(
-				context,
-				title: 'Enable Auto Updater',
-				value: _enableAutoUpdater,
-				onChanged: _saveEnableAutoUpdater
-			      ),
+                              _buildSettingsSwitch(context,
+                                  title: 'Enable Auto Updater',
+                                  value: _enableAutoUpdater,
+                                  onChanged: _saveEnableAutoUpdater),
                             ])
                       ],
                     ),

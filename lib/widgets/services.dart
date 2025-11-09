@@ -364,7 +364,7 @@ class PlaylistOrderDatabase {
 }
 
 class AdimanUpdater {
-  late final AppVersion _cvers;     
+  late final AppVersion _cvers;
 
   AdimanUpdater._internal({
     required AppVersion cvers,
@@ -376,20 +376,20 @@ class AdimanUpdater {
     if (_instance == null) {
       final PackageInfo packageInfo = await PackageInfo.fromPlatform();
       final AppVersion version = AppVersion.parse(packageInfo.version);
-      
-      _instance = AdimanUpdater._internal(
-        cvers: version
-      );
+
+      _instance = AdimanUpdater._internal(cvers: version);
     }
     return _instance!;
   }
-  
+
   AppVersion get ver => _cvers;
 
   void checkUpdate(BuildContext context) async {
     final String? fetchedVersion = await rust_utils.getLatestVersion();
     if (fetchedVersion == null) {
-      ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(content: 'Failed to get latest version, check your internet or the terminal'));
+      ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
+          content:
+              'Failed to get latest version, check your internet or the terminal'));
       return;
     }
     final AppVersion v = AppVersion.parse(fetchedVersion);
@@ -397,23 +397,38 @@ class AdimanUpdater {
       _update(context);
     }
   }
-  
+
   void _update(BuildContext context) async {
     final String? here = Platform.environment['APPIMAGE'];
     if (here == null) {
-      ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(content: 'APPIMAGE environment variable does not exist, cannot update non-appimage'));
+      ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
+          content:
+              'APPIMAGE environment variable does not exist, cannot update non-appimage'));
       return;
     }
     if (!Platform.isLinux) {
-      ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(content: 'OS is not linux - no github releases available'));
+      ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
+          content: 'OS is not linux - no github releases available'));
       return;
     }
-    final String arch = await SysInfo.kernelArchitecture.name.toLowerCase(); // I don't know what this actually returns
+    final String arch = await SysInfo.kernelArchitecture.name
+        .toLowerCase(); // I don't know what this actually returns
     if (arch != "arm64" || arch != "x86_64") {
-      ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(content: 'Architecture is unsupported - no github releases available'));
+      ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
+          content:
+              'Architecture is unsupported - no github releases available'));
       return;
     }
-    await rust_utils.updateExecutable(arch: arch, expath: here);
+    final bool updateRes =
+        await rust_utils.updateExecutable(arch: arch, expath: here);
+    if (updateRes) {
+      ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
+          content:
+              'Successfully updated! You may restart the app for updates to apply'));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
+          content: 'Update failed, check the terminal for more info'));
+    }
   }
 }
 
@@ -429,9 +444,13 @@ class AppVersion implements Comparable<AppVersion> {
   }) : assert(major >= 0 && minor >= 0 && patch >= 0);
 
   factory AppVersion.parse(String versionString) {
+    if (versionString.startsWith('v')) {
+      versionString = versionString.substring(1);
+    }
     final parts = versionString.split('.');
     if (parts.length != 3) {
-      throw FormatException('Invalid version string format: "$versionString". Expected format "X.Y.Z".');
+      throw FormatException(
+          'Invalid version string format: "$versionString". Expected format "X.Y.Z".');
     }
 
     try {
@@ -445,7 +464,8 @@ class AppVersion implements Comparable<AppVersion> {
         patch: patch,
       );
     } on FormatException catch (_) {
-      throw FormatException('Invalid version string format: "$versionString". Components must be integers.');
+      throw FormatException(
+          'Invalid version string format: "$versionString". Components must be integers.');
     }
   }
 
