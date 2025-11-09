@@ -29,6 +29,7 @@ You may develop plugins in any language that [extism](https://github.com/extism/
         - Filesystem APIs
         - Command APIs
         - Network APIs
+        - Utility APIs
 - To see (and copy) all functions exported by my app see the [host_functions](host_functions.rs)
 - Now you may make functions that the app will call (if the plugin exports that function)
 - Functions that are called by the app that you could add:

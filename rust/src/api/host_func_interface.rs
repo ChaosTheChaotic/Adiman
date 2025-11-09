@@ -751,6 +751,14 @@ host_fn!(unsafe_request(user_data: (); request: HttpRequest) -> HttpResponse {
     }
 });
 
+#[frb(ignore)]
+host_fn!(unsafe_get_env_var(user_data: (); var: String) -> String {
+    if !check_unsafe_api() {
+        return Ok(Some("ERR: Unsafe API disabled".to_string()));
+    }
+    Ok(std::env::var(var).unwrap_or("ERR: Failed to get env var".to_string()))
+});
+
 // A macro to decide how to format the functions for me
 macro_rules! get_fn_signature {
     // With params and return - count the parameters to determine the correct signature
@@ -856,6 +864,8 @@ pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
         generic_func!(unsafe_run_command(command: CommandTR) -> CommandResult),
         // Unsafe network functions
         generic_func!(unsafe_request(request: HttpRequest) -> HttpResponse),
+        // Unsafe utility functions
+        generic_func!(unsafe_get_env_var(var: String) -> String),
     ];
     b.with_functions(f)
 }

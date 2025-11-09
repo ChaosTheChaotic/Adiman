@@ -60,6 +60,8 @@ extern "ExtismHost" {
     fn unsafe_get_file_extension_nightly(path: String) -> String;
     fn unsafe_run_command(command: CommandTR) -> CommandResult;
     fn unsafe_request(request: HttpRequest) -> HttpResponse;
+    // Returns a string starting with ERR on failure
+    fn unsafe_get_env_var(var: String) -> String;
 }
 
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]
