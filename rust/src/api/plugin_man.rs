@@ -15,6 +15,15 @@ pub use std::{
 
 static PLUGIN_MAN: Lazy<Mutex<Option<AdiPluginMan>>> = Lazy::new(|| Mutex::new(None));
 
+static ALLOWED_BUTTON_LOCATIONS: Lazy<Vec<&'static str>> = Lazy::new(|| {
+    vec![
+        "drawer",
+        "songopts",
+        "settings",
+        "selectplaylist",
+    ]
+});
+
 #[derive(Debug)]
 pub enum PluginManErr {
     FileNotFound(String),
@@ -81,6 +90,29 @@ pub struct FadButton {
     pub callback: String,
 }
 
+impl FadButton {
+    pub fn is_valid(&self) -> bool {
+        if let Some(location) = &self.location {
+            if !ALLOWED_BUTTON_LOCATIONS.contains(&location.as_str()) {
+                eprintln!("Warning: Invalid button location '{}' for button '{}'", location, self.name);
+                return false;
+            }
+        }
+        
+        if self.name.trim().is_empty() {
+            eprintln!("Warning: Button has empty name");
+            return false;
+        }
+        
+        if self.callback.trim().is_empty() {
+            eprintln!("Warning: Button '{}' has empty callback", self.name);
+            return false;
+        }
+        
+        true
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FadLabel {
     pub size: f64,
@@ -126,6 +158,84 @@ impl AdiPluginMan {
     pub fn new() -> Self {
         AdiPluginMan {
             plugin_meta: HashMap::new(),
+        }
+    }
+
+    fn validate_and_filter_fad_config(fad_config: &mut FadConfig) {
+        // Validate and filter top-level buttons
+        if let Some(buttons) = &mut fad_config.buttons {
+            buttons.retain(|button| button.is_valid());
+            if buttons.is_empty() {
+                fad_config.buttons = None;
+            }
+        }
+
+        // Validate and filter screen buttons and labels
+        if let Some(screens) = &mut fad_config.screens {
+            for mut screen in screens.clone() {
+                if let Some(buttons) = &mut screen.buttons {
+                    buttons.retain(|button| button.is_valid());
+                    if buttons.is_empty() {
+                        screen.buttons = None;
+                    }
+                }
+                
+                if let Some(labels) = &mut screen.labels {
+                    labels.retain(|label| {
+                        let valid = !label.text.trim().is_empty() && label.size > 0.0;
+                        if !valid {
+                            eprintln!("Warning: Invalid label found and removed");
+                        }
+                        valid
+                    });
+                    if labels.is_empty() {
+                        screen.labels = None;
+                    }
+                }
+            }
+            
+            // Remove empty screens
+            screens.retain(|screen| {
+                screen.buttons.is_some() || screen.labels.is_some()
+            });
+            
+            if screens.is_empty() {
+                fad_config.screens = None;
+            }
+        }
+
+        // Validate and filter popup buttons and labels
+        if let Some(popups) = &mut fad_config.popups {
+            for mut popup in popups.clone() {
+                if let Some(buttons) = &mut popup.buttons {
+                    buttons.retain(|button| button.is_valid());
+                    if buttons.is_empty() {
+                        popup.buttons = None;
+                    }
+                }
+                
+                if let Some(labels) = &mut popup.labels {
+                    labels.retain(|label| {
+                        let valid = !label.text.trim().is_empty() && label.size > 0.0;
+                        if !valid {
+                            eprintln!("Warning: Invalid label found and removed");
+                        }
+                        valid
+                    });
+                    if labels.is_empty() {
+                        popup.labels = None;
+                    }
+                }
+            }
+            
+            // Remove empty popups
+            popups.retain(|popup| {
+                popup.buttons.is_some() || popup.labels.is_some()
+            });
+            
+            if popups.is_empty() {
+                fad_config.popups = None;
+            }
         }
     }
 
@@ -179,6 +289,11 @@ impl AdiPluginMan {
 
         let fad_config = match metadata.get("fad") {
             Some(fad_value) => match from_value::<FadConfig>(fad_value.clone()) {
+                Ok(mut fad) => {
+                    // Validate and filter out invalid FAD configurations
+                    Self::validate_and_filter_fad_config(&mut fad);
+                    Some(fad)
+                }
                 Ok(fad) => Some(fad),
                 Err(e) => {
                     eprintln!(
@@ -730,7 +845,15 @@ impl AdiPluginMan {
     }
     pub fn get_all_buttons(&self, location_filter: Option<&str>) -> Vec<(String, FadButton)> {
         let mut all_buttons = Vec::new();
-
+    
+        // Validate the location filter if provided
+        if let Some(location) = location_filter {
+            if !ALLOWED_BUTTON_LOCATIONS.contains(&location) {
+                eprintln!("Warning: Invalid location filter '{}', returning no buttons", location);
+                return all_buttons;
+            }
+        }
+    
         for (plugin_path, plugin_inode) in &self.plugin_meta {
             if let Some(fad_config) = &plugin_inode.fad {
                 // Get top-level buttons
@@ -746,7 +869,7 @@ impl AdiPluginMan {
                         }
                     }
                 }
-
+    
                 // Get buttons from screens
                 if let Some(screens) = &fad_config.screens {
                     for screen in screens {
@@ -764,7 +887,7 @@ impl AdiPluginMan {
                         }
                     }
                 }
-
+    
                 // Get buttons from popups
                 if let Some(popups) = &fad_config.popups {
                     for popup in popups {
@@ -784,7 +907,7 @@ impl AdiPluginMan {
                 }
             }
         }
-
+    
         all_buttons
     }
 

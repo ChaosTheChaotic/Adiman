@@ -158,6 +158,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ConfigTypes dco_decode_box_autoadd_config_types(dynamic raw);
 
   @protected
+  FadButton dco_decode_box_autoadd_fad_button(dynamic raw);
+
+  @protected
   FadConfig dco_decode_box_autoadd_fad_config(dynamic raw);
 
   @protected
@@ -424,6 +427,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ConfigTypes sse_decode_box_autoadd_config_types(SseDeserializer deserializer);
+
+  @protected
+  FadButton sse_decode_box_autoadd_fad_button(SseDeserializer deserializer);
 
   @protected
   FadConfig sse_decode_box_autoadd_fad_config(SseDeserializer deserializer);
@@ -702,6 +708,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_config_types(
       ConfigTypes self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_fad_button(
+      FadButton self, SseSerializer serializer);
 
   @protected
   void sse_encode_box_autoadd_fad_config(
