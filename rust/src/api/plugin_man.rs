@@ -73,11 +73,46 @@ pub struct RpcConfig {
     pub set_val: Value,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct FadButton {
+    pub name: String,
+    pub icon: Option<String>,
+    pub location: Option<String>,
+    pub callback: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct FadLabel {
+    pub size: f64,
+    pub text: String,
+    pub color: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct FadPopup {
+    pub buttons: Option<Vec<FadButton>>,
+    pub labels: Option<Vec<FadLabel>>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct FadScreen {
+    pub buttons: Option<Vec<FadButton>>,
+    pub labels: Option<Vec<FadLabel>>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct FadConfig {
+    pub screens: Option<Vec<FadScreen>>,
+    pub popups: Option<Vec<FadPopup>>,
+    pub buttons: Option<Vec<FadButton>>,
+}
+
 pub type PluginConfig = HashMap<String, ConfigTypes>; // A key-value pair with a key and a config type
 
 pub struct PluginInode {
     pub plugin: Arc<Mutex<Plugin>>, // Plugin handle wrapped in an Arc and Mutex because frb keeps generating code trying to clone it
     pub config: PluginConfig,       // Plugins config
+    pub fad: Option<FadConfig>,     // Frontend additions config
 }
 
 pub type AdimanPlugin = HashMap<String, PluginInode>; // Key value with plugins meta and its path
@@ -96,7 +131,7 @@ impl AdiPluginMan {
 
     fn read_plugin_metadata(
         metadata_path: &std::path::Path,
-    ) -> Result<Vec<RpcConfig>, PluginManErr> {
+    ) -> Result<(Vec<RpcConfig>, Option<FadConfig>), PluginManErr> {
         let metadata_content = std::fs::read_to_string(metadata_path).map_err(|_| {
             PluginManErr::MetadataNotFound(metadata_path.to_string_lossy().to_string())
         })?;
@@ -112,11 +147,11 @@ impl AdiPluginMan {
                     "Warning: 'rpc' field is not an array in metadata file: {}",
                     metadata_path.display()
                 );
-                return Ok(Vec::new());
+                return Ok((Vec::new(), None));
             }
             None => {
                 // rpc doesent exist
-                return Ok(Vec::new());
+                return Ok((Vec::new(), None));
             }
         };
 
@@ -142,7 +177,22 @@ impl AdiPluginMan {
             }
         }
 
-        Ok(valid_configs)
+        let fad_config = match metadata.get("fad") {
+            Some(fad_value) => match from_value::<FadConfig>(fad_value.clone()) {
+                Ok(fad) => Some(fad),
+                Err(e) => {
+                    eprintln!(
+                        "Warning: Failed to parse FAD config in metadata file: {}, error: {}",
+                        metadata_path.display(),
+                        e
+                    );
+                    None
+                }
+            },
+            None => None,
+        };
+
+        Ok((valid_configs, fad_config))
     }
 
     fn validate_rpc(config: &RpcConfig) -> bool {
@@ -533,26 +583,20 @@ impl AdiPluginMan {
             let nfn = stem.with_extension("json");
             let pmet = ppar.unwrap().join(nfn);
 
-            let plugin_config = if pmet.exists() {
+            let (rpc_configs, fad_config) = if pmet.exists() {
                 match Self::read_plugin_metadata(&pmet) {
-                    Ok(rpc_configs) => Self::rpc2plugin(rpc_configs),
+                    Ok((rpc, fad)) => (rpc, fad),
                     Err(_) => {
                         eprintln!("Warning: Failed to read metadata, using empty config");
-                        HashMap::new()
+                        (Vec::new(), None)
                     }
                 }
             } else {
-                // No metadata found
-                eprintln!(
-                    "Warning: Plugin: {} has no metadata file found and therefore no plugin settings will be loaded",
-                    PathBuf::from(path.clone())
-                        .file_stem()
-                        .unwrap()
-                        .to_string_lossy()
-                        .to_string()
-                );
-                HashMap::new()
+                eprintln!("Warning: No metadata found, using empty config");
+                (Vec::new(), None)
             };
+
+            let plugin_config = Self::rpc2plugin(rpc_configs);
 
             let pfile = Wasm::file(path.clone());
 
@@ -577,6 +621,7 @@ impl AdiPluginMan {
             let pin = PluginInode {
                 plugin: Arc::new(Mutex::new(plugin)),
                 config: plugin_config,
+                fad: fad_config,
             };
 
             self.plugin_meta.insert(path.clone(), pin);
@@ -682,6 +727,166 @@ impl AdiPluginMan {
                 }
             }
         }
+    }
+    pub fn get_all_buttons(&self, location_filter: Option<&str>) -> Vec<(String, FadButton)> {
+        let mut all_buttons = Vec::new();
+
+        for (plugin_path, plugin_inode) in &self.plugin_meta {
+            if let Some(fad_config) = &plugin_inode.fad {
+                // Get top-level buttons
+                if let Some(buttons) = &fad_config.buttons {
+                    for button in buttons {
+                        if location_filter.map_or(true, |loc| {
+                            button
+                                .location
+                                .as_ref()
+                                .map_or(false, |btn_loc| btn_loc == loc)
+                        }) {
+                            all_buttons.push((plugin_path.clone(), button.clone()));
+                        }
+                    }
+                }
+
+                // Get buttons from screens
+                if let Some(screens) = &fad_config.screens {
+                    for screen in screens {
+                        if let Some(buttons) = &screen.buttons {
+                            for button in buttons {
+                                if location_filter.map_or(true, |loc| {
+                                    button
+                                        .location
+                                        .as_ref()
+                                        .map_or(false, |btn_loc| btn_loc == loc)
+                                }) {
+                                    all_buttons.push((plugin_path.clone(), button.clone()));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Get buttons from popups
+                if let Some(popups) = &fad_config.popups {
+                    for popup in popups {
+                        if let Some(buttons) = &popup.buttons {
+                            for button in buttons {
+                                if location_filter.map_or(true, |loc| {
+                                    button
+                                        .location
+                                        .as_ref()
+                                        .map_or(false, |btn_loc| btn_loc == loc)
+                                }) {
+                                    all_buttons.push((plugin_path.clone(), button.clone()));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        all_buttons
+    }
+
+    // Get all screens from all plugins
+    pub fn get_all_screens(&self) -> Vec<(String, FadScreen)> {
+        let mut all_screens = Vec::new();
+
+        for (plugin_path, plugin_inode) in &self.plugin_meta {
+            if let Some(fad_config) = &plugin_inode.fad {
+                if let Some(screens) = &fad_config.screens {
+                    for screen in screens {
+                        all_screens.push((plugin_path.clone(), screen.clone()));
+                    }
+                }
+            }
+        }
+
+        all_screens
+    }
+
+    // Get all popups from all plugins
+    pub fn get_all_popups(&self) -> Vec<(String, FadPopup)> {
+        let mut all_popups = Vec::new();
+
+        for (plugin_path, plugin_inode) in &self.plugin_meta {
+            if let Some(fad_config) = &plugin_inode.fad {
+                if let Some(popups) = &fad_config.popups {
+                    for popup in popups {
+                        all_popups.push((plugin_path.clone(), popup.clone()));
+                    }
+                }
+            }
+        }
+
+        all_popups
+    }
+
+    // Get FAD configuration for a specific plugin
+    pub fn get_plugin_fad_config(&self, path: String) -> Option<FadConfig> {
+        self.plugin_meta
+            .get(&path)
+            .and_then(|pinode| pinode.fad.clone())
+    }
+
+    // Find buttons by name (across all plugins)
+    pub fn find_buttons_by_name(&self, name: &str) -> Vec<(String, FadButton)> {
+        self.get_all_buttons(None)
+            .into_iter()
+            .filter(|(_, button)| button.name == name)
+            .collect()
+    }
+
+    // Find items by callback (buttons, screens, popups that have this callback)
+    pub fn find_items_by_callback(&self, callback: &str) -> Vec<(String, String)> {
+        let mut results = Vec::new();
+
+        for (plugin_path, plugin_inode) in &self.plugin_meta {
+            if let Some(fad_config) = &plugin_inode.fad {
+                // Check top-level buttons
+                if let Some(buttons) = &fad_config.buttons {
+                    for button in buttons {
+                        if button.callback == callback {
+                            results.push((plugin_path.clone(), format!("button:{}", button.name)));
+                        }
+                    }
+                }
+
+                // Check screen buttons
+                if let Some(screens) = &fad_config.screens {
+                    for (screen_idx, screen) in screens.iter().enumerate() {
+                        if let Some(buttons) = &screen.buttons {
+                            for button in buttons {
+                                if button.callback == callback {
+                                    results.push((
+                                        plugin_path.clone(),
+                                        format!("screen_{}:button:{}", screen_idx, button.name),
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Check popup buttons
+                if let Some(popups) = &fad_config.popups {
+                    for (popup_idx, popup) in popups.iter().enumerate() {
+                        if let Some(buttons) = &popup.buttons {
+                            for button in buttons {
+                                if button.callback == callback {
+                                    results.push((
+                                        plugin_path.clone(),
+                                        format!("popup_{}:button:{}", popup_idx, button.name),
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        results
     }
 }
 
@@ -868,5 +1073,80 @@ pub fn call_func_plugins(func: String) {
         plugin_man.call_func_plugins(&func);
     } else {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
+    }
+}
+
+// Get all buttons, optionally filtered by location
+pub fn get_all_buttons(location_filter: Option<String>) -> String {
+    let pmg = PLUGIN_MAN.lock().unwrap();
+
+    if let Some(plugin_man) = pmg.as_ref() {
+        let buttons = plugin_man.get_all_buttons(location_filter.as_deref());
+        serde_json::to_string(&buttons).unwrap_or_else(|_| "[]".to_string())
+    } else {
+        "[]".to_string()
+    }
+}
+
+// Get all screens
+pub fn get_all_screens() -> String {
+    let pmg = PLUGIN_MAN.lock().unwrap();
+
+    if let Some(plugin_man) = pmg.as_ref() {
+        let screens = plugin_man.get_all_screens();
+        serde_json::to_string(&screens).unwrap_or_else(|_| "[]".to_string())
+    } else {
+        "[]".to_string()
+    }
+}
+
+// Get all popups
+pub fn get_all_popups() -> String {
+    let pmg = PLUGIN_MAN.lock().unwrap();
+
+    if let Some(plugin_man) = pmg.as_ref() {
+        let popups = plugin_man.get_all_popups();
+        serde_json::to_string(&popups).unwrap_or_else(|_| "[]".to_string())
+    } else {
+        "[]".to_string()
+    }
+}
+
+// Get FAD config for a specific plugin
+pub fn get_plugin_fad_config(path: String) -> String {
+    let pmg = PLUGIN_MAN.lock().unwrap();
+
+    if let Some(plugin_man) = pmg.as_ref() {
+        if let Some(fad_config) = plugin_man.get_plugin_fad_config(path) {
+            serde_json::to_string(&fad_config).unwrap_or_else(|_| "null".to_string())
+        } else {
+            "null".to_string()
+        }
+    } else {
+        "null".to_string()
+    }
+}
+
+// Find buttons by name
+pub fn find_buttons_by_name(name: String) -> String {
+    let pmg = PLUGIN_MAN.lock().unwrap();
+
+    if let Some(plugin_man) = pmg.as_ref() {
+        let buttons = plugin_man.find_buttons_by_name(&name);
+        serde_json::to_string(&buttons).unwrap_or_else(|_| "[]".to_string())
+    } else {
+        "[]".to_string()
+    }
+}
+
+// Find items by callback
+pub fn find_items_by_callback(callback: String) -> String {
+    let pmg = PLUGIN_MAN.lock().unwrap();
+
+    if let Some(plugin_man) = pmg.as_ref() {
+        let items = plugin_man.find_items_by_callback(&callback);
+        serde_json::to_string(&items).unwrap_or_else(|_| "[]".to_string())
+    } else {
+        "[]".to_string()
     }
 }

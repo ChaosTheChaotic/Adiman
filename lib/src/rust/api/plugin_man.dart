@@ -11,8 +11,8 @@ part 'plugin_man.freezed.dart';
 
 // These functions are ignored because they are not marked as `pub`: `plugin_file_validity`, `read_plugin_metadata`, `rpc2plugin`, `valid_extension`, `valid_magic`, `valid_stem`, `validate_rpc`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `PluginManErr`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `call_func_plugins`, `get_plugin_config`, `get_plugin_meta`, `load_plugin`, `new`, `reload_plugin`, `remove_plugin`, `scan_dir`, `set_plugin_config`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `call_func_plugins`, `find_buttons_by_name`, `find_items_by_callback`, `get_all_buttons`, `get_all_popups`, `get_all_screens`, `get_plugin_config`, `get_plugin_fad_config`, `get_plugin_meta`, `load_plugin`, `new`, `reload_plugin`, `remove_plugin`, `scan_dir`, `set_plugin_config`
 
 Future<void> initPluginMan() =>
     RustLib.instance.api.crateApiPluginManInitPluginMan();
@@ -51,13 +51,36 @@ Future<String> setPluginConfig(
 Future<void> callFuncPlugins({required String func}) =>
     RustLib.instance.api.crateApiPluginManCallFuncPlugins(func: func);
 
+Future<String> getAllButtons({String? locationFilter}) => RustLib.instance.api
+    .crateApiPluginManGetAllButtons(locationFilter: locationFilter);
+
+Future<String> getAllScreens() =>
+    RustLib.instance.api.crateApiPluginManGetAllScreens();
+
+Future<String> getAllPopups() =>
+    RustLib.instance.api.crateApiPluginManGetAllPopups();
+
+Future<String> getPluginFadConfig({required String path}) =>
+    RustLib.instance.api.crateApiPluginManGetPluginFadConfig(path: path);
+
+Future<String> findButtonsByName({required String name}) =>
+    RustLib.instance.api.crateApiPluginManFindButtonsByName(name: name);
+
+Future<String> findItemsByCallback({required String callback}) =>
+    RustLib.instance.api
+        .crateApiPluginManFindItemsByCallback(callback: callback);
+
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PluginInode>>
 abstract class PluginInode implements RustOpaqueInterface {
   Map<String, ConfigTypes> get config;
 
+  FadConfig? get fad;
+
   ArcMutexPlugin get plugin;
 
   set config(Map<String, ConfigTypes> config);
+
+  set fad(FadConfig? fad);
 
   set plugin(ArcMutexPlugin plugin);
 }
@@ -124,4 +147,122 @@ sealed class ConfigTypes with _$ConfigTypes {
   const factory ConfigTypes.float(
     double field0,
   ) = ConfigTypes_Float;
+}
+
+class FadButton {
+  final String name;
+  final String? icon;
+  final String? location;
+  final String callback;
+
+  const FadButton({
+    required this.name,
+    this.icon,
+    this.location,
+    required this.callback,
+  });
+
+  @override
+  int get hashCode =>
+      name.hashCode ^ icon.hashCode ^ location.hashCode ^ callback.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FadButton &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          icon == other.icon &&
+          location == other.location &&
+          callback == other.callback;
+}
+
+class FadConfig {
+  final List<FadScreen>? screens;
+  final List<FadPopup>? popups;
+  final List<FadButton>? buttons;
+
+  const FadConfig({
+    this.screens,
+    this.popups,
+    this.buttons,
+  });
+
+  @override
+  int get hashCode => screens.hashCode ^ popups.hashCode ^ buttons.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FadConfig &&
+          runtimeType == other.runtimeType &&
+          screens == other.screens &&
+          popups == other.popups &&
+          buttons == other.buttons;
+}
+
+class FadLabel {
+  final double size;
+  final String text;
+  final String? color;
+
+  const FadLabel({
+    required this.size,
+    required this.text,
+    this.color,
+  });
+
+  @override
+  int get hashCode => size.hashCode ^ text.hashCode ^ color.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FadLabel &&
+          runtimeType == other.runtimeType &&
+          size == other.size &&
+          text == other.text &&
+          color == other.color;
+}
+
+class FadPopup {
+  final List<FadButton>? buttons;
+  final List<FadLabel>? labels;
+
+  const FadPopup({
+    this.buttons,
+    this.labels,
+  });
+
+  @override
+  int get hashCode => buttons.hashCode ^ labels.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FadPopup &&
+          runtimeType == other.runtimeType &&
+          buttons == other.buttons &&
+          labels == other.labels;
+}
+
+class FadScreen {
+  final List<FadButton>? buttons;
+  final List<FadLabel>? labels;
+
+  const FadScreen({
+    this.buttons,
+    this.labels,
+  });
+
+  @override
+  int get hashCode => buttons.hashCode ^ labels.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FadScreen &&
+          runtimeType == other.runtimeType &&
+          buttons == other.buttons &&
+          labels == other.labels;
 }

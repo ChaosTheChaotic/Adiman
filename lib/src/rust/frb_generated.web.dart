@@ -160,6 +160,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ConfigTypes dco_decode_box_autoadd_config_types(dynamic raw);
 
   @protected
+  FadConfig dco_decode_box_autoadd_fad_config(dynamic raw);
+
+  @protected
   SongMetadata dco_decode_box_autoadd_song_metadata(dynamic raw);
 
   @protected
@@ -181,10 +184,37 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double dco_decode_f_64(dynamic raw);
 
   @protected
+  FadButton dco_decode_fad_button(dynamic raw);
+
+  @protected
+  FadConfig dco_decode_fad_config(dynamic raw);
+
+  @protected
+  FadLabel dco_decode_fad_label(dynamic raw);
+
+  @protected
+  FadPopup dco_decode_fad_popup(dynamic raw);
+
+  @protected
+  FadScreen dco_decode_fad_screen(dynamic raw);
+
+  @protected
   int dco_decode_i_32(dynamic raw);
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<FadButton> dco_decode_list_fad_button(dynamic raw);
+
+  @protected
+  List<FadLabel> dco_decode_list_fad_label(dynamic raw);
+
+  @protected
+  List<FadPopup> dco_decode_list_fad_popup(dynamic raw);
+
+  @protected
+  List<FadScreen> dco_decode_list_fad_screen(dynamic raw);
 
   @protected
   Float32List dco_decode_list_prim_f_32_strict(dynamic raw);
@@ -220,6 +250,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool? dco_decode_opt_box_autoadd_bool(dynamic raw);
 
   @protected
+  FadConfig? dco_decode_opt_box_autoadd_fad_config(dynamic raw);
+
+  @protected
   SongMetadata? dco_decode_opt_box_autoadd_song_metadata(dynamic raw);
 
   @protected
@@ -227,6 +260,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<String>? dco_decode_opt_list_String(dynamic raw);
+
+  @protected
+  List<FadButton>? dco_decode_opt_list_fad_button(dynamic raw);
+
+  @protected
+  List<FadLabel>? dco_decode_opt_list_fad_label(dynamic raw);
+
+  @protected
+  List<FadPopup>? dco_decode_opt_list_fad_popup(dynamic raw);
+
+  @protected
+  List<FadScreen>? dco_decode_opt_list_fad_screen(dynamic raw);
 
   @protected
   Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
@@ -383,6 +428,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ConfigTypes sse_decode_box_autoadd_config_types(SseDeserializer deserializer);
 
   @protected
+  FadConfig sse_decode_box_autoadd_fad_config(SseDeserializer deserializer);
+
+  @protected
   SongMetadata sse_decode_box_autoadd_song_metadata(
       SseDeserializer deserializer);
 
@@ -407,10 +455,37 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double sse_decode_f_64(SseDeserializer deserializer);
 
   @protected
+  FadButton sse_decode_fad_button(SseDeserializer deserializer);
+
+  @protected
+  FadConfig sse_decode_fad_config(SseDeserializer deserializer);
+
+  @protected
+  FadLabel sse_decode_fad_label(SseDeserializer deserializer);
+
+  @protected
+  FadPopup sse_decode_fad_popup(SseDeserializer deserializer);
+
+  @protected
+  FadScreen sse_decode_fad_screen(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<FadButton> sse_decode_list_fad_button(SseDeserializer deserializer);
+
+  @protected
+  List<FadLabel> sse_decode_list_fad_label(SseDeserializer deserializer);
+
+  @protected
+  List<FadPopup> sse_decode_list_fad_popup(SseDeserializer deserializer);
+
+  @protected
+  List<FadScreen> sse_decode_list_fad_screen(SseDeserializer deserializer);
 
   @protected
   Float32List sse_decode_list_prim_f_32_strict(SseDeserializer deserializer);
@@ -448,6 +523,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool? sse_decode_opt_box_autoadd_bool(SseDeserializer deserializer);
 
   @protected
+  FadConfig? sse_decode_opt_box_autoadd_fad_config(
+      SseDeserializer deserializer);
+
+  @protected
   SongMetadata? sse_decode_opt_box_autoadd_song_metadata(
       SseDeserializer deserializer);
 
@@ -456,6 +535,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<String>? sse_decode_opt_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<FadButton>? sse_decode_opt_list_fad_button(SseDeserializer deserializer);
+
+  @protected
+  List<FadLabel>? sse_decode_opt_list_fad_label(SseDeserializer deserializer);
+
+  @protected
+  List<FadPopup>? sse_decode_opt_list_fad_popup(SseDeserializer deserializer);
+
+  @protected
+  List<FadScreen>? sse_decode_opt_list_fad_screen(SseDeserializer deserializer);
 
   @protected
   Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
@@ -615,6 +706,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       ConfigTypes self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_fad_config(
+      FadConfig self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_song_metadata(
       SongMetadata self, SseSerializer serializer);
 
@@ -639,10 +734,39 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_f_64(double self, SseSerializer serializer);
 
   @protected
+  void sse_encode_fad_button(FadButton self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_fad_config(FadConfig self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_fad_label(FadLabel self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_fad_popup(FadPopup self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_fad_screen(FadScreen self, SseSerializer serializer);
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_fad_button(
+      List<FadButton> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_fad_label(List<FadLabel> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_fad_popup(List<FadPopup> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_fad_screen(
+      List<FadScreen> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_prim_f_32_strict(
@@ -683,6 +807,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_box_autoadd_bool(bool? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_fad_config(
+      FadConfig? self, SseSerializer serializer);
+
+  @protected
   void sse_encode_opt_box_autoadd_song_metadata(
       SongMetadata? self, SseSerializer serializer);
 
@@ -691,6 +819,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_list_String(List<String>? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_fad_button(
+      List<FadButton>? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_fad_label(
+      List<FadLabel>? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_fad_popup(
+      List<FadPopup>? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_fad_screen(
+      List<FadScreen>? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_list_prim_u_8_strict(
