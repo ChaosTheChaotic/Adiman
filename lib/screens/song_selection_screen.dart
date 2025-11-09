@@ -3294,7 +3294,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                               onReloadLibrary: _loadSongs,
                                             ),
                                           ),
-                                        );
+					).then((_) {
+    					  _loadPluginDrawerButtons();
+    					});
                                       },
                                     )
                                   : Opacity(
