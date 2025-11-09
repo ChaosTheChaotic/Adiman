@@ -15,14 +15,8 @@ pub use std::{
 
 static PLUGIN_MAN: Lazy<Mutex<Option<AdiPluginMan>>> = Lazy::new(|| Mutex::new(None));
 
-static ALLOWED_BUTTON_LOCATIONS: Lazy<Vec<&'static str>> = Lazy::new(|| {
-    vec![
-        "drawer",
-        "songopts",
-        "settings",
-        "selectplaylist",
-    ]
-});
+static ALLOWED_BUTTON_LOCATIONS: Lazy<Vec<&'static str>> =
+    Lazy::new(|| vec!["drawer", "songopts", "settings", "selectplaylist"]);
 
 #[derive(Debug)]
 pub enum PluginManErr {
@@ -94,21 +88,24 @@ impl FadButton {
     pub fn is_valid(&self) -> bool {
         if let Some(location) = &self.location {
             if !ALLOWED_BUTTON_LOCATIONS.contains(&location.as_str()) {
-                eprintln!("Warning: Invalid button location '{}' for button '{}'", location, self.name);
+                eprintln!(
+                    "Warning: Invalid button location '{}' for button '{}'",
+                    location, self.name
+                );
                 return false;
             }
         }
-        
+
         if self.name.trim().is_empty() {
             eprintln!("Warning: Button has empty name");
             return false;
         }
-        
+
         if self.callback.trim().is_empty() {
             eprintln!("Warning: Button '{}' has empty callback", self.name);
             return false;
         }
-        
+
         true
     }
 }
@@ -179,7 +176,7 @@ impl AdiPluginMan {
                         screen.buttons = None;
                     }
                 }
-                
+
                 if let Some(labels) = &mut screen.labels {
                     labels.retain(|label| {
                         let valid = !label.text.trim().is_empty() && label.size > 0.0;
@@ -193,12 +190,10 @@ impl AdiPluginMan {
                     }
                 }
             }
-            
+
             // Remove empty screens
-            screens.retain(|screen| {
-                screen.buttons.is_some() || screen.labels.is_some()
-            });
-            
+            screens.retain(|screen| screen.buttons.is_some() || screen.labels.is_some());
+
             if screens.is_empty() {
                 fad_config.screens = None;
             }
@@ -213,7 +208,7 @@ impl AdiPluginMan {
                         popup.buttons = None;
                     }
                 }
-                
+
                 if let Some(labels) = &mut popup.labels {
                     labels.retain(|label| {
                         let valid = !label.text.trim().is_empty() && label.size > 0.0;
@@ -227,12 +222,10 @@ impl AdiPluginMan {
                     }
                 }
             }
-            
+
             // Remove empty popups
-            popups.retain(|popup| {
-                popup.buttons.is_some() || popup.labels.is_some()
-            });
-            
+            popups.retain(|popup| popup.buttons.is_some() || popup.labels.is_some());
+
             if popups.is_empty() {
                 fad_config.popups = None;
             }
@@ -869,15 +862,18 @@ impl AdiPluginMan {
 
     pub fn get_all_buttons(&self, location_filter: Option<&str>) -> Vec<(String, FadButton)> {
         let mut all_buttons = Vec::new();
-    
+
         // Validate the location filter if provided
         if let Some(location) = location_filter {
             if !ALLOWED_BUTTON_LOCATIONS.contains(&location) {
-                eprintln!("Warning: Invalid location filter '{}', returning no buttons", location);
+                eprintln!(
+                    "Warning: Invalid location filter '{}', returning no buttons",
+                    location
+                );
                 return all_buttons;
             }
         }
-    
+
         for (plugin_path, plugin_inode) in &self.plugin_meta {
             if let Some(fad_config) = &plugin_inode.fad {
                 // Get top-level buttons
@@ -893,7 +889,7 @@ impl AdiPluginMan {
                         }
                     }
                 }
-    
+
                 // Get buttons from screens
                 if let Some(screens) = &fad_config.screens {
                     for screen in screens {
@@ -911,7 +907,7 @@ impl AdiPluginMan {
                         }
                     }
                 }
-    
+
                 // Get buttons from popups
                 if let Some(popups) = &fad_config.popups {
                     for popup in popups {
@@ -931,7 +927,7 @@ impl AdiPluginMan {
                 }
             }
         }
-    
+
         all_buttons
     }
 
