@@ -65,6 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _unsafeAPIs = false;
   bool _autoConvert = true;
   bool _autoCreateDirs = false;
+  bool _enableAutoUpdater = false;
   bool _clearMp3Cache = false;
   bool _vimKeybindings = false;
   String _spotdlFlags = '';
@@ -224,6 +225,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SharedPreferencesService.instance.getBool('edgeBreathe') ?? true;
       _enablePlugins =
           SharedPreferencesService.instance.getBool('enablePlugins') ?? false;
+      _enableAutoUpdater = SharedPreferencesService.instance.getBool('enableAutoUpdater') ?? false;
       _unsafeAPIs =
           SharedPreferencesService.instance.getBool('unsafeAPIs') ?? false;
       final seekbarTypeString =
@@ -365,6 +367,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveSeekbarType(SeekbarType type) async {
     await SharedPreferencesService.instance.setString('seekbarType', type.name);
     setState(() => _seekbarType = type);
+  }
+
+  Future<void> _saveEnableAutoUpdater(bool value) async {
+    await SharedPreferencesService.instance.setBool('enableAutoUpdater', value);
+    setState(() => _enableAutoUpdater = value);
   }
 
   Future<void> _saveEnablePlugins(bool value) async {
@@ -1830,6 +1837,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       'Auto Create Directories (auto creates certain directories if they do not exist)',
                                   value: _autoCreateDirs,
                                   onChanged: _saveAutoCreateDirs),
+			      _buildSettingsSwitch(
+				context,
+				title: 'Enable Auto Updater',
+				value: _enableAutoUpdater,
+				onChanged: _saveEnableAutoUpdater
+			      ),
                             ])
                       ],
                     ),
