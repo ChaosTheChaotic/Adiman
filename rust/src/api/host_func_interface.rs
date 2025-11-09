@@ -754,7 +754,7 @@ host_fn!(unsafe_request(user_data: (); request: HttpRequest) -> HttpResponse {
 #[frb(ignore)]
 host_fn!(unsafe_get_env_var(user_data: (); var: String) -> String {
     if !check_unsafe_api() {
-        return Ok(Some("ERR: Unsafe API disabled".to_string()));
+        return Ok("ERR: Unsafe API disabled".to_string());
     }
     Ok(std::env::var(var).unwrap_or("ERR: Failed to get env var".to_string()))
 });
