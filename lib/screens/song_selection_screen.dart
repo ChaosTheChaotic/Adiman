@@ -159,7 +159,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
 
     if (callback.startsWith("rf_")) {
       callback = callback.substring(3);
+      plugin_api.callPluginFunc(func: callback, plugin: pluginPath);
     }
+    // TODO: Handle screens and popups later
   }
 
   Widget _buildPluginButtonTile(Map<String, dynamic> buttonData) {
