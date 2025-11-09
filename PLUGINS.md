@@ -1,6 +1,11 @@
 # Plugins
 As of update 1.3.0, Adiman now supports plugins.
 # Adding plugins
+> [!WARNING]
+> Adding plugins is unsafe in itself as you allow random people to run arbitrary code on your machine.
+> I have done my best to ensure a level of security with the safe and unsafe APIs.
+> By choosing to add to plugins you accept all risk that comes with it
+> By enabling unsafe APIs (which let plugins to essentially anything on your machine), you also accept the greater risk that comes with it
 - In the app in settings, enable plugins and specify a plugin directory (or use the default one)
 - Create a folder inside the plugin directory (optional)
 - Ensure the `.json` file (if any) has the same name as the `.wasm` file (the `.wasm` file is checked for first)
