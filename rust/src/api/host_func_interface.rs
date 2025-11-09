@@ -1,9 +1,9 @@
 use crate::api::{
     music_handler::get_cvol,
-    utils::{fpre, validate_path, check_unsafe_api},
+    utils::{check_unsafe_api, fpre, validate_path},
     value_store::{acquire_read_lock, check_value_store_state},
 };
-use extism::{convert::Json, host_fn, FromBytes, Function, PluginBuilder, ToBytes, UserData, PTR};
+use extism::{FromBytes, Function, PTR, PluginBuilder, ToBytes, UserData, convert::Json, host_fn};
 use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -379,7 +379,6 @@ host_fn!(get_song_pos() -> f32 {
 host_fn!(get_is_playing() -> bool {
     Ok(crate::api::music_handler::is_playing())
 });
-
 
 #[frb(ignore)]
 host_fn!(get_unsafe_api() -> bool {

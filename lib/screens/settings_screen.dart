@@ -371,6 +371,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _saveEnableAutoUpdater(bool value) async {
     await SharedPreferencesService.instance.setBool('enableAutoUpdater', value);
+    if (value) {
+      final updater = await AdimanUpdater.initialize();
+      updater.checkUpdate(context);
+    }
     setState(() => _enableAutoUpdater = value);
   }
 

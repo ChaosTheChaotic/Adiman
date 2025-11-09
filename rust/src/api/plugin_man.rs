@@ -2,7 +2,7 @@ use crate::api::{host_func_interface::add_functions, utils::check_plugins_enable
 pub use extism::{Manifest, Plugin, PluginBuilder, Wasm};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-pub use serde_json::{from_str, from_value, Value};
+pub use serde_json::{Value, from_str, from_value};
 pub use std::{
     collections::HashMap,
     error::Error,
@@ -39,7 +39,9 @@ impl std::fmt::Display for PluginManErr {
                 e.clone().unwrap_or("No error message returned".into())
             ),
             PluginManErr::PluginNotLoaded(path) => format!("Plugin: {path} is not loaded"),
-            PluginManErr::PluginAlreadyLoaded(path) => format!("The plugin: {path} was already loaded"),
+            PluginManErr::PluginAlreadyLoaded(path) => {
+                format!("The plugin: {path} was already loaded")
+            }
             PluginManErr::MetadataNotFound(path) => format!(
                 "Metadata for plugin: {path} not found. Ensure it has the same name as the plugin and is json type whilst being in the same (valid) directory as the plugin"
             ),
@@ -696,11 +698,7 @@ pub fn init_plugin_man() {
 
 // Checks if the plugin manager is initialized
 pub fn check_plugin_man(pmg: &Option<AdiPluginMan>) -> bool {
-    if pmg.is_some() {
-        true
-    } else {
-        false
-    }
+    if pmg.is_some() { true } else { false }
 }
 
 // Loads a plugin using the given path
@@ -861,7 +859,9 @@ pub fn set_plugin_config(path: String, key: String, value: ConfigTypes) -> Resul
 }
 
 pub fn call_func_plugins(func: String) {
-    if !check_plugins_enabled() { return }
+    if !check_plugins_enabled() {
+        return;
+    }
     let pmg = PLUGIN_MAN.lock().unwrap();
 
     if let Some(plugin_man) = pmg.as_ref() {

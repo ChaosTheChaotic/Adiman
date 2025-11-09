@@ -3,8 +3,8 @@ use flutter_rust_bridge::frb;
 use std::{
     path::PathBuf,
     sync::{
-        atomic::{AtomicBool, Ordering},
         RwLock,
+        atomic::{AtomicBool, Ordering},
     },
 };
 

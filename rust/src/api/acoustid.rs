@@ -1,6 +1,6 @@
 use crate::api::music_handler::SongMetadata;
-use anyhow::{bail, Context};
-use base64::{engine::general_purpose, Engine as _};
+use anyhow::{Context, bail};
+use base64::{Engine as _, engine::general_purpose};
 use rodio::source::Source;
 use rusty_chromaprint::{Configuration, FingerprintCompressor, Fingerprinter};
 use serde::Deserialize;

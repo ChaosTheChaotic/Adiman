@@ -6,6 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `download_file`
 // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `check_dir`, `fpre`, `validate_path`
 
 Future<bool> checkUnsafeApi() =>
@@ -13,3 +14,10 @@ Future<bool> checkUnsafeApi() =>
 
 Future<bool> checkPluginsEnabled() =>
     RustLib.instance.api.crateApiUtilsCheckPluginsEnabled();
+
+Future<String?> getLatestVersion() =>
+    RustLib.instance.api.crateApiUtilsGetLatestVersion();
+
+Future<bool> updateExecutable({required String arch, required String expath}) =>
+    RustLib.instance.api
+        .crateApiUtilsUpdateExecutable(arch: arch, expath: expath);

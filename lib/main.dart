@@ -175,6 +175,15 @@ class _AdimanState extends State<Adiman> {
   @override
   void initState() {
     super.initState();
+    if (SharedPreferencesService.instance.getBool('enableAutoUpdater') ?? false) {
+      WidgetsFlutterBinding.ensureInitialized();
+      runUpdater();
+    }
+  }
+
+  void runUpdater() async {
+    final updater = await AdimanUpdater.initialize();
+    updater.checkUpdate(context);
   }
 
   void updateThemeColor(Color newColor) {
