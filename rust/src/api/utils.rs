@@ -85,10 +85,9 @@ pub fn check_plugins_enabled() -> bool {
 }
 
 pub async fn get_latest_version() -> Option<String> {
-    let client = reqwest::Client::new();
     let url = "https://api.github.com/repos/ChaosTheChaotic/Adiman/releases/latest";
 
-    let response = match client.get(url).send().await {
+    let response = match reqwest::get(url).await {
         Ok(res) => res,
         Err(e) => {
             println!("Error making request to {}: {}", url, e);
