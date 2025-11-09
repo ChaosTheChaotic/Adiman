@@ -62,6 +62,7 @@ extern "ExtismHost" {
     fn unsafe_request(request: HttpRequest) -> HttpResponse;
     // Returns a string starting with ERR on failure
     fn unsafe_get_env_var(var: String) -> String;
+    fn unsafe_set_env_var(var: String, value: String) -> bool;
 }
 
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]

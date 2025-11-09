@@ -756,7 +756,18 @@ host_fn!(unsafe_get_env_var(user_data: (); var: String) -> String {
     if !check_unsafe_api() {
         return Ok("ERR: Unsafe API disabled".to_string());
     }
-    Ok(std::env::var(var).unwrap_or("ERR: Failed to get env var".to_string()))
+    Ok(std::env::var(var).unwrap_or_else(|e| {
+        format!("ERR: Failed to get env var: {}", e)
+    }))
+});
+
+#[frb(ignore)]
+host_fn!(unsafe_set_env_var(user_data: (); var: String, value: String) -> bool {
+    if !check_unsafe_api() {
+        return Ok(false)
+    }
+    std::env::set_var(var, value);
+    Ok(true)
 });
 
 // A macro to decide how to format the functions for me
@@ -866,6 +877,7 @@ pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
         generic_func!(unsafe_request(request: HttpRequest) -> HttpResponse),
         // Unsafe utility functions
         generic_func!(unsafe_get_env_var(var: String) -> String),
+        generic_func!(unsafe_set_env_var(var: String, value: String) -> bool),
     ];
     b.with_functions(f)
 }
