@@ -141,3 +141,39 @@ Each config takes
 - default_val - The default value of the config, must match the ctype set above
 - key - The key via which your plugin might access the value
 - set_val - The value set by the user and what will be passed in through the key
+
+# Frontend additions
+To add items to the frontend to can add to the plugin metadata.
+```json
+{
+    "fad": {
+        "buttons": [
+            {
+                "name": "Example",
+                "icon": "info",
+                "location": "drawer",
+                "callback": "rf_function_name"
+            }
+        ],
+        "popups": [
+
+        ],
+        "screens": [
+
+        ]
+    }
+}
+```
+Adding buttons has 4 parameters: 
+- Name which is a string and the label on the button
+- Icon which is a string that corresponds to an icon in a set
+- Location which is an optional string that tells the frontend where to put the button
+- The callback which is a string that starts with either
+    - rf_ for a rust function
+    - scr_ for a screen
+    - pop_ for a popup
+
+## Other notes
+- Adding popups is not completed
+- Adding screens is not completed
+- Buttons calling popups or screens are not completed
