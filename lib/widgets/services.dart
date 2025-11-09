@@ -419,6 +419,7 @@ class AdimanUpdater {
               'Architecture $arch is unsupported - no github releases available'));
       return;
     }
+    ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(content: 'Updating executable'));
     final bool updateRes =
         await rust_utils.updateExecutable(arch: arch, expath: here);
     if (updateRes) {
