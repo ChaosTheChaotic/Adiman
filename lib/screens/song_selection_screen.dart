@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'dart:convert';
 import 'package:path/path.dart' as path;
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
 import 'package:adiman/src/rust/api/acoustid.dart' as acoustid;
+import 'package:adiman/src/rust/api/plugin_man.dart' as plugin_api;
 import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
 import 'package:flutter/material.dart';
 import 'package:adiman/main.dart';
@@ -84,6 +86,8 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
 
   List<String> customSeparators = [];
 
+  List<Map<String, dynamic>> _drawerPluginButtons = [];
+
   @override
   void initState() {
     super.initState();
@@ -122,11 +126,73 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     );
 
     _getVimBindings();
+    _loadPluginDrawerButtons();
 
     _searchController.addListener(_updateSearchResults);
     _selectedSortOption =
         (_currentPlaylistName == null) ? SortOption.title : SortOption.playlist;
     _sortSongs(_selectedSortOption);
+  }
+
+  void _loadPluginDrawerButtons() async {
+    try {
+      final buttonsJson = await plugin_api.getAllButtons(locationFilter: 'drawer');
+      final List<dynamic> decoded = jsonDecode(buttonsJson);
+      setState(() {
+        _drawerPluginButtons = decoded.map((item) {
+          return {
+            'pluginPath': item[0],
+            'button': item[1],
+          };
+        }).toList();
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(content: 'Error loading plugin drawer buttons $e'));
+      print('Error loading plugin drawer buttons: $e');
+    }
+  }
+
+  void _handlePluginButtonTap(Map<String, dynamic> buttonData) async {
+    final pluginPath = buttonData['pluginPath'];
+    final button = buttonData['button'];
+    String callback = button['callback'];
+
+    if (callback.startsWith("rf_")) {
+      callback = callback.substring(3);
+    }
+  }
+
+  Widget _buildPluginButtonTile(Map<String, dynamic> buttonData) {
+    final button = buttonData['button'];
+    final iconName = button['icon'];
+    final name = button['name'];
+    
+    // Map icon names to actual icons - you might want to expand this mapping
+    IconData getIconFromName(String? iconName) {
+      if (iconName == null) return Broken.cpu;
+      
+      final iconMap = {
+        'settings': Broken.setting_2,
+        'playlist': Broken.music_playlist,
+        'download': Broken.document_download,
+        'cd': Broken.cd,
+        'info': Broken.info_circle,
+        'search': Broken.search_normal,
+        'shuffle': Broken.shuffle,
+        'sort': Broken.sort,
+        'add': Broken.add,
+        'delete': Broken.trash,
+        'edit': Broken.edit,
+      };
+      
+      return iconMap[iconName] ?? Broken.cpu;
+    }
+  
+    return _buildMenuTile(
+      icon: getIconFromName(iconName),
+      title: name,
+      onTap: () => _handlePluginButtonTap(buttonData),
+    );
   }
 
   void _updateDominantColor() {
@@ -3243,7 +3309,31 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 title: 'Audio CD',
                                 onTap: _showAudioCDSelection,
                               ),
-                            ],
+			      if (_drawerPluginButtons.isNotEmpty) ...[
+      			        const SizedBox(height: 16),
+      			        Divider(
+      			          color: dominantColor.withValues(alpha: 0.2),
+      			          height: 1,
+      			        ),
+      			        const SizedBox(height: 16),
+      			        Padding(
+      			          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      			          child: GlowText(
+      			            'Plugin Actions',
+      			            glowColor: dominantColor.withValues(alpha: 0.2),
+      			            style: TextStyle(
+      			              fontSize: 16,
+      			              fontWeight: FontWeight.w600,
+      			              color: dominantColor.computeLuminance() > 0.01
+      			                  ? dominantColor
+      			                  : Theme.of(context).textTheme.bodyLarge?.color,
+      			            ),
+      			          ),
+      			        ),
+      			        const SizedBox(height: 8),
+      			        ..._drawerPluginButtons.map(_buildPluginButtonTile),
+      			                            ],
+			    ]
                           ),
                         ),
                       ],
