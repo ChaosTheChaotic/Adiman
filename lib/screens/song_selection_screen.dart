@@ -2387,7 +2387,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                       content: "Found metadata for song"));
                               Navigator.pop(context);
                               final new_song_meta = Song.fromMetadata(meta);
-                              print(new_song_meta.title);
                               await _showMetadataPreviewPopup(
                                   song, new_song_meta);
                             }
