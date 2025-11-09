@@ -1,7 +1,7 @@
 # Plugins
 As of update 1.3.0, Adiman now supports plugins.
 # Adding plugins
-> [!WARNING]
+> [!CAUTION]
 > Adding plugins is unsafe in itself as you allow random people to run arbitrary code on your machine.
 > I have done my best to ensure a level of security with the safe and unsafe APIs.
 > By choosing to add to plugins you accept all risk that comes with it
