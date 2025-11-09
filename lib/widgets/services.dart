@@ -411,9 +411,9 @@ class AdimanUpdater {
           content: 'OS is not linux - no github releases available'));
       return;
     }
-    final String arch = await SysInfo.kernelArchitecture.name
+    final String arch = SysInfo.kernelArchitecture.name
         .toLowerCase(); // I don't know what this actually returns
-    if (arch != "arm64" || arch != "x86_64") {
+    if (arch != "arm64" && arch != "x86_64") {
       ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
           content:
               'Architecture $arch is unsupported - no github releases available'));
