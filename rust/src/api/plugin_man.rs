@@ -843,6 +843,30 @@ impl AdiPluginMan {
             }
         }
     }
+
+    pub fn call_plugin_func(&self, func: &str, plugin: &str) {
+        if let Some(pin) = &self.plugin_meta.get(plugin) {
+            let ph = &pin.plugin;
+            let mut plugin_guard = match ph.lock() {
+                Ok(guard) => guard,
+                Err(e) => {
+                    eprintln!("Failed to lock plugin mutex for {plugin}: {e}");
+                    return;
+                }
+            };
+            if plugin_guard.function_exists(func) {
+                let res: Result<&str, extism::Error> = plugin_guard.call(func, ());
+                if let Err(e) = res {
+                    eprintln!("Failed running function {func} on {plugin} due to: {e}");
+                    return;
+                }
+            }
+        } else {
+            eprintln!("Failed to find {plugin} within hashmap");
+            return;
+        }
+    }
+
     pub fn get_all_buttons(&self, location_filter: Option<&str>) -> Vec<(String, FadButton)> {
         let mut all_buttons = Vec::new();
     
@@ -1194,6 +1218,19 @@ pub fn call_func_plugins(func: String) {
 
     if let Some(plugin_man) = pmg.as_ref() {
         plugin_man.call_func_plugins(&func);
+    } else {
+        eprintln!("{}", PluginManErr::PluginManNotLoaded);
+    }
+}
+
+pub fn call_plugin_func(func: String, plugin: String) {
+    if !check_plugins_enabled() {
+        return;
+    }
+    let pmg = PLUGIN_MAN.lock().unwrap();
+
+    if let Some(plugin_man) = pmg.as_ref() {
+        plugin_man.call_plugin_func(&func, &plugin);
     } else {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
     }
