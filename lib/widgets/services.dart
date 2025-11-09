@@ -416,7 +416,7 @@ class AdimanUpdater {
     if (arch != "arm64" || arch != "x86_64") {
       ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
           content:
-              'Architecture is unsupported - no github releases available'));
+              'Architecture $arch is unsupported - no github releases available'));
       return;
     }
     final bool updateRes =
