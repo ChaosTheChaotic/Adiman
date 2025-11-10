@@ -1,22 +1,18 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'dart:convert';
 import 'package:path/path.dart' as path;
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
 import 'package:adiman/src/rust/api/acoustid.dart' as acoustid;
-import 'package:adiman/src/rust/api/plugin_man.dart' as plugin_api;
 import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
 import 'package:flutter/material.dart';
 import 'package:adiman/main.dart';
 import 'package:adiman/widgets/miniplayer.dart';
-import 'package:adiman/widgets/plugin_popup.dart';
 import 'package:adiman/widgets/services.dart';
 import 'settings_screen.dart';
 import 'package:adiman/widgets/icon_buttons.dart';
 import 'package:adiman/widgets/misc.dart';
 import 'music_player_screen.dart';
-import 'plugin_template_screen.dart';
 import 'package:adiman/widgets/snackbar.dart';
 import 'playlist_reorder_screen.dart';
 import 'download_screen.dart';
@@ -24,6 +20,7 @@ import 'package:flutter_glow/flutter_glow.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:adiman/icons/broken_icons.dart';
+import 'package:adiman/widgets/plugin_service.dart';
 import 'plugins_screen.dart';
 
 class SongSelectionScreen extends StatefulWidget {
@@ -138,15 +135,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
 
   void _loadPluginDrawerButtons() async {
     try {
-      final buttonsJson = await plugin_api.getAllButtons(locationFilter: 'drawer');
-      final List<dynamic> decoded = jsonDecode(buttonsJson);
+      final buttons = await PluginService.getPluginButtons(locationFilter: 'drawer');
       setState(() {
-        _drawerPluginButtons = decoded.map((item) {
-          return {
-            'pluginPath': item[0],
-            'button': item[1],
-          };
-        }).toList();
+        _drawerPluginButtons = buttons;
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(content: 'Error loading plugin drawer buttons $e'));
@@ -154,139 +145,26 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     }
   }
 
-  void _handlePluginButtonTap(Map<String, dynamic> buttonData) async {
+  void _handlePluginButtonTap(Map<String, dynamic> buttonData) {
     final pluginPath = buttonData['pluginPath'];
     final button = buttonData['button'];
-    String callback = button['callback'];
-  
-    if (callback.startsWith("rf_")) {
-      callback = callback.substring(3);
-      plugin_api.callPluginFunc(func: callback, plugin: pluginPath);
-    } else if (callback.startsWith("scr_")) {
-      callback = callback.substring(4);
-      _showPluginScreen(pluginPath, callback, button);
-    } else if (callback.startsWith("pop_")) {
-      callback = callback.substring(4);
-      _showPluginPopup(pluginPath, callback, button);
-    }
-  }
-
-  void _showPluginScreen(String pluginPath, String screenName, Map<String, dynamic> button) async {
-    try {
-      final screensJson = await plugin_api.getAllScreens();
-      final List<dynamic> decoded = jsonDecode(screensJson);
-      
-      // Find the screen for this plugin
-      final screenData = decoded.firstWhere(
-        (item) => item[0] == pluginPath && _getScreenTitle(item[1]) == screenName,
-        orElse: () => null,
-      );
-      
-      if (screenData != null) {
-        final screen = screenData[1];
-        _navigateToPluginScreen(pluginPath, screen);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          AdiSnackbar(content: 'Screen "$screenName" not found in plugin'),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        AdiSnackbar(content: 'Error loading plugin screen: $e'),
-      );
-    }
-  }
-  
-  void _showPluginPopup(String pluginPath, String popupName, Map<String, dynamic> button) async {
-    try {
-      final popupsJson = await plugin_api.getAllPopups();
-      final List<dynamic> decoded = jsonDecode(popupsJson);
-      
-      // Find the popup for this plugin
-      final popupData = decoded.firstWhere(
-        (item) => item[0] == pluginPath && _getPopupTitle(item[1]) == popupName,
-        orElse: () => null,
-      );
-      
-      if (popupData != null) {
-        final popup = popupData[1];
-        _showPluginPopupDialog(pluginPath, popup);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          AdiSnackbar(content: 'Popup "$popupName" not found in plugin'),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        AdiSnackbar(content: 'Error loading plugin popup: $e'),
-      );
-    }
-  }
-
-  String _getScreenTitle(Map<String, dynamic> screen) {
-    return screen['title'] ?? 'Plugin Screen';
-  }
-  
-  String _getPopupTitle(Map<String, dynamic> popup) {
-    return popup['title'] ?? 'Plugin Popup';
-  }
-
-  void _navigateToPluginScreen(String pluginPath, Map<String, dynamic> screen) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PluginScreen(
-          pluginPath: pluginPath,
-          screen: screen,
-          dominantColor: dominantColor,
-        ),
-      ),
+    
+    PluginService.handleButtonCallback (
+      context: context,
+      callback: button['callback'],
+      pluginPath: pluginPath,
+      dominantColor: dominantColor,
+      button: button,
     );
   }
-
-void _showPluginPopupDialog(String pluginPath, Map<String, dynamic> popup) {
-  showDialog(
-    context: context,
-    builder: (context) => PluginPopupDialog(
-      pluginPath: pluginPath,
-      popup: popup,
-      dominantColor: dominantColor,
-    ),
-  );
-}
-
+  
   Widget _buildPluginButtonTile(Map<String, dynamic> buttonData) {
     final button = buttonData['button'];
     final iconName = button['icon'];
     final name = button['name'];
     
-    // Map icon names to actual icons - you might want to expand this mapping
-    IconData getIconFromName(String? iconName) {
-      if (iconName == null) return Broken.cpu;
-      
-      final iconMap = {
-        'settings': Broken.setting_2,
-        'playlist': Broken.music_playlist,
-        'download': Broken.document_download,
-        'cd': Broken.cd,
-        'info': Broken.info_circle,
-        'search': Broken.search_normal,
-        'shuffle': Broken.shuffle,
-        'sort': Broken.sort,
-        'add': Broken.add,
-        'delete': Broken.trash,
-        'edit': Broken.edit,
-	'arrow_right': Broken.arrow_right,
-	'arrow_left': Broken.arrow_left,
-	'arrow_up': Broken.arrow_up,
-	'arrow_down': Broken.arrow_down,
-      };
-      
-      return iconMap[iconName] ?? Broken.cpu;
-    }
-  
     return _buildMenuTile(
-      icon: getIconFromName(iconName),
+      icon: PluginService.getIconFromName(iconName), // Use shared service
       title: name,
       onTap: () => _handlePluginButtonTap(buttonData),
     );

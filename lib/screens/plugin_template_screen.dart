@@ -1,7 +1,7 @@
-import 'package:adiman/src/rust/api/plugin_man.dart' as plugin_api;
 import 'package:flutter/material.dart';
 import 'package:flutter_glow/flutter_glow.dart';
 import 'package:adiman/icons/broken_icons.dart';
+import 'package:adiman/widgets/plugin_service.dart';
 
 class PluginScreen extends StatefulWidget {
   final String pluginPath;
@@ -64,14 +64,12 @@ class _PluginScreenState extends State<PluginScreen> {
     final screen = widget.screen;
     final children = <Widget>[];
 
-    // Add labels first
     if (screen['labels'] != null) {
       for (final label in screen['labels']) {
         children.add(_buildLabel(label));
       }
     }
 
-    // Then add buttons
     if (screen['buttons'] != null) {
       for (final button in screen['buttons']) {
         children.add(_buildButton(button));
@@ -151,28 +149,8 @@ class _PluginScreenState extends State<PluginScreen> {
   }
 
   Widget _buildButtonIcon(String? iconName) {
-    IconData getIconFromName(String? iconName) {
-      if (iconName == null) return Broken.cpu;
-      
-      final iconMap = {
-        'settings': Broken.setting_2,
-        'playlist': Broken.music_playlist,
-        'download': Broken.document_download,
-        'cd': Broken.cd,
-        'info': Broken.info_circle,
-        'search': Broken.search_normal,
-        'shuffle': Broken.shuffle,
-        'sort': Broken.sort,
-        'add': Broken.add,
-        'delete': Broken.trash,
-        'edit': Broken.edit,
-      };
-      
-      return iconMap[iconName] ?? Broken.cpu;
-    }
-
     return GlowIcon(
-      getIconFromName(iconName),
+      PluginService.getIconFromName(iconName),
       color: widget.dominantColor.computeLuminance() > 0.01
           ? widget.dominantColor
           : Colors.white,
@@ -182,22 +160,12 @@ class _PluginScreenState extends State<PluginScreen> {
   }
 
   void _handleButtonCallback(Map<String, dynamic> button) {
-    final callback = button['callback'];
-    if (callback.startsWith("rf_")) {
-      final func = callback.substring(3);
-      plugin_api.callPluginFunc(func: func, plugin: widget.pluginPath);
-    } else if (callback.startsWith("scr_")) {
-      final screenName = callback.substring(4);
-      _showPluginScreen(widget.pluginPath, screenName, button);
-    } else if (callback.startsWith("pop_")) {
-      final popupName = callback.substring(4);
-      _showPluginPopup(widget.pluginPath, popupName, button);
-    }
-  }
-
-  void _showPluginScreen(String pluginPath, String screenName, Map<String, dynamic> button) {
-  }
-
-  void _showPluginPopup(String pluginPath, String popupName, Map<String, dynamic> button) {
+    PluginService.handleButtonCallback(
+      context: context,
+      callback: button['callback'],
+      pluginPath: widget.pluginPath,
+      dominantColor: widget.dominantColor,
+      button: button,
+    );
   }
 }
