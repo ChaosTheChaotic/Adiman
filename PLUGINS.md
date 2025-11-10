@@ -1,6 +1,11 @@
 # Plugins
 As of update 1.3.0, Adiman now supports plugins.
 # Adding plugins
+> [!CAUTION]
+> Adding plugins is unsafe in itself as you allow random people to run arbitrary code on your machine.
+> I have done my best to ensure a level of security with the safe and unsafe APIs.
+> By choosing to add to plugins you accept all risk that comes with it
+> By enabling unsafe APIs (which let plugins to essentially anything on your machine), you also accept the greater risk that comes with it
 - In the app in settings, enable plugins and specify a plugin directory (or use the default one)
 - Create a folder inside the plugin directory (optional)
 - Ensure the `.json` file (if any) has the same name as the `.wasm` file (the `.wasm` file is checked for first)
@@ -136,3 +141,39 @@ Each config takes
 - default_val - The default value of the config, must match the ctype set above
 - key - The key via which your plugin might access the value
 - set_val - The value set by the user and what will be passed in through the key
+
+# Frontend additions
+To add items to the frontend to can add to the plugin metadata.
+```json
+{
+    "fad": {
+        "buttons": [
+            {
+                "name": "Example",
+                "icon": "info",
+                "location": "drawer",
+                "callback": "rf_function_name"
+            }
+        ],
+        "popups": [
+
+        ],
+        "screens": [
+
+        ]
+    }
+}
+```
+Adding buttons has 4 parameters: 
+- Name which is a string and the label on the button
+- Icon which is a string that corresponds to an icon in a set
+- Location which is an optional string that tells the frontend where to put the button
+- The callback which is a string that starts with either
+    - rf_ for a rust function
+    - scr_ for a screen
+    - pop_ for a popup
+
+## Other notes
+- Adding popups is not completed
+- Adding screens is not completed
+- Buttons calling popups or screens are not completed
