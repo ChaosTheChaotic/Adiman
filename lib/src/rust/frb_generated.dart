@@ -3289,11 +3289,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FadPopup dco_decode_fad_popup(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
     return FadPopup(
-      buttons: dco_decode_opt_list_fad_button(arr[0]),
-      labels: dco_decode_opt_list_fad_label(arr[1]),
+      title: dco_decode_opt_String(arr[0]),
+      buttons: dco_decode_opt_list_fad_button(arr[1]),
+      labels: dco_decode_opt_list_fad_label(arr[2]),
     );
   }
 
@@ -3301,11 +3302,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FadScreen dco_decode_fad_screen(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
     return FadScreen(
-      buttons: dco_decode_opt_list_fad_button(arr[0]),
-      labels: dco_decode_opt_list_fad_label(arr[1]),
+      title: dco_decode_opt_String(arr[0]),
+      buttons: dco_decode_opt_list_fad_button(arr[1]),
+      labels: dco_decode_opt_list_fad_label(arr[2]),
     );
   }
 
@@ -3928,17 +3930,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   FadPopup sse_decode_fad_popup(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_title = sse_decode_opt_String(deserializer);
     var var_buttons = sse_decode_opt_list_fad_button(deserializer);
     var var_labels = sse_decode_opt_list_fad_label(deserializer);
-    return FadPopup(buttons: var_buttons, labels: var_labels);
+    return FadPopup(title: var_title, buttons: var_buttons, labels: var_labels);
   }
 
   @protected
   FadScreen sse_decode_fad_screen(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_title = sse_decode_opt_String(deserializer);
     var var_buttons = sse_decode_opt_list_fad_button(deserializer);
     var var_labels = sse_decode_opt_list_fad_label(deserializer);
-    return FadScreen(buttons: var_buttons, labels: var_labels);
+    return FadScreen(
+        title: var_title, buttons: var_buttons, labels: var_labels);
   }
 
   @protected
@@ -4653,6 +4658,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_fad_popup(FadPopup self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_opt_String(self.title, serializer);
     sse_encode_opt_list_fad_button(self.buttons, serializer);
     sse_encode_opt_list_fad_label(self.labels, serializer);
   }
@@ -4660,6 +4666,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_fad_screen(FadScreen self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_opt_String(self.title, serializer);
     sse_encode_opt_list_fad_button(self.buttons, serializer);
     sse_encode_opt_list_fad_label(self.labels, serializer);
   }

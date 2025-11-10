@@ -235,43 +235,49 @@ class FadLabel {
 }
 
 class FadPopup {
+  final String? title;
   final List<FadButton>? buttons;
   final List<FadLabel>? labels;
 
   const FadPopup({
+    this.title,
     this.buttons,
     this.labels,
   });
 
   @override
-  int get hashCode => buttons.hashCode ^ labels.hashCode;
+  int get hashCode => title.hashCode ^ buttons.hashCode ^ labels.hashCode;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is FadPopup &&
           runtimeType == other.runtimeType &&
+          title == other.title &&
           buttons == other.buttons &&
           labels == other.labels;
 }
 
 class FadScreen {
+  final String? title;
   final List<FadButton>? buttons;
   final List<FadLabel>? labels;
 
   const FadScreen({
+    this.title,
     this.buttons,
     this.labels,
   });
 
   @override
-  int get hashCode => buttons.hashCode ^ labels.hashCode;
+  int get hashCode => title.hashCode ^ buttons.hashCode ^ labels.hashCode;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is FadScreen &&
           runtimeType == other.runtimeType &&
+          title == other.title &&
           buttons == other.buttons &&
           labels == other.labels;
 }

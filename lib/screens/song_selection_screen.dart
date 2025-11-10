@@ -10,11 +10,13 @@ import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
 import 'package:flutter/material.dart';
 import 'package:adiman/main.dart';
 import 'package:adiman/widgets/miniplayer.dart';
+import 'package:adiman/widgets/plugin_popup.dart';
 import 'package:adiman/widgets/services.dart';
 import 'settings_screen.dart';
 import 'package:adiman/widgets/icon_buttons.dart';
 import 'package:adiman/widgets/misc.dart';
 import 'music_player_screen.dart';
+import 'plugin_template_screen.dart';
 import 'package:adiman/widgets/snackbar.dart';
 import 'playlist_reorder_screen.dart';
 import 'download_screen.dart';
@@ -156,16 +158,102 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     final pluginPath = buttonData['pluginPath'];
     final button = buttonData['button'];
     String callback = button['callback'];
-
+  
     if (callback.startsWith("rf_")) {
       callback = callback.substring(3);
       plugin_api.callPluginFunc(func: callback, plugin: pluginPath);
     } else if (callback.startsWith("scr_")) {
       callback = callback.substring(4);
+      _showPluginScreen(pluginPath, callback, button);
     } else if (callback.startsWith("pop_")) {
       callback = callback.substring(4);
+      _showPluginPopup(pluginPath, callback, button);
     }
   }
+
+  void _showPluginScreen(String pluginPath, String screenName, Map<String, dynamic> button) async {
+    try {
+      final screensJson = await plugin_api.getAllScreens();
+      final List<dynamic> decoded = jsonDecode(screensJson);
+      
+      // Find the screen for this plugin
+      final screenData = decoded.firstWhere(
+        (item) => item[0] == pluginPath && _getScreenTitle(item[1]) == screenName,
+        orElse: () => null,
+      );
+      
+      if (screenData != null) {
+        final screen = screenData[1];
+        _navigateToPluginScreen(pluginPath, screen);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          AdiSnackbar(content: 'Screen "$screenName" not found in plugin'),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        AdiSnackbar(content: 'Error loading plugin screen: $e'),
+      );
+    }
+  }
+  
+  void _showPluginPopup(String pluginPath, String popupName, Map<String, dynamic> button) async {
+    try {
+      final popupsJson = await plugin_api.getAllPopups();
+      final List<dynamic> decoded = jsonDecode(popupsJson);
+      
+      // Find the popup for this plugin
+      final popupData = decoded.firstWhere(
+        (item) => item[0] == pluginPath && _getPopupTitle(item[1]) == popupName,
+        orElse: () => null,
+      );
+      
+      if (popupData != null) {
+        final popup = popupData[1];
+        _showPluginPopupDialog(pluginPath, popup);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          AdiSnackbar(content: 'Popup "$popupName" not found in plugin'),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        AdiSnackbar(content: 'Error loading plugin popup: $e'),
+      );
+    }
+  }
+
+  String _getScreenTitle(Map<String, dynamic> screen) {
+    return screen['title'] ?? 'Plugin Screen';
+  }
+  
+  String _getPopupTitle(Map<String, dynamic> popup) {
+    return popup['title'] ?? 'Plugin Popup';
+  }
+
+  void _navigateToPluginScreen(String pluginPath, Map<String, dynamic> screen) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PluginScreen(
+          pluginPath: pluginPath,
+          screen: screen,
+          dominantColor: dominantColor,
+        ),
+      ),
+    );
+  }
+
+void _showPluginPopupDialog(String pluginPath, Map<String, dynamic> popup) {
+  showDialog(
+    context: context,
+    builder: (context) => PluginPopupDialog(
+      pluginPath: pluginPath,
+      popup: popup,
+      dominantColor: dominantColor,
+    ),
+  );
+}
 
   Widget _buildPluginButtonTile(Map<String, dynamic> buttonData) {
     final button = buttonData['button'];

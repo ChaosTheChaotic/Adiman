@@ -4111,11 +4111,13 @@ impl SseDecode for crate::api::plugin_man::FadLabel {
 impl SseDecode for crate::api::plugin_man::FadPopup {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_title = <Option<String>>::sse_decode(deserializer);
         let mut var_buttons =
             <Option<Vec<crate::api::plugin_man::FadButton>>>::sse_decode(deserializer);
         let mut var_labels =
             <Option<Vec<crate::api::plugin_man::FadLabel>>>::sse_decode(deserializer);
         return crate::api::plugin_man::FadPopup {
+            title: var_title,
             buttons: var_buttons,
             labels: var_labels,
         };
@@ -4125,11 +4127,13 @@ impl SseDecode for crate::api::plugin_man::FadPopup {
 impl SseDecode for crate::api::plugin_man::FadScreen {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_title = <Option<String>>::sse_decode(deserializer);
         let mut var_buttons =
             <Option<Vec<crate::api::plugin_man::FadButton>>>::sse_decode(deserializer);
         let mut var_labels =
             <Option<Vec<crate::api::plugin_man::FadLabel>>>::sse_decode(deserializer);
         return crate::api::plugin_man::FadScreen {
+            title: var_title,
             buttons: var_buttons,
             labels: var_labels,
         };
@@ -5196,6 +5200,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::plugin_man::FadLabel>
 impl flutter_rust_bridge::IntoDart for crate::api::plugin_man::FadPopup {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
+            self.title.into_into_dart().into_dart(),
             self.buttons.into_into_dart().into_dart(),
             self.labels.into_into_dart().into_dart(),
         ]
@@ -5217,6 +5222,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::plugin_man::FadPopup>
 impl flutter_rust_bridge::IntoDart for crate::api::plugin_man::FadScreen {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
+            self.title.into_into_dart().into_dart(),
             self.buttons.into_into_dart().into_dart(),
             self.labels.into_into_dart().into_dart(),
         ]
@@ -5557,6 +5563,7 @@ impl SseEncode for crate::api::plugin_man::FadLabel {
 impl SseEncode for crate::api::plugin_man::FadPopup {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Option<String>>::sse_encode(self.title, serializer);
         <Option<Vec<crate::api::plugin_man::FadButton>>>::sse_encode(self.buttons, serializer);
         <Option<Vec<crate::api::plugin_man::FadLabel>>>::sse_encode(self.labels, serializer);
     }
@@ -5565,6 +5572,7 @@ impl SseEncode for crate::api::plugin_man::FadPopup {
 impl SseEncode for crate::api::plugin_man::FadScreen {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Option<String>>::sse_encode(self.title, serializer);
         <Option<Vec<crate::api::plugin_man::FadButton>>>::sse_encode(self.buttons, serializer);
         <Option<Vec<crate::api::plugin_man::FadLabel>>>::sse_encode(self.labels, serializer);
     }

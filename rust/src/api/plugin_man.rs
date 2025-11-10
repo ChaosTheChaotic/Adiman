@@ -119,12 +119,14 @@ pub struct FadLabel {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FadPopup {
+    pub title: Option<String>,
     pub buttons: Option<Vec<FadButton>>,
     pub labels: Option<Vec<FadLabel>>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FadScreen {
+    pub title: Option<String>,
     pub buttons: Option<Vec<FadButton>>,
     pub labels: Option<Vec<FadLabel>>,
 }
