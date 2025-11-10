@@ -276,6 +276,10 @@ void _showPluginPopupDialog(String pluginPath, Map<String, dynamic> popup) {
         'add': Broken.add,
         'delete': Broken.trash,
         'edit': Broken.edit,
+	'arrow_right': Broken.arrow_right,
+	'arrow_left': Broken.arrow_left,
+	'arrow_up': Broken.arrow_up,
+	'arrow_down': Broken.arrow_down,
       };
       
       return iconMap[iconName] ?? Broken.cpu;
