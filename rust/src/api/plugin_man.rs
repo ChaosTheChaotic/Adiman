@@ -142,7 +142,7 @@ pub type PluginConfig = HashMap<String, ConfigTypes>; // A key-value pair with a
 
 pub struct PluginInode {
     pub plugin: Arc<Mutex<Plugin>>, // Plugin handle wrapped in an Arc and Mutex because frb keeps generating code trying to clone it
-    pub config: PluginConfig,       // Plugins config
+    pub config: Option<PluginConfig>,       // Plugins config
     pub fad: Option<FadConfig>,     // Frontend additions config
 }
 
@@ -236,7 +236,7 @@ impl AdiPluginMan {
 
     fn read_plugin_metadata(
         metadata_path: &std::path::Path,
-    ) -> Result<(Vec<RpcConfig>, Option<FadConfig>), PluginManErr> {
+    ) -> Result<(Option<Vec<RpcConfig>>, Option<FadConfig>), PluginManErr> {
         let metadata_content = std::fs::read_to_string(metadata_path).map_err(|_| {
             PluginManErr::MetadataNotFound(metadata_path.to_string_lossy().to_string())
         })?;
@@ -245,40 +245,44 @@ impl AdiPluginMan {
             .map_err(|_| PluginManErr::InvalidMeta(metadata_path.to_string_lossy().to_string()))?;
 
         let rpc_array = match metadata.get("rpc") {
-            Some(Value::Array(arr)) => arr,
+            Some(Value::Array(arr)) => Some(arr),
             Some(_) => {
                 // rpc exists but is not an array
                 eprintln!(
                     "Warning: 'rpc' field is not an array in metadata file: {}",
                     metadata_path.display()
                 );
-                return Ok((Vec::new(), None));
+                None
             }
             None => {
                 // rpc doesent exist
-                return Ok((Vec::new(), None));
+                None
             }
         };
 
-        let mut valid_configs = Vec::new();
 
-        for (index, item) in rpc_array.iter().enumerate() {
-            if let Ok(rpc_config) = from_value::<RpcConfig>(item.clone()) {
-                if Self::validate_rpc(&rpc_config) {
-                    valid_configs.push(rpc_config);
+        let mut valid_configs: Option<Vec<RpcConfig>> = None;
+        if let Some(arr) = rpc_array {
+            valid_configs = Some(Vec::new());
+            let inner = valid_configs.as_mut().unwrap();
+            for (index, item) in arr.iter().enumerate() {
+                if let Ok(rpc_config) = from_value::<RpcConfig>(item.clone()) {
+                    if Self::validate_rpc(&rpc_config) {
+                        inner.push(rpc_config);
+                    } else {
+                        eprintln!(
+                            "Warning: Invalid RPC config at index {} in metadata file: {}",
+                            index,
+                            metadata_path.display()
+                        );
+                    }
                 } else {
                     eprintln!(
-                        "Warning: Invalid RPC config at index {} in metadata file: {}",
+                        "Warning: Failed to parse RPC config at index {} in metadata file: {}",
                         index,
                         metadata_path.display()
                     );
                 }
-            } else {
-                eprintln!(
-                    "Warning: Failed to parse RPC config at index {} in metadata file: {}",
-                    index,
-                    metadata_path.display()
-                );
             }
         }
 
@@ -289,7 +293,6 @@ impl AdiPluginMan {
                     Self::validate_and_filter_fad_config(&mut fad);
                     Some(fad)
                 }
-                Ok(fad) => Some(fad),
                 Err(e) => {
                     eprintln!(
                         "Warning: Failed to parse FAD config in metadata file: {}, error: {}",
@@ -590,7 +593,14 @@ impl AdiPluginMan {
 
         // Update in-memory configuration only if plugin is loaded
         if let Some(plugin_inode) = self.plugin_meta.get_mut(&path) {
-            plugin_inode.config.insert(key, value);
+            if let Some(config) = &mut plugin_inode.config {
+                config.insert(key, value);
+            } else {
+                // If no config exists yet, create a new one
+                let mut new_config = PluginConfig::new();
+                new_config.insert(key, value);
+                plugin_inode.config = Some(new_config);
+            }
         }
 
         Ok(())
@@ -698,32 +708,38 @@ impl AdiPluginMan {
                     Ok((rpc, fad)) => (rpc, fad),
                     Err(_) => {
                         eprintln!("Warning: Failed to read metadata, using empty config");
-                        (Vec::new(), None)
+                        (Some(Vec::new()), None)
                     }
                 }
             } else {
                 eprintln!("Warning: No metadata found, using empty config");
-                (Vec::new(), None)
+                (Some(Vec::new()), None)
             };
 
-            let plugin_config = Self::rpc2plugin(rpc_configs);
+            let mut plugin_config: Option<PluginConfig> = None;
+            if let Some(configs) = rpc_configs {
+                plugin_config = Some(Self::rpc2plugin(configs));
+            }
 
             let pfile = Wasm::file(path.clone());
+            let mut m = Manifest::new([pfile]);
 
-            let config_iter = plugin_config.iter().map(|(k, v)| {
-                let value_string = match v {
-                    ConfigTypes::String(s) => s.to_string(),
-                    ConfigTypes::Bool(b) => b.to_string(),
-                    ConfigTypes::Int(i) => i.to_string(),
-                    ConfigTypes::UInt(u) => u.to_string(),
-                    ConfigTypes::BigInt(i) => i.to_string(),
-                    ConfigTypes::BigUInt(u) => u.to_string(),
-                    ConfigTypes::Float(f) => f.to_string(),
-                };
-                (k.clone(), value_string)
-            });
+            if let Some(config) = &plugin_config {
+                let config_iter = config.iter().map(|(k, v)| {
+                    let value_string = match v {
+                        ConfigTypes::String(s) => s.to_string(),
+                        ConfigTypes::Bool(b) => b.to_string(),
+                        ConfigTypes::Int(i) => i.to_string(),
+                        ConfigTypes::UInt(u) => u.to_string(),
+                        ConfigTypes::BigInt(i) => i.to_string(),
+                        ConfigTypes::BigUInt(u) => u.to_string(),
+                        ConfigTypes::Float(f) => f.to_string(),
+                    };
+                    (k.clone(), value_string)
+                });
+                m = m.with_config(config_iter);
+            }
 
-            let m = Manifest::new([pfile]).with_config(config_iter);
             let plugin: Plugin = add_functions(PluginBuilder::new(m).with_wasi(false))
                 .build()
                 .unwrap();
@@ -785,7 +801,7 @@ impl AdiPluginMan {
         }
     }
 
-    pub fn get_plugin_config(&self, path: String) -> Result<PluginConfig, PluginManErr> {
+    pub fn get_plugin_config(&self, path: String) -> Result<Option<PluginConfig>, PluginManErr> {
         self.plugin_meta
             .get(&path)
             .map(|pinode| pinode.config.clone())
