@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_glow/flutter_glow.dart';
 import 'package:adiman/main.dart';
-import 'package:adiman/services/services.dart';
+import 'package:adiman/services/prefs_service.dart';
 import 'package:adiman/widgets/icon_buttons.dart';
 import 'package:adiman/widgets/snackbar.dart';
 import 'package:adiman/icons/broken_icons.dart';
