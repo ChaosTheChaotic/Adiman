@@ -88,6 +88,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   List<String> customSeparators = [];
 
   List<Map<String, dynamic>> _drawerPluginButtons = [];
+  List<Map<String, dynamic>> _selectPlaylistPluginButtons = [];
 
   @override
   void initState() {
@@ -128,11 +129,24 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
 
     _getVimBindings();
     _loadPluginDrawerButtons();
+    _loadSelectPlaylistPluginButtons();
 
     _searchController.addListener(_updateSearchResults);
     _selectedSortOption =
         (_currentPlaylistName == null) ? SortOption.title : SortOption.playlist;
     _sortSongs(_selectedSortOption);
+  }
+
+  void _loadSelectPlaylistPluginButtons() async {
+    try {
+      final buttons = await PluginService.getPluginButtons(locationFilter: 'selectplaylist');
+      setState(() {
+        _selectPlaylistPluginButtons = buttons;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(content: 'Error loading playlist plugin buttons $e'));
+      print('Error loading select playlist plugin buttons: $e');
+    }
   }
 
   void _loadPluginDrawerButtons() async {
@@ -166,8 +180,20 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     final name = button['name'];
     
     return _buildMenuTile(
-      icon: PluginService.getIconFromName(iconName), // Use shared service
+      icon: PluginService.getIconFromName(iconName),
       title: name,
+      onTap: () => _handlePluginButtonTap(buttonData),
+    );
+  }
+
+  Widget _buildSelectPlaylistPluginButton(Map<String, dynamic> buttonData) {
+    final button = buttonData['button'];
+    final iconName = button['icon'];
+    final name = button['name'];
+    
+    return _buildPlaylistOptionButton(
+      icon: PluginService.getIconFromName(iconName),
+      label: name,
       onTap: () => _handlePluginButtonTap(buttonData),
     );
   }
@@ -734,6 +760,15 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                               ),
                             ),
                           ),
+			  if (_selectPlaylistPluginButtons.isNotEmpty) ...[
+			    const SizedBox(height: 16),
+			    Divider(
+			      color: dominantColor.withValues(alpha: 0.2),
+			      height: 1,
+			    ),
+			    const SizedBox(height: 16),
+			    ..._selectPlaylistPluginButtons.map(_buildSelectPlaylistPluginButton),
+			  ],
                         ],
                       ),
                     ),
