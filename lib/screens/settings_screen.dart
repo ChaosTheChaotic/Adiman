@@ -11,6 +11,7 @@ import 'package:adiman/services/mpris_service.dart';
 import 'package:adiman/services/prefs_service.dart';
 import 'package:adiman/services/playlist_order_service.dart';
 import 'package:adiman/services/update_service.dart';
+import 'package:adiman/services/plugin_service.dart';
 import 'package:adiman/main.dart';
 import 'package:adiman/widgets/icon_buttons.dart';
 import 'package:adiman/widgets/misc.dart';
@@ -103,6 +104,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final GlobalKey<MiniPlayerState> _miniPlayerKey =
       GlobalKey<MiniPlayerState>();
 
+  List<Map<String, dynamic>> _settingsPluginButtons = [];
+
   @override
   void initState() {
     super.initState();
@@ -120,6 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         TextEditingController(text: _waveformBars.toString());
     _particleCountController =
         TextEditingController(text: _particleCount.toString());
+    _loadSettingsPluginButtons();
     _loadChecks();
   }
 
@@ -254,6 +258,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return path.replaceFirst('~', home);
     }
     return path;
+  }
+
+  void _loadSettingsPluginButtons() async {
+    try {
+      final buttons = await PluginService.getPluginButtons(locationFilter: 'settings');
+      setState(() {
+        _settingsPluginButtons = buttons;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(content: 'Error loading settings plugin buttons $e'));
+      print('Error loading settings plugin buttons: $e');
+    }
+  }
+
+  Widget _buildSettingsPluginButtonTile(Map<String, dynamic> buttonData) {
+    final button = buttonData['button'];
+    final iconName = button['icon'];
+    final name = button['name'];
+    
+    return _buildActionButton(
+      icon: PluginService.getIconFromName(iconName),
+      label: name,
+      isLoading: false,
+      onPressed: () => handlePluginButtonTap(buttonData, context, _currentColor),
+    );
   }
 
   Future<void> _saveAutoConvert(bool value) async {
@@ -1850,7 +1879,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   title: 'Enable Auto Updater',
                                   value: _enableAutoUpdater,
                                   onChanged: _saveEnableAutoUpdater),
-                            ])
+                            ]),
+			    if (_settingsPluginButtons.isNotEmpty) ...[ 
+			      _buildSettingsExpansionTile(
+			        title: 'Plugin Actions',
+			        icon: Broken.cpu,
+			        children: _settingsPluginButtons.map(_buildSettingsPluginButtonTile).toList(),
+			      ),
+		      ]
                       ],
                     ),
                   ),

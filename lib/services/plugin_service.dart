@@ -174,3 +174,16 @@ class PluginService {
     }
   }
 }
+
+void handlePluginButtonTap(Map<String, dynamic> buttonData, BuildContext context, Color currentColor) {
+  final pluginPath = buttonData['pluginPath'];
+  final button = buttonData['button'];
+  
+  PluginService.handleButtonCallback(
+    context: context,
+    callback: button['callback'],
+    pluginPath: pluginPath,
+    dominantColor: currentColor,
+    button: button,
+  );
+}

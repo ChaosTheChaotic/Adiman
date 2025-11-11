@@ -160,19 +160,6 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
       print('Error loading plugin drawer buttons: $e');
     }
   }
-
-  void _handlePluginButtonTap(Map<String, dynamic> buttonData) {
-    final pluginPath = buttonData['pluginPath'];
-    final button = buttonData['button'];
-    
-    PluginService.handleButtonCallback (
-      context: context,
-      callback: button['callback'],
-      pluginPath: pluginPath,
-      dominantColor: dominantColor,
-      button: button,
-    );
-  }
   
   Widget _buildPluginButtonTile(Map<String, dynamic> buttonData) {
     final button = buttonData['button'];
@@ -182,7 +169,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     return _buildMenuTile(
       icon: PluginService.getIconFromName(iconName),
       title: name,
-      onTap: () => _handlePluginButtonTap(buttonData),
+      onTap: () => handlePluginButtonTap(buttonData, context, dominantColor),
     );
   }
 
@@ -194,7 +181,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
     return _buildPlaylistOptionButton(
       icon: PluginService.getIconFromName(iconName),
       label: name,
-      onTap: () => _handlePluginButtonTap(buttonData),
+      onTap: () => handlePluginButtonTap(buttonData, context, dominantColor),
     );
   }
 
