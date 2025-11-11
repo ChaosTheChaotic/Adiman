@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:adiman/src/rust/api/plugin_man.dart' as plugin_api;
+import 'package:adiman/widgets/icon_buttons.dart';
 import 'package:adiman/widgets/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:adiman/icons/broken_icons.dart';
@@ -129,8 +130,8 @@ class PluginService {
   ) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => PluginScreen(
+      NamidaPageTransitions.createRoute(
+        PluginScreen(
           pluginPath: pluginPath,
           screen: screen,
           dominantColor: dominantColor,
