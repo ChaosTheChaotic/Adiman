@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:adiman/main.dart';
 import 'package:adiman/services/mpris_service.dart';
 import 'package:adiman/services/prefs_service.dart';
+import 'package:adiman/services/plugin_service.dart';
 import 'package:adiman/widgets/seekbars.dart';
 import 'package:adiman/widgets/snackbar.dart';
 import 'package:adiman/widgets/volume.dart';
@@ -99,6 +100,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   late Animation<double> _lyricsEntranceOpacity;
   late AnimationController _rotationController;
   late Animation<double> _animation;
+
+  List<Map<String, dynamic>> _songOptionsPluginButtons = [];
 
   @override
   void initState() {
@@ -221,6 +224,20 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     ).animate(_rotationController);
 
     _rotationController.repeat();
+    _loadSongOptionsPluginButtons();
+  }
+
+  void _loadSongOptionsPluginButtons() async {
+    try {
+      final buttons = await PluginService.getPluginButtons(locationFilter: 'songopts');
+      if (mounted) {
+        setState(() {
+          _songOptionsPluginButtons = buttons;
+        });
+      }
+    } catch (e) {
+      print('Error loading song options plugin buttons: $e');
+    }
   }
 
   void _handleThemeColorChange() {
@@ -272,8 +289,22 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     }
   }
 
-  void _showPlaylistPopup(BuildContext context) {
+  Widget _buildPluginButtonTile(Map<String, dynamic> buttonData) {
+    final button = buttonData['button'];
+    final iconName = button['icon'];
+    final name = button['name'];
+    
+    return _buildPlaylistOptionButton(
+      icon: PluginService.getIconFromName(iconName),
+      label: name,
+      onTap: () => handlePluginButtonTap(buttonData, context, dominantColor)
+    );
+  }
+
+  void _showPlaylistPopup(BuildContext context) async {
     final currentSong = widget.song;
+    final List<Map<String, dynamic>> pluginButtons = 
+        await PluginService.getPluginButtons(locationFilter: 'songopts');
     showDialog(
       context: context,
       builder: (context) {
@@ -361,6 +392,17 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                         },
                         isDestructive: true,
                       ),
+		      if (pluginButtons.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Divider(
+                          color: dominantColor.withValues(alpha: 0.2),
+                          height: 1,
+                        ),
+                        const SizedBox(height: 12),
+                        ...pluginButtons.map((buttonData) => 
+                          _buildPluginButtonTile(buttonData)
+                        ),
+                      ],
                     ],
                   ),
                 ),
