@@ -149,17 +149,81 @@ To add items to the frontend to can add to the plugin metadata.
     "fad": {
         "buttons": [
             {
-                "name": "Example",
+                "name": "Example rust function",
                 "icon": "info",
                 "location": "drawer",
                 "callback": "rf_function_name"
+            },
+            {
+                "name": "Example popup",
+                "icon": "info",
+                "location": "drawer",
+                "callback": "pop_popup_name"
+            },
+            {
+                "name": "Example screen",
+                "icon": "info",
+                "location": "drawer",
+                "callback": "scr_screen_name"
             }
         ],
         "popups": [
-
+          {
+            "title": "popup_name",
+            "labels": [
+              {
+                "size": 14.0,
+                "text": "This is a test popup with multiple elements",
+                "color": "#FFFFFF"
+              },
+              {
+                "size": 12.0,
+                "text": "Labels appear first, then buttons in order",
+                "color": "#AAAAAA"
+              }
+            ],
+            "buttons": [
+              {
+                "name": "Open Screen",
+                "icon": "arrow_right",
+                "callback": "scr_screen_name"
+              },
+              {
+                "name": "Another Action",
+                "icon": "settings",
+                "callback": "rf_pello"
+              }
+            ]
+          }
         ],
         "screens": [
-
+          {
+            "title": "screen_name",
+            "labels": [
+              {
+                "size": 18.0,
+                "text": "Welcome to the Test Screen",
+                "color": "#FFFFFF"
+              },
+              {
+                "size": 14.0,
+                "text": "This is a description of what this screen does",
+                "color": "#CCCCCC"
+              }
+            ],
+            "buttons": [
+              {
+                "name": "Open Test Popup",
+                "icon": "info",
+                "callback": "pop_popup_name"
+              },
+              {
+                "name": "Call Rust Function",
+                "icon": "settings",
+                "callback": "rf_pello"
+              },
+            ]
+          }
         ]
     }
 }
@@ -167,13 +231,13 @@ To add items to the frontend to can add to the plugin metadata.
 Adding buttons has 4 parameters: 
 - Name which is a string and the label on the button
 - Icon which is a string that corresponds to an icon in a set
-- Location which is an optional string that tells the frontend where to put the button
+- Location which is an optional string that tells the frontend where to put the button, there are set options as
+    - drawer to have it put on the escape menu in the song selection screen
+    - songopts to have it put in the popup menu for song options in the music player screen
+    - selectplaylist to have it put in the popup menu for selecting a playlist in the song selection screen
+    - settings to have it added to a new settings area in settings
 - The callback which is a string that starts with either
     - rf_ for a rust function
     - scr_ for a screen
     - pop_ for a popup
-
-## Other notes
-- Adding popups is not completed
-- Adding screens is not completed
-- Buttons calling popups or screens are not completed
+- On screens and popups, the labels appear first then the buttons

@@ -51,7 +51,7 @@ Future<String> setPluginConfig(
 Future<void> callFuncPlugins({required String func}) =>
     RustLib.instance.api.crateApiPluginManCallFuncPlugins(func: func);
 
-Future<void> callPluginFunc({required String func, required String plugin}) =>
+Future<bool> callPluginFunc({required String func, required String plugin}) =>
     RustLib.instance.api
         .crateApiPluginManCallPluginFunc(func: func, plugin: plugin);
 

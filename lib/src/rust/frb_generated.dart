@@ -186,7 +186,7 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiPluginManCallFuncPlugins({required String func});
 
-  Future<void> crateApiPluginManCallPluginFunc(
+  Future<bool> crateApiPluginManCallPluginFunc(
       {required String func, required String plugin});
 
   Future<void> crateApiMusicHandlerCancelDownload();
@@ -1325,7 +1325,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<void> crateApiPluginManCallPluginFunc(
+  Future<bool> crateApiPluginManCallPluginFunc(
       {required String func, required String plugin}) {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
@@ -1336,7 +1336,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             funcId: 35, port: port_);
       },
       codec: SseCodec(
-        decodeSuccessData: sse_decode_unit,
+        decodeSuccessData: sse_decode_bool,
         decodeErrorData: null,
       ),
       constMeta: kCrateApiPluginManCallPluginFuncConstMeta,

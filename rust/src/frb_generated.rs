@@ -1675,9 +1675,9 @@ fn wire__crate__api__plugin_man__call_plugin_func_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, ()>((move || {
-                    let output_ok = Result::<_, ()>::Ok({
-                        crate::api::plugin_man::call_plugin_func(api_func, api_plugin);
-                    })?;
+                    let output_ok = Result::<_, ()>::Ok(crate::api::plugin_man::call_plugin_func(
+                        api_func, api_plugin,
+                    ))?;
                     Ok(output_ok)
                 })())
             }
