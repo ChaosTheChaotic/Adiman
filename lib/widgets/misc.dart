@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AnimatedPopupWrapper extends StatefulWidget {
   final Widget child;
 
-  const AnimatedPopupWrapper({required this.child});
+  const AnimatedPopupWrapper({super.key, required this.child});
 
   @override
   State<AnimatedPopupWrapper> createState() => AnimatedPopupWrapperState();

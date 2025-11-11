@@ -120,6 +120,7 @@ Future<void> main() async {
   await SharedPreferencesService.init();
   if (SharedPreferencesService.instance.getBool('enablePlugins') ?? false) {
     await plugin_api.initPluginMan();
+    await loadEnabledPlugins();
   }
   await value_store.initValueStore();
   globalService = AdimanService();
@@ -131,6 +132,23 @@ Future<void> main() async {
   useDominantColorsNotifier.value =
       SharedPreferencesService.instance.getBool('useDominantColors') ?? true;
   runApp(const Adiman());
+}
+
+Future<void> loadEnabledPlugins() async {
+  final prefs = SharedPreferencesService.instance;
+  final enabledPlugins = prefs.getStringList('enabledPlugins') ?? [];
+
+  for (final pluginPath in enabledPlugins) {
+    try {
+      await plugin_api.loadPlugin(path: pluginPath);
+    } catch (e) {
+      print('Failed to load plugin $pluginPath on startup: $e');
+      // Remove from list if it fails to load
+      final updatedList =
+          enabledPlugins.where((path) => path != pluginPath).toList();
+      await prefs.setStringList('enabledPlugins', updatedList);
+    }
+  }
 }
 
 void syncRust() async {

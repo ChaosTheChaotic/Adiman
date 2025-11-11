@@ -130,16 +130,16 @@ class _PluginsScreenState extends State<PluginsScreen>
 
   Future<void> _loadPluginData() async {
     setState(() => isLoading = true);
-
+  
     try {
       _pluginDir = SharedPreferencesService.instance.getString('pluginDir') ??
           '~/AdiPlugins';
-
+  
       if (_pluginDir.startsWith('~')) {
         final home = Platform.environment['HOME'] ?? '';
         _pluginDir = _pluginDir.replaceFirst('~', home);
       }
-
+  
       final scannedPlugins = await rust_api.scanDir(path: _pluginDir);
       if (scannedPlugins != null) {
         setState(() {
@@ -147,12 +147,21 @@ class _PluginsScreenState extends State<PluginsScreen>
           filteredPlugins = List.from(availablePlugins);
         });
       }
-
+  
       final loaded = await rust_api.listLoadedPlugins();
+      
+      // Clean up saved plugins that no longer exist in the filesystem
+      final savedEnabledPlugins = SharedPreferencesService.instance.getStringList('enabledPlugins') ?? [];
+      final validEnabledPlugins = savedEnabledPlugins.where((path) => availablePlugins.contains(path)).toList();
+      
+      if (validEnabledPlugins.length != savedEnabledPlugins.length) {
+        await SharedPreferencesService.instance.setStringList('enabledPlugins', validEnabledPlugins);
+      }
+      
       setState(() {
         loadedPlugins = loaded;
       });
-
+  
       for (final plugin in availablePlugins) {
         _pluginLoadingStates[plugin] = false;
       }
@@ -172,6 +181,20 @@ class _PluginsScreenState extends State<PluginsScreen>
     }
   }
 
+  Future<void> _addEnabledPlugin(String pluginPath) async {
+    final currentList = SharedPreferencesService.instance.getStringList('enabledPlugins') ?? [];
+    if (!currentList.contains(pluginPath)) {
+      currentList.add(pluginPath);
+      await SharedPreferencesService.instance.setStringList('enabledPlugins', currentList);
+    }
+  }
+  
+  Future<void> _removeEnabledPlugin(String pluginPath) async {
+    final currentList = SharedPreferencesService.instance.getStringList('enabledPlugins') ?? [];
+    final updatedList = currentList.where((path) => path != pluginPath).toList();
+    await SharedPreferencesService.instance.setStringList('enabledPlugins', updatedList);
+  }
+
   Future<void> _togglePlugin(String pluginPath, bool currentlyLoaded) async {
     setState(() {
       _pluginLoadingStates[pluginPath] = true;
@@ -185,6 +208,7 @@ class _PluginsScreenState extends State<PluginsScreen>
           setState(() {
             loadedPlugins.remove(pluginPath);
           });
+	  await _removeEnabledPlugin(pluginPath);
           ScaffoldMessenger.of(context).showSnackBar(
             AdiSnackbar(
               backgroundColor: dominantColor,
@@ -200,6 +224,7 @@ class _PluginsScreenState extends State<PluginsScreen>
           setState(() {
             loadedPlugins.add(pluginPath);
           });
+	  await _addEnabledPlugin(pluginPath);
           ScaffoldMessenger.of(context).showSnackBar(
             AdiSnackbar(
               backgroundColor: dominantColor,
@@ -253,6 +278,9 @@ class _PluginsScreenState extends State<PluginsScreen>
             content: 'Error reloading plugin: $e',
           ),
         );
+	if (loadedPlugins.contains(pluginPath)) {
+      	  await _addEnabledPlugin(pluginPath);
+      	}
       }
     } finally {
       if (mounted) {
@@ -952,13 +980,15 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
         return rust_api.ConfigTypes.string(value.toString());
       case 'Bool':
         if (value is bool) return rust_api.ConfigTypes.bool(value);
-        if (value is String)
+        if (value is String) {
           return rust_api.ConfigTypes.bool(value.toLowerCase() == 'true');
+        }
         return rust_api.ConfigTypes.bool(value == 1 || value == '1');
       case 'Int':
         if (value is int) return rust_api.ConfigTypes.int(value);
-        if (value is String)
+        if (value is String) {
           return rust_api.ConfigTypes.int(int.tryParse(value) ?? 0);
+        }
         return rust_api.ConfigTypes.int(value.toInt());
       case 'UInt':
         if (value is int) return rust_api.ConfigTypes.uInt(value);
@@ -969,24 +999,29 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
         }
         return rust_api.ConfigTypes.uInt(value.toInt());
       case 'BigInt':
-        if (value is int)
+        if (value is int) {
           return rust_api.ConfigTypes.bigInt(BigInt.from(value));
-        if (value is String)
+        }
+        if (value is String) {
           return rust_api.ConfigTypes.bigInt(BigInt.parse(value));
+        }
         if (value is BigInt) return rust_api.ConfigTypes.bigInt(value);
         return rust_api.ConfigTypes.bigInt(BigInt.from(value.toInt()));
       case 'BigUInt':
-        if (value is int)
+        if (value is int) {
           return rust_api.ConfigTypes.bigUInt(BigInt.from(value));
-        if (value is String)
+        }
+        if (value is String) {
           return rust_api.ConfigTypes.bigUInt(BigInt.parse(value));
+        }
         if (value is BigInt) return rust_api.ConfigTypes.bigUInt(value);
         return rust_api.ConfigTypes.bigUInt(BigInt.from(value.toInt()));
       case 'Float':
         if (value is double) return rust_api.ConfigTypes.float(value);
         if (value is int) return rust_api.ConfigTypes.float(value.toDouble());
-        if (value is String)
+        if (value is String) {
           return rust_api.ConfigTypes.float(double.tryParse(value) ?? 0.0);
+        }
         return rust_api.ConfigTypes.float(value.toDouble());
       default:
         // Fallback to string for unknown types

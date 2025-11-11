@@ -2213,7 +2213,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                         overflow: TextOverflow.ellipsis,
                       ),
                     ))
-                .toList(),
+                ,
         ],
       ),
     );
@@ -2361,9 +2361,9 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                   AdiSnackbar(
                                       content: "Found metadata for song"));
                               Navigator.pop(context);
-                              final new_song_meta = Song.fromMetadata(meta);
+                              final newSongMeta = Song.fromMetadata(meta);
                               await _showMetadataPreviewPopup(
-                                  song, new_song_meta);
+                                  song, newSongMeta);
                             }
                           }),
                       const SizedBox(height: 12),
