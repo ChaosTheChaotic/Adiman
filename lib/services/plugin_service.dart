@@ -27,6 +27,7 @@ class PluginService {
       'arrow_left': Broken.arrow_left,
       'arrow_up': Broken.arrow_up,
       'arrow_down': Broken.arrow_down,
+      'heart': Broken.heart,
     };
     
     return iconMap[iconName] ?? Broken.cpu;
