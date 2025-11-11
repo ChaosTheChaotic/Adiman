@@ -826,6 +826,10 @@ host_fn!(add_to_playlist(user_data: (); song_path: String, playlist: String) -> 
     
     let symlink_path = playlist_dir.join(filename);
     
+    if symlink_path.exists() {
+        return Ok(false);
+    }
+    
     match std::os::unix::fs::symlink(&song_path_buf, &symlink_path) {
         Ok(()) => Ok(true),
         Err(_) => Ok(false),
