@@ -63,6 +63,7 @@ extern "ExtismHost" {
     // Returns a string starting with ERR on failure
     fn unsafe_get_env_var(var: String) -> String;
     fn unsafe_set_env_var(var: String, value: String) -> bool;
+    fn call_plugin_func(func: String, plugin_name: String) -> bool;
 }
 
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]

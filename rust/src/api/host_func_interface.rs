@@ -765,8 +765,13 @@ host_fn!(unsafe_set_env_var(user_data: (); var: String, value: String) -> bool {
     if !check_unsafe_api() {
         return Ok(false)
     }
-    std::env::set_var(var, value);
+    unsafe { std::env::set_var(var, value) };
     Ok(true)
+});
+
+#[frb(ignore)]
+host_fn!(call_plugin_func(user_data: (); func: String, plugin_name: String) -> bool {
+    Ok(crate::api::plugin_man::call_plugin_func(func, plugin_name))
 });
 
 // A macro to decide how to format the functions for me
@@ -877,6 +882,8 @@ pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
         // Unsafe utility functions
         generic_func!(unsafe_get_env_var(var: String) -> String),
         generic_func!(unsafe_set_env_var(var: String, value: String) -> bool),
+        // Other plugin functions
+        generic_func!(call_plugin_func(func: String, plugin_name: String) -> bool),
     ];
     b.with_functions(f)
 }
