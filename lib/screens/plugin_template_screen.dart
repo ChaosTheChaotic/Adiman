@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_glow/flutter_glow.dart';
 import 'package:adiman/icons/broken_icons.dart';
 import 'package:adiman/services/plugin_service.dart';
@@ -20,42 +21,70 @@ class PluginScreen extends StatefulWidget {
 }
 
 class _PluginScreenState extends State<PluginScreen> {
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final textColor = widget.dominantColor.computeLuminance() > 0.01
         ? widget.dominantColor
         : Colors.white;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
+    return Focus(
+      focusNode: _focusNode,
+      autofocus: true,
+      onKey: (FocusNode node, RawKeyEvent event) {
+        if (event is RawKeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.escape) {
+          Navigator.pop(context);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Scaffold(
         backgroundColor: Colors.black,
-        title: GlowText(
-          widget.screen['title'] ?? 'Plugin Screen',
-          glowColor: widget.dominantColor.withAlpha(80),
-          style: TextStyle(
-            color: textColor,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          title: GlowText(
+            widget.screen['title'] ?? 'Plugin Screen',
+            glowColor: widget.dominantColor.withAlpha(80),
+            style: TextStyle(
+              color: textColor,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          leading: IconButton(
+            icon: Icon(Broken.arrow_left, color: textColor),
+            onPressed: () => Navigator.pop(context),
           ),
         ),
-        leading: IconButton(
-          icon: Icon(Broken.arrow_left, color: textColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.black,
-              widget.dominantColor.withAlpha(50),
-            ],
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black,
+                widget.dominantColor.withAlpha(50),
+              ],
+            ),
           ),
+          child: _buildScreenContent(),
         ),
-        child: _buildScreenContent(),
       ),
     );
   }
