@@ -774,6 +774,64 @@ host_fn!(call_plugin_func(user_data: (); func: String, plugin_name: String) -> b
     Ok(crate::api::plugin_man::call_plugin_func(func, plugin_name))
 });
 
+#[frb(ignore)]
+host_fn!(create_playlist(user_data: (); name: String) -> bool {
+    if !check_value_store_state() {
+        return Ok(false);
+    }
+    let mf: String = match acquire_read_lock() {
+        Ok(guard) => {
+            if let Some(state) = guard.as_ref() {
+                state.music_folder.clone()
+            } else {
+                return Ok(false);
+            }
+        },
+        Err(_) => return Ok(false),
+    };
+    if let Ok(_) = fs::create_dir_all(PathBuf::from(mf).join(".adilists").join(name)) {
+        return Ok(true);
+    } else {
+        return Ok(false);
+    }
+});
+
+#[frb(ignore)]
+host_fn!(add_to_playlist(user_data: (); song_path: String, playlist: String) -> bool {
+    if !check_value_store_state() {
+        return Ok(false);
+    }
+    let mf: String = match acquire_read_lock() {
+        Ok(guard) => {
+            if let Some(state) = guard.as_ref() {
+                state.music_folder.clone()
+            } else {
+                return Ok(false);
+            }
+        },
+        Err(_) => return Ok(false),
+    };
+    
+    let playlist_dir = PathBuf::from(&mf).join(".adilists").join(&playlist);
+    let song_path_buf = PathBuf::from(&song_path);
+    
+    if !playlist_dir.exists() || !song_path_buf.exists() {
+        return Ok(false);
+    }
+    
+    let filename = match song_path_buf.file_name() {
+        Some(name) => name,
+        None => return Ok(false),
+    };
+    
+    let symlink_path = playlist_dir.join(filename);
+    
+    match std::os::unix::fs::symlink(&song_path_buf, &symlink_path) {
+        Ok(()) => Ok(true),
+        Err(_) => Ok(false),
+    }
+});
+
 // A macro to decide how to format the functions for me
 macro_rules! get_fn_signature {
     // With params and return - count the parameters to determine the correct signature
@@ -884,6 +942,9 @@ pub fn add_functions(b: PluginBuilder) -> PluginBuilder {
         generic_func!(unsafe_set_env_var(var: String, value: String) -> bool),
         // Other plugin functions
         generic_func!(call_plugin_func(func: String, plugin_name: String) -> bool),
+        // Functions to interact with the music player
+        generic_func!(create_playlist(name: String) -> bool),
+        generic_func!(add_to_playlist(song_path: String, playlist: String) -> bool),
     ];
     b.with_functions(f)
 }
