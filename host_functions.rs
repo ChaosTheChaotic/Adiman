@@ -64,6 +64,8 @@ extern "ExtismHost" {
     fn unsafe_get_env_var(var: String) -> String;
     fn unsafe_set_env_var(var: String, value: String) -> bool;
     fn call_plugin_func(func: String, plugin_name: String) -> bool;
+    fn create_playlist(name: String) -> bool;
+    fn add_to_playlist(song_path: String, playlist: String) -> bool;
 }
 
 #[derive(Serialize, Deserialize, ToBytes, FromBytes)]
