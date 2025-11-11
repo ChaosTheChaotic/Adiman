@@ -8,7 +8,7 @@ import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
 import 'package:flutter/material.dart';
 import 'package:adiman/main.dart';
 import 'package:adiman/widgets/miniplayer.dart';
-import 'package:adiman/widgets/services.dart';
+import 'package:adiman/services/services.dart';
 import 'settings_screen.dart';
 import 'package:adiman/widgets/icon_buttons.dart';
 import 'package:adiman/widgets/misc.dart';
@@ -20,7 +20,7 @@ import 'package:flutter_glow/flutter_glow.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:adiman/icons/broken_icons.dart';
-import 'package:adiman/widgets/plugin_service.dart';
+import 'package:adiman/services/plugin_service.dart';
 import 'plugins_screen.dart';
 
 class SongSelectionScreen extends StatefulWidget {

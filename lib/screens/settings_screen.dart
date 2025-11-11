@@ -7,7 +7,7 @@ import 'package:adiman/src/rust/api/value_store.dart' as value_store;
 import 'package:adiman/src/rust/api/color_extractor.dart' as color_extractor;
 import 'package:flutter/material.dart';
 import 'package:adiman/widgets/miniplayer.dart';
-import 'package:adiman/widgets/services.dart';
+import 'package:adiman/services/services.dart';
 import 'package:adiman/main.dart';
 import 'package:adiman/widgets/icon_buttons.dart';
 import 'package:adiman/widgets/misc.dart';

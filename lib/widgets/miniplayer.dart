@@ -6,7 +6,7 @@ import 'package:adiman/main.dart';
 import 'icon_buttons.dart';
 import 'package:adiman/screens/music_player_screen.dart';
 import 'snackbar.dart';
-import 'services.dart';
+import 'package:adiman/services/services.dart';
 import 'package:flutter_glow/flutter_glow.dart';
 import 'seekbars.dart';
 import 'volume.dart';

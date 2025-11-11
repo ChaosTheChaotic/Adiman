@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:adiman/src/rust/api/plugin_man.dart' as plugin_api;
-import 'snackbar.dart';
+import 'package:adiman/widgets/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:adiman/icons/broken_icons.dart';
 import 'package:adiman/screens/plugin_template_screen.dart';

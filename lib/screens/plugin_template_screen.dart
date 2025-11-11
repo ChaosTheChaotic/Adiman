@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_glow/flutter_glow.dart';
 import 'package:adiman/icons/broken_icons.dart';
-import 'package:adiman/widgets/plugin_service.dart';
+import 'package:adiman/services/plugin_service.dart';
 
 class PluginScreen extends StatefulWidget {
   final String pluginPath;

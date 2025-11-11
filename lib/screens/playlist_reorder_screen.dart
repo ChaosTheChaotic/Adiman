@@ -5,7 +5,7 @@ import 'package:flutter_glow/flutter_glow.dart';
 import 'package:adiman/widgets/snackbar.dart';
 import 'package:flutter/services.dart';
 import 'package:adiman/widgets/icon_buttons.dart';
-import 'package:adiman/widgets/services.dart';
+import 'package:adiman/services/services.dart';
 import 'package:adiman/icons/broken_icons.dart';
 
 class PlaylistReorderScreen extends StatefulWidget {

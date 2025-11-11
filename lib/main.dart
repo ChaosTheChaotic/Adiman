@@ -5,7 +5,7 @@ import 'package:adiman/src/rust/api/value_store.dart' as value_store;
 import 'package:adiman/src/rust/api/plugin_man.dart' as plugin_api;
 import 'package:adiman/src/rust/frb_generated.dart';
 import 'package:flutter/material.dart';
-import 'package:adiman/widgets/services.dart';
+import 'package:adiman/services/services.dart';
 import 'package:adiman/screens/song_selection_screen.dart';
 import 'package:adiman/widgets/volume.dart';
 import 'package:flutter/services.dart';

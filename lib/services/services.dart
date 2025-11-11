@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:adiman/src/rust/api/music_handler.dart' as rust_api;
 import 'package:adiman/src/rust/api/utils.dart' as rust_utils;
 import 'package:adiman/main.dart';
-import 'snackbar.dart';
+import 'package:adiman/widgets/snackbar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';

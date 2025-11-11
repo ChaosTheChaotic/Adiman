@@ -2,7 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:adiman/widgets/misc.dart';
 import 'package:flutter_glow/flutter_glow.dart';
-import 'package:adiman/widgets/plugin_service.dart';
+import 'package:adiman/services/plugin_service.dart';
 
 class PluginPopupDialog extends StatefulWidget {
   final String pluginPath;
