@@ -118,11 +118,11 @@ Future<void> main() async {
   await RustLib.init();
   await rust_api.initializePlayer();
   await SharedPreferencesService.init();
+  await value_store.initValueStore();
   if (SharedPreferencesService.instance.getBool('enablePlugins') ?? false) {
     await plugin_api.initPluginMan();
     await loadEnabledPlugins();
   }
-  await value_store.initValueStore();
   globalService = AdimanService();
   VolumeController();
   sqfliteFfiInit();
