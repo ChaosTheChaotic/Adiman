@@ -85,7 +85,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
-  Map<String, ConfigTypes> crateApiPluginManPluginInodeAutoAccessorGetConfig(
+  Map<String, ConfigTypes>? crateApiPluginManPluginInodeAutoAccessorGetConfig(
       {required PluginInode that});
 
   FadConfig? crateApiPluginManPluginInodeAutoAccessorGetFad(
@@ -95,7 +95,7 @@ abstract class RustLibApi extends BaseApi {
       {required PluginInode that});
 
   void crateApiPluginManPluginInodeAutoAccessorSetConfig(
-      {required PluginInode that, required Map<String, ConfigTypes> config});
+      {required PluginInode that, Map<String, ConfigTypes>? config});
 
   void crateApiPluginManPluginInodeAutoAccessorSetFad(
       {required PluginInode that, FadConfig? fad});
@@ -380,7 +380,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  Map<String, ConfigTypes> crateApiPluginManPluginInodeAutoAccessorGetConfig(
+  Map<String, ConfigTypes>? crateApiPluginManPluginInodeAutoAccessorGetConfig(
       {required PluginInode that}) {
     return handler.executeSync(SyncTask(
       callFfi: () {
@@ -390,7 +390,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
       },
       codec: SseCodec(
-        decodeSuccessData: sse_decode_Map_String_config_types_None,
+        decodeSuccessData: sse_decode_opt_Map_String_config_types_None,
         decodeErrorData: null,
       ),
       constMeta: kCrateApiPluginManPluginInodeAutoAccessorGetConfigConstMeta,
@@ -462,13 +462,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @override
   void crateApiPluginManPluginInodeAutoAccessorSetConfig(
-      {required PluginInode that, required Map<String, ConfigTypes> config}) {
+      {required PluginInode that, Map<String, ConfigTypes>? config}) {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
             that, serializer);
-        sse_encode_Map_String_config_types_None(config, serializer);
+        sse_encode_opt_Map_String_config_types_None(config, serializer);
         return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
       },
       codec: SseCodec(
@@ -3398,6 +3398,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Map<String, ConfigTypes>? dco_decode_opt_Map_String_config_types_None(
+      dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_Map_String_config_types_None(raw);
+  }
+
+  @protected
   String? dco_decode_opt_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_String(raw);
@@ -4080,6 +4087,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       ans_.add(sse_decode_song_metadata(deserializer));
     }
     return ans_;
+  }
+
+  @protected
+  Map<String, ConfigTypes>? sse_decode_opt_Map_String_config_types_None(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_Map_String_config_types_None(deserializer));
+    } else {
+      return null;
+    }
   }
 
   @protected
@@ -4792,6 +4811,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_Map_String_config_types_None(
+      Map<String, ConfigTypes>? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_Map_String_config_types_None(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -5036,7 +5066,7 @@ class PluginInodeImpl extends RustOpaque implements PluginInode {
         RustLib.instance.api.rust_arc_decrement_strong_count_PluginInodePtr,
   );
 
-  Map<String, ConfigTypes> get config =>
+  Map<String, ConfigTypes>? get config =>
       RustLib.instance.api.crateApiPluginManPluginInodeAutoAccessorGetConfig(
         that: this,
       );
@@ -5051,7 +5081,7 @@ class PluginInodeImpl extends RustOpaque implements PluginInode {
         that: this,
       );
 
-  set config(Map<String, ConfigTypes> config) =>
+  set config(Map<String, ConfigTypes>? config) =>
       RustLib.instance.api.crateApiPluginManPluginInodeAutoAccessorSetConfig(
           that: this, config: config);
 

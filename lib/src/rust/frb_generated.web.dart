@@ -244,6 +244,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<SongMetadata> dco_decode_list_song_metadata(dynamic raw);
 
   @protected
+  Map<String, ConfigTypes>? dco_decode_opt_Map_String_config_types_None(
+      dynamic raw);
+
+  @protected
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
@@ -516,6 +520,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<SongMetadata> sse_decode_list_song_metadata(
+      SseDeserializer deserializer);
+
+  @protected
+  Map<String, ConfigTypes>? sse_decode_opt_Map_String_config_types_None(
       SseDeserializer deserializer);
 
   @protected
@@ -805,6 +813,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_song_metadata(
       List<SongMetadata> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_Map_String_config_types_None(
+      Map<String, ConfigTypes>? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);

@@ -76,13 +76,13 @@ Future<String> findItemsByCallback({required String callback}) =>
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PluginInode>>
 abstract class PluginInode implements RustOpaqueInterface {
-  Map<String, ConfigTypes> get config;
+  Map<String, ConfigTypes>? get config;
 
   FadConfig? get fad;
 
   ArcMutexPlugin get plugin;
 
-  set config(Map<String, ConfigTypes> config);
+  set config(Map<String, ConfigTypes>? config);
 
   set fad(FadConfig? fad);
 
