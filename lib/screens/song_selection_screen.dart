@@ -3515,7 +3515,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                           if (_selectedSortOption ==
                                               SortOption.playlist)
                                             const SizedBox(width: 8),
-                                          const Text('Playlist set order'),
+                                          Text('Playlist set order', style: Theme.of(context).textTheme.bodyLarge),
                                         ],
                                       ),
                                     ),
@@ -3541,7 +3541,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         if (_selectedSortOption ==
                                             SortOption.title)
                                           const SizedBox(width: 8),
-                                        const Text('Title (A-Z)'),
+                                        Text('Title (A-Z)', style: Theme.of(context).textTheme.bodyLarge),
                                       ],
                                     ),
                                   ),
@@ -3566,7 +3566,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         if (_selectedSortOption ==
                                             SortOption.titleReversed)
                                           const SizedBox(width: 8),
-                                        const Text('Title (Z-A)'),
+                                        Text('Title (Z-A)', style: Theme.of(context).textTheme.bodyLarge),
                                       ],
                                     ),
                                   ),
@@ -3591,7 +3591,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         if (_selectedSortOption ==
                                             SortOption.artist)
                                           const SizedBox(width: 8),
-                                        const Text('Artist (A-Z)'),
+                                        Text('Artist (A-Z)', style: Theme.of(context).textTheme.bodyLarge),
                                       ],
                                     ),
                                   ),
@@ -3616,7 +3616,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         if (_selectedSortOption ==
                                             SortOption.artistReversed)
                                           const SizedBox(width: 8),
-                                        const Text('Artist (Z-A)'),
+                                        Text('Artist (Z-A)', style: Theme.of(context).textTheme.bodyLarge),
                                       ],
                                     ),
                                   ),
@@ -3641,7 +3641,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         if (_selectedSortOption ==
                                             SortOption.genre)
                                           const SizedBox(width: 8),
-                                        const Text('Genre (A-Z)'),
+                                        Text('Genre (A-Z)', style: Theme.of(context).textTheme.bodyLarge),
                                       ],
                                     ),
                                   ),
@@ -3666,7 +3666,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                         if (_selectedSortOption ==
                                             SortOption.genreReversed)
                                           const SizedBox(width: 8),
-                                        const Text('Genre (Z-A)'),
+                                        Text('Genre (Z-A)', style: Theme.of(context).textTheme.bodyLarge),
                                       ],
                                     ),
                                   ),
