@@ -811,25 +811,25 @@ host_fn!(add_to_playlist(user_data: (); song_path: String, playlist: String) -> 
         },
         Err(_) => return Ok(false),
     };
-    
+
     let playlist_dir = PathBuf::from(&mf).join(".adilists").join(&playlist);
     let song_path_buf = PathBuf::from(&song_path);
-    
+
     if !playlist_dir.exists() || !song_path_buf.exists() {
         return Ok(false);
     }
-    
+
     let filename = match song_path_buf.file_name() {
         Some(name) => name,
         None => return Ok(false),
     };
-    
+
     let symlink_path = playlist_dir.join(filename);
-    
+
     if symlink_path.exists() {
         return Ok(false);
     }
-    
+
     match std::os::unix::fs::symlink(&song_path_buf, &symlink_path) {
         Ok(()) => Ok(true),
         Err(_) => Ok(false),

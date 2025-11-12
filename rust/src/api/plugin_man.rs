@@ -142,7 +142,7 @@ pub type PluginConfig = HashMap<String, ConfigTypes>; // A key-value pair with a
 
 pub struct PluginInode {
     pub plugin: Arc<Mutex<Plugin>>, // Plugin handle wrapped in an Arc and Mutex because frb keeps generating code trying to clone it
-    pub config: Option<PluginConfig>,       // Plugins config
+    pub config: Option<PluginConfig>, // Plugins config
     pub fad: Option<FadConfig>,     // Frontend additions config
 }
 
@@ -259,7 +259,6 @@ impl AdiPluginMan {
                 None
             }
         };
-
 
         let mut valid_configs: Option<Vec<RpcConfig>> = None;
         if let Some(arr) = rpc_array {
