@@ -297,7 +297,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     return _buildPlaylistOptionButton(
       icon: PluginService.getIconFromName(iconName),
       label: name,
-      onTap: () => handlePluginButtonTap(buttonData, context, dominantColor)
+      onTap: () { handlePluginButtonTap(buttonData, context, dominantColor); Navigator.pop(context); }
     );
   }
 
