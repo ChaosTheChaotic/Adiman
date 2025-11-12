@@ -2569,7 +2569,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                 ),
                 Icon(
                   Broken.arrow_right_3,
-                  color: textColor.withValues(alpha: 0.5),
+                  color: glowColor,
                 ),
               ],
             ),
