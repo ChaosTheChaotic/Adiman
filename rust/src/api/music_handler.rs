@@ -1222,7 +1222,8 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
     let artist_str = tag
         .as_ref()
         .and_then(|t| t.artist().map(|s| s.to_string()))
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .replace('\0', " ");
 
     let separators = SEPARATORS.read().unwrap();
     let pattern = separators
