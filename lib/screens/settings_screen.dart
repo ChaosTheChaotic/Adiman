@@ -1325,6 +1325,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ));
   }
 
+  Future<void> _restartPlayer() async {
+    try {
+      _togglePauseSong();
+      final success = await rust_api.restartPlayer();
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
+            backgroundColor: _currentColor,
+            content: 'Music player restarted successfully, audio might not work until you go into the music player (click on the miniplyaer)',
+          ));
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
+            backgroundColor: Colors.redAccent,
+            content: 'Failed to restart music player',
+          ));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(AdiSnackbar(
+          backgroundColor: Colors.redAccent,
+          content: 'Error restarting music player: $e',
+        ));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final textColor = _currentColor.computeLuminance() > 0.01
@@ -1593,6 +1622,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 value: _edgeBreathe,
                                 onChanged: _saveEdgeBreathe),
                             _buildSeekbarTypeSelector(),
+			    _buildActionButton(
+			      icon: Broken.refresh,
+			      label: "Restart backend player (only use if something wrong)",
+			      isLoading: false,
+			      onPressed: _restartPlayer,
+			    ),
                           ],
                         ),
                         _buildSettingsExpansionTile(

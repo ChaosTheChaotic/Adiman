@@ -138,6 +138,9 @@ Future<bool> preloadNextSong({required String path}) =>
 Future<bool> switchToPreloadedNow() =>
     RustLib.instance.api.crateApiMusicHandlerSwitchToPreloadedNow();
 
+Future<bool> restartPlayer() =>
+    RustLib.instance.api.crateApiMusicHandlerRestartPlayer();
+
 class PlayerState {
   final bool initialized;
 

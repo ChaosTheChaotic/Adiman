@@ -1832,3 +1832,16 @@ pub fn switch_to_preloaded_now() -> bool {
         false
     }
 }
+
+pub fn restart_player() -> bool {
+    stop_song();
+    
+    if let Ok(mut player_guard) = PLAYER.lock() {
+        *player_guard = None;
+    }
+    if let Ok(mut state_guard) = PLAYER_STATE.lock() {
+        state_guard.initialized = false;
+    }
+    
+    initialize_player()
+}
