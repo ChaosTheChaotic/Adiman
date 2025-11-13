@@ -260,6 +260,15 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
   void _handleScroll() {
     double offset = _scrollController.offset;
     const double deltaThreshold = 5.0;
+    final bool isScrollable = _scrollController.position.maxScrollExtent > 0;
+    
+    if (!isScrollable) {
+      // If not scrollable, always show the header
+      if (_extraHeaderController.value != 1.0) {
+        _extraHeaderController.forward();
+      }
+      return;
+    }
     if ((offset - _lastOffset) > deltaThreshold) {
       _extraHeaderController.reverse();
     } else if ((_lastOffset - offset) > deltaThreshold) {
