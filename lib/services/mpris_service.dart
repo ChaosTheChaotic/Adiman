@@ -20,6 +20,9 @@ class AdimanService extends MPRISService {
   final _trackChangeController = StreamController<Song>.broadcast();
   Stream<Song> get trackChanges => _trackChangeController.stream;
 
+  Timer? _positionUpdateTimer;
+  bool _isUpdatingPosition = false;
+
   AdimanService({Function(Song, int)? onSongChange})
       : _onSongChange = onSongChange,
         super(
@@ -35,8 +38,29 @@ class AdimanService extends MPRISService {
           supportShuffle: false,
           //Not supported yet but the person who made the package decided it was a good idea to lock the mpris updates behind supportLoopStatus so it must be true if u want ur music to update at all
           supportLoopStatus: true,
+	  emitSeekedSignal: true,
         ) {
     playbackStatus = PlaybackStatus.stopped;
+    _startPositionUpdates();
+  }
+
+  void _startPositionUpdates() {
+    // Update position every second
+    _positionUpdateTimer = Timer.periodic(Duration(seconds: 1), (timer) async {
+      if (_isUpdatingPosition || _currentSong == null) return;
+      
+      try {
+        _isUpdatingPosition = true;
+        final position = await rust_api.getPlaybackPosition();
+        if (position > 0) {
+          updatePosition(Duration(milliseconds: (position * 1000).round()));
+        }
+      } catch (e) {
+        print('Error updating position: $e');
+      } finally {
+        _isUpdatingPosition = false;
+      }
+    });
   }
 
   void updatePlaylist(List<Song> playlist, int currentIndex) async {
@@ -83,6 +107,7 @@ class AdimanService extends MPRISService {
 
   @override
   Future<void> dispose() async {
+    _startPositionUpdates();
     await playbackStateController.close();
     await _trackChangeController.close();
     await client?.close();
@@ -154,6 +179,9 @@ class AdimanService extends MPRISService {
     await rust_api.resumeSong();
     playbackStatus = PlaybackStatus.playing;
     playbackStateController.add(true);
+    if (_positionUpdateTimer == null) {
+      _startPositionUpdates();
+    }
   }
 
   @override
@@ -161,6 +189,14 @@ class AdimanService extends MPRISService {
     await rust_api.pauseSong();
     playbackStatus = PlaybackStatus.paused;
     playbackStateController.add(false);
+    try {
+      final position = await rust_api.getPlaybackPosition();
+      if (position > 0) {
+        updatePosition(Duration(milliseconds: (position * 1000).round()));
+      }
+    } catch (e) {
+      print('Error updating position on pause: $e');
+    }
   }
 
   @override
@@ -192,6 +228,7 @@ class AdimanService extends MPRISService {
           isNowPlaying ? PlaybackStatus.playing : PlaybackStatus.paused;
       playbackStateController.add(isNowPlaying);
       updateMetadata();
+      updatePosition(Duration.zero);
     }
   }
 
@@ -213,6 +250,7 @@ class AdimanService extends MPRISService {
           isNowPlaying ? PlaybackStatus.playing : PlaybackStatus.paused;
       playbackStateController.add(isNowPlaying);
       updateMetadata();
+      updatePosition(Duration.zero);
     }
   }
 
@@ -221,11 +259,27 @@ class AdimanService extends MPRISService {
     final newPosition =
         (await rust_api.getPlaybackPosition()) + (offset / 1000000);
     await rust_api.seekToPosition(position: newPosition);
+    try {
+      final position = await rust_api.getPlaybackPosition();
+      if (position > 0) {
+        updatePosition(Duration(milliseconds: (position * 1000).round()), forceEmitSeeked: true);
+      }
+    } catch (e) {
+      print('Error updating position after seek: $e');
+    }
   }
 
   @override
   Future<void> onSetPosition(String trackId, int position) async {
     await rust_api.seekToPosition(position: position / 1000000);
+    try {
+      final currentPosition = await rust_api.getPlaybackPosition();
+      if (currentPosition > 0) {
+        updatePosition(Duration(milliseconds: (currentPosition * 1000).round()), forceEmitSeeked: true);
+      }
+    } catch (e) {
+      print('Error updating position after setPosition: $e');
+    }
   }
 
   /*@override
