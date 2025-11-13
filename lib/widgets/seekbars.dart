@@ -173,32 +173,6 @@ class _WaveformPainter extends CustomPainter {
     final barWidth = size.width / waveformData.length;
     final progressIndex = (waveformData.length * progress).round();
 
-    // Draw progress indicator line when dragging
-    if (isDragging) {
-      final linePaint = Paint()
-        ..color = enhancedActiveColor
-        ..strokeWidth = 2.0
-        ..strokeCap = StrokeCap.round;
-      
-      final lineX = progress * size.width;
-      canvas.drawLine(
-        Offset(lineX, 0),
-        Offset(lineX, size.height),
-        linePaint,
-      );
-
-      // Draw circle indicator at current position
-      final circlePaint = Paint()
-        ..color = enhancedActiveColor
-        ..style = PaintingStyle.fill;
-      
-      canvas.drawCircle(
-        Offset(lineX, size.height / 2),
-        6.0,
-        circlePaint,
-      );
-    }
-
     for (var i = 0; i < waveformData.length; i++) {
       final height =
           size.height * (waveformData[i] * 0.8 + 0.2) * animationValue;
