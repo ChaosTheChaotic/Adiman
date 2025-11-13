@@ -113,7 +113,10 @@ class _PluginPopupDialogState extends State<PluginPopupDialog> {
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(15),
       child: InkWell(
-        onTap: () => _handleButtonCallback(button),
+      onTap: () => handlePluginButtonTap({
+        'pluginPath': widget.pluginPath,
+        'button': button,
+      }, context, widget.dominantColor),
         borderRadius: BorderRadius.circular(15),
         splashColor: widget.dominantColor.withAlpha(50),
         highlightColor: widget.dominantColor.withAlpha(30),
@@ -165,16 +168,6 @@ class _PluginPopupDialogState extends State<PluginPopupDialog> {
           : Colors.white,
       blurRadius: 8,
       size: 24,
-    );
-  }
-
-  void _handleButtonCallback(Map<String, dynamic> button) {
-    PluginService.handleButtonCallback(
-      context: context,
-      callback: button['callback'],
-      pluginPath: widget.pluginPath,
-      dominantColor: widget.dominantColor,
-      button: button,
     );
   }
 }
