@@ -1621,7 +1621,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 title: 'Edge breathing effect',
                                 value: _edgeBreathe,
                                 onChanged: _saveEdgeBreathe),
-                            _buildSeekbarTypeSelector(),
 			    _buildActionButton(
 			      icon: Broken.refresh,
 			      label: "Restart backend player (only use if something wrong)",
@@ -1661,6 +1660,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             icon: Broken.sound,
                             initiallyExpanded: false,
                             children: [
+			      _buildSeekbarTypeSelector(),
                               ListTile(
                                 title: Text('Waveform Bars Count',
                                     style: TextStyle(color: textColor)),
