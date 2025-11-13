@@ -2488,6 +2488,9 @@ class _LyricsOverlayState extends State<LyricsOverlay>
     _currentLyricNotifier.addListener(_scrollToCurrentLyric);
     _scrollController.addListener(_handleParallaxScroll);
     _updateCurrentLyric();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToCurrentLyric();
+    });
   }
 
   void _initializeAnimations() {
