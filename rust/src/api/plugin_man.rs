@@ -707,12 +707,12 @@ impl AdiPluginMan {
                     Ok((rpc, fad)) => (rpc, fad),
                     Err(_) => {
                         eprintln!("Warning: Failed to read metadata, using empty config");
-                        (Some(Vec::new()), None)
+                        (None, None)
                     }
                 }
             } else {
                 eprintln!("Warning: No metadata found, using empty config");
-                (Some(Vec::new()), None)
+                (None, None)
             };
 
             let mut plugin_config: Option<PluginConfig> = None;
