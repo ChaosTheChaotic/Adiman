@@ -7,6 +7,8 @@ class WaveformSeekBar extends StatefulWidget {
   final Color activeColor;
   final Color inactiveColor;
   final Function(double) onSeek;
+  final Function(double)? onSeekStart;
+  final Function(double)? onSeekEnd;
 
   const WaveformSeekBar({
     super.key,
@@ -15,6 +17,8 @@ class WaveformSeekBar extends StatefulWidget {
     this.activeColor = const Color(0xFF383770),
     this.inactiveColor = Colors.grey,
     required this.onSeek,
+    this.onSeekStart,
+    this.onSeekEnd,
   });
 
   @override
@@ -25,6 +29,8 @@ class _WaveformSeekBarState extends State<WaveformSeekBar>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
+  bool _isDragging = false;
+  double _dragProgress = 0.0;
 
   @override
   void initState() {
@@ -49,6 +55,29 @@ class _WaveformSeekBarState extends State<WaveformSeekBar>
     }
   }
 
+  void _handleDragStart(double progress) {
+    setState(() {
+      _isDragging = true;
+      _dragProgress = progress;
+    });
+    widget.onSeekStart?.call(progress);
+  }
+
+  void _handleDragUpdate(double progress) {
+    setState(() {
+      _dragProgress = progress;
+    });
+    widget.onSeek(progress);
+  }
+
+  void _handleDragEnd(double progress) {
+    setState(() {
+      _isDragging = false;
+    });
+    widget.onSeekEnd?.call(progress);
+    widget.onSeek(progress);
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -57,20 +86,42 @@ class _WaveformSeekBarState extends State<WaveformSeekBar>
 
   @override
   Widget build(BuildContext context) {
+    final currentProgress = _isDragging ? _dragProgress : widget.progress;
+
     return GestureDetector(
       onTapDown: (details) {
         final box = context.findRenderObject() as RenderBox;
         final localPosition = box.globalToLocal(details.globalPosition);
         final progress = localPosition.dx / box.size.width;
-        widget.onSeek(progress.clamp(0.0, 1.0));
+        _handleDragStart(progress);
+        _handleDragEnd(progress);
+      },
+      onPanStart: (details) {
+        final box = context.findRenderObject() as RenderBox;
+        final localPosition = box.globalToLocal(details.globalPosition);
+        final progress = localPosition.dx / box.size.width;
+        _handleDragStart(progress);
+      },
+      onPanUpdate: (details) {
+        final box = context.findRenderObject() as RenderBox;
+        final localPosition = box.globalToLocal(details.globalPosition);
+        final progress = (localPosition.dx / box.size.width).clamp(0.0, 1.0);
+        _handleDragUpdate(progress);
+      },
+      onPanEnd: (details) {
+        _handleDragEnd(_dragProgress);
+      },
+      onPanCancel: () {
+        _handleDragEnd(_dragProgress);
       },
       child: CustomPaint(
         painter: _WaveformPainter(
           waveformData: widget.waveformData,
-          progress: widget.progress,
+          progress: currentProgress,
           activeColor: widget.activeColor,
           inactiveColor: widget.inactiveColor,
           animationValue: _animation.value,
+          isDragging: _isDragging,
         ),
         size: const Size(double.infinity, 50),
       ),
@@ -84,6 +135,7 @@ class _WaveformPainter extends CustomPainter {
   final Color activeColor;
   final Color inactiveColor;
   final double animationValue;
+  final bool isDragging;
 
   _WaveformPainter({
     required this.waveformData,
@@ -91,6 +143,7 @@ class _WaveformPainter extends CustomPainter {
     required this.activeColor,
     required this.inactiveColor,
     required this.animationValue,
+    this.isDragging = false,
   });
 
   @override
@@ -119,6 +172,32 @@ class _WaveformPainter extends CustomPainter {
 
     final barWidth = size.width / waveformData.length;
     final progressIndex = (waveformData.length * progress).round();
+
+    // Draw progress indicator line when dragging
+    if (isDragging) {
+      final linePaint = Paint()
+        ..color = enhancedActiveColor
+        ..strokeWidth = 2.0
+        ..strokeCap = StrokeCap.round;
+      
+      final lineX = progress * size.width;
+      canvas.drawLine(
+        Offset(lineX, 0),
+        Offset(lineX, size.height),
+        linePaint,
+      );
+
+      // Draw circle indicator at current position
+      final circlePaint = Paint()
+        ..color = enhancedActiveColor
+        ..style = PaintingStyle.fill;
+      
+      canvas.drawCircle(
+        Offset(lineX, size.height / 2),
+        6.0,
+        circlePaint,
+      );
+    }
 
     for (var i = 0; i < waveformData.length; i++) {
       final height =
@@ -158,7 +237,8 @@ class _WaveformPainter extends CustomPainter {
         oldDelegate.progress != progress ||
         oldDelegate.activeColor != activeColor ||
         oldDelegate.inactiveColor != inactiveColor ||
-        oldDelegate.animationValue != animationValue;
+        oldDelegate.animationValue != animationValue ||
+        oldDelegate.isDragging != isDragging;
   }
 }
 
