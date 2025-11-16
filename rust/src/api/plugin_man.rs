@@ -243,7 +243,7 @@ impl AdiPluginMan {
     }
 
     fn read_plugin_metadata(
-        metadata_path: &std::path::Path,
+        metadata_path: &Path,
     ) -> Result<(Option<Vec<RpcConfig>>, Option<FadConfig>), PluginManErr> {
         let metadata_content = std::fs::read_to_string(metadata_path).map_err(|_| {
             PluginManErr::MetadataNotFound(metadata_path.to_string_lossy().to_string())
@@ -499,7 +499,7 @@ impl AdiPluginMan {
         key: String,
         value: ConfigTypes,
     ) -> Result<(), PluginManErr> {
-        let ppath = std::path::PathBuf::from(path.clone());
+        let ppath = PathBuf::from(path.clone());
         let ppar = ppath.parent().ok_or_else(|| {
             PluginManErr::MetadataNotFound("Cannot determine plugin directory".to_string())
         })?;
@@ -658,7 +658,7 @@ impl AdiPluginMan {
     }
 
     pub fn load_plugin(&mut self, path: String) -> Result<(), PluginManErr> {
-        let ppath = std::path::PathBuf::from(path.clone());
+        let ppath = PathBuf::from(path.clone());
         if ppath.exists() {
             if self.plugin_meta.contains_key(&path) {
                 eprintln!("Plugin already loaded");
@@ -793,7 +793,7 @@ impl AdiPluginMan {
     }
 
     pub fn get_plugin_meta(&self, path: String) -> Result<String, String> {
-        let ppath = std::path::PathBuf::from(path.clone());
+        let ppath = PathBuf::from(path.clone());
         let ppar = ppath
             .parent()
             .ok_or_else(|| "Cannot determine plugin directory".to_string())?;
