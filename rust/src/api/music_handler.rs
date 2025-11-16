@@ -1404,7 +1404,6 @@ pub fn is_playing() -> bool {
 /// stream to return [sampleCount] normalized amplitude values (between 0 and 1).
 ///
 /// Note: This requires FFmpeg to be installed on your Linux system.
-
 pub fn extract_waveform_from_mp3(
     mp3_path: String,
     sample_count: Option<u32>,
