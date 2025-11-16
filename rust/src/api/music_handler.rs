@@ -1692,16 +1692,16 @@ fn parse_lrc_metadata(
     let mut lyrics = Vec::new();
 
     for line in content.lines() {
-        if line.starts_with("#TITLE: ") {
-            title = Some(line["#TITLE: ".len()..].trim().to_string());
-        } else if line.starts_with("#ARTIST: ") {
-            artist = Some(line["#ARTIST: ".len()..].trim().to_string());
-        } else if line.starts_with("#PATH: ") {
-            path = Some(line["#PATH: ".len()..].trim().to_string());
-        } else if line.starts_with("#GENRE: ") {
-            genre = Some(line["#GENRE: ".len()..].trim().to_string());
-        } else if line.starts_with("#ALBUM: ") {
-            album = Some(line["#ALBUM: ".len()..].trim().to_string());
+        if let Some(stripped) = line.strip_prefix("#TITLE: ") {
+            title = Some(stripped.trim().to_string());
+        } else if let Some(stripped) = line.strip_prefix("#ARTIST: ") {
+            artist = Some(stripped.trim().to_string());
+        } else if let Some(stripped) = line.strip_prefix("#PATH: ") {
+            path = Some(stripped.trim().to_string());
+        } else if let Some(stripped) = line.strip_prefix("#GENRE: ") {
+            genre = Some(stripped.trim().to_string());
+        } else if let Some(stripped) = line.strip_prefix("#ALBUM: ") {
+            album = Some(stripped.trim().to_string());
         } else if !line.starts_with('#') {
             lyrics.push(line.to_string());
         }
