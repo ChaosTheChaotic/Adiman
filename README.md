@@ -32,10 +32,10 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 
 # Dependencies (These apply even when not building)
 
-- Ffmpeg
-- Spotdl (via python if you want downloading songs to work)
+- FFmpeg
+- SpotDL (via python if you want downloading songs to work)
 - GTK
-- Sqlite
+- SQLite
 
 # Installing
 
@@ -86,13 +86,13 @@ You may find plugin development in the [PLUGINS.md](PLUGINS.md#developing-plugin
 
 # Building
 ## Preqrequisites
-- Flutter
+- flutter
 - flutter_rust_bridge_codegen (installed via cargo)
 - cdparanoia (this is required for my cd_audio library to build as it uses cdda_interface.h)
 - libcdio
 - libcdio_cdda
 - git
-- GTK
+- gtk
 - rustup
 - rust
 - AcoustID API key
