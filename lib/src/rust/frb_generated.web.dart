@@ -6,11 +6,16 @@
 // Static analysis wrongly picks the IO variant, thus ignore this
 // ignore_for_file: argument_type_not_assignable
 
+import 'api/acoustid.dart';
 import 'api/color_extractor.dart';
 import 'api/music_handler.dart';
+import 'api/plugin_man.dart';
+import 'api/utils.dart';
+import 'api/value_store.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
+import 'lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
@@ -21,17 +26,159 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     required super.portManager,
   });
 
+  CrossPlatformFinalizerArg
+      get rust_arc_decrement_strong_count_ArcMutexPluginPtr => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexPlugin;
+
+  CrossPlatformFinalizerArg
+      get rust_arc_decrement_strong_count_PluginInodePtr => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RpcConfigPtr =>
+      wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ValuePtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue;
+
+  CrossPlatformFinalizerArg
+      get rust_arc_decrement_strong_count_ValueStoreUpdaterPtr => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater;
+
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw);
+
+  @protected
+  ArcMutexPlugin
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexPlugin(
+          dynamic raw);
+
+  @protected
+  PluginInode
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          dynamic raw);
+
+  @protected
+  RpcConfig
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          dynamic raw);
+
+  @protected
+  Value
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+          dynamic raw);
+
+  @protected
+  ValueStoreUpdater
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          dynamic raw);
+
+  @protected
+  PluginInode
+      dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          dynamic raw);
+
+  @protected
+  RpcConfig
+      dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          dynamic raw);
+
+  @protected
+  ValueStoreUpdater
+      dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          dynamic raw);
+
+  @protected
+  PluginInode
+      dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          dynamic raw);
+
+  @protected
+  RpcConfig
+      dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          dynamic raw);
+
+  @protected
+  ValueStoreUpdater
+      dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          dynamic raw);
+
+  @protected
+  BigInt dco_decode_I128(dynamic raw);
+
+  @protected
+  Map<String, PluginInode>
+      dco_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode_None(
+          dynamic raw);
+
+  @protected
+  Map<String, ConfigTypes> dco_decode_Map_String_config_types_None(dynamic raw);
+
+  @protected
+  ArcMutexPlugin
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexPlugin(
+          dynamic raw);
+
+  @protected
+  PluginInode
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          dynamic raw);
+
+  @protected
+  RpcConfig
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          dynamic raw);
+
+  @protected
+  Value
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+          dynamic raw);
+
+  @protected
+  ValueStoreUpdater
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          dynamic raw);
 
   @protected
   String dco_decode_String(dynamic raw);
 
   @protected
+  BigInt dco_decode_U128(dynamic raw);
+
+  @protected
+  AdiPluginMan dco_decode_adi_plugin_man(dynamic raw);
+
+  @protected
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  AdiPluginMan dco_decode_box_autoadd_adi_plugin_man(dynamic raw);
+
+  @protected
+  bool dco_decode_box_autoadd_bool(dynamic raw);
+
+  @protected
+  ConfigTypes dco_decode_box_autoadd_config_types(dynamic raw);
+
+  @protected
+  FadButton dco_decode_box_autoadd_fad_button(dynamic raw);
+
+  @protected
+  FadConfig dco_decode_box_autoadd_fad_config(dynamic raw);
+
+  @protected
+  SongMetadata dco_decode_box_autoadd_song_metadata(dynamic raw);
+
+  @protected
   int dco_decode_box_autoadd_u_32(dynamic raw);
+
+  @protected
+  ValueStoreUpdate dco_decode_box_autoadd_value_store_update(dynamic raw);
+
+  @protected
+  ConfigTypes dco_decode_config_types(dynamic raw);
+
+  @protected
+  CurrentSongUpdate dco_decode_current_song_update(dynamic raw);
 
   @protected
   double dco_decode_f_32(dynamic raw);
@@ -40,10 +187,37 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double dco_decode_f_64(dynamic raw);
 
   @protected
+  FadButton dco_decode_fad_button(dynamic raw);
+
+  @protected
+  FadConfig dco_decode_fad_config(dynamic raw);
+
+  @protected
+  FadLabel dco_decode_fad_label(dynamic raw);
+
+  @protected
+  FadPopup dco_decode_fad_popup(dynamic raw);
+
+  @protected
+  FadScreen dco_decode_fad_screen(dynamic raw);
+
+  @protected
   int dco_decode_i_32(dynamic raw);
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<FadButton> dco_decode_list_fad_button(dynamic raw);
+
+  @protected
+  List<FadLabel> dco_decode_list_fad_label(dynamic raw);
+
+  @protected
+  List<FadPopup> dco_decode_list_fad_popup(dynamic raw);
+
+  @protected
+  List<FadScreen> dco_decode_list_fad_screen(dynamic raw);
 
   @protected
   Float32List dco_decode_list_prim_f_32_strict(dynamic raw);
@@ -58,19 +232,69 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<(String, PluginInode)>
+      dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_plugin_inode(
+          dynamic raw);
+
+  @protected
+  List<(String, ConfigTypes)> dco_decode_list_record_string_config_types(
+      dynamic raw);
+
+  @protected
   List<SongMetadata> dco_decode_list_song_metadata(dynamic raw);
+
+  @protected
+  Map<String, ConfigTypes>? dco_decode_opt_Map_String_config_types_None(
+      dynamic raw);
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
+  AdiPluginMan? dco_decode_opt_box_autoadd_adi_plugin_man(dynamic raw);
+
+  @protected
+  bool? dco_decode_opt_box_autoadd_bool(dynamic raw);
+
+  @protected
+  FadConfig? dco_decode_opt_box_autoadd_fad_config(dynamic raw);
+
+  @protected
+  SongMetadata? dco_decode_opt_box_autoadd_song_metadata(dynamic raw);
+
+  @protected
   int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
+
+  @protected
+  List<String>? dco_decode_opt_list_String(dynamic raw);
+
+  @protected
+  List<FadButton>? dco_decode_opt_list_fad_button(dynamic raw);
+
+  @protected
+  List<FadLabel>? dco_decode_opt_list_fad_label(dynamic raw);
+
+  @protected
+  List<FadPopup>? dco_decode_opt_list_fad_popup(dynamic raw);
+
+  @protected
+  List<FadScreen>? dco_decode_opt_list_fad_screen(dynamic raw);
 
   @protected
   Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
 
   @protected
   PlayerState dco_decode_player_state(dynamic raw);
+
+  @protected
+  (
+    String,
+    PluginInode
+  ) dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_plugin_inode(
+      dynamic raw);
+
+  @protected
+  (String, ConfigTypes) dco_decode_record_string_config_types(dynamic raw);
 
   @protected
   SongMetadata dco_decode_song_metadata(dynamic raw);
@@ -91,16 +315,148 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt dco_decode_usize(dynamic raw);
 
   @protected
+  ValueStoreUpdate dco_decode_value_store_update(dynamic raw);
+
+  @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
+
+  @protected
+  ArcMutexPlugin
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexPlugin(
+          SseDeserializer deserializer);
+
+  @protected
+  PluginInode
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          SseDeserializer deserializer);
+
+  @protected
+  RpcConfig
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          SseDeserializer deserializer);
+
+  @protected
+  Value
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+          SseDeserializer deserializer);
+
+  @protected
+  ValueStoreUpdater
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          SseDeserializer deserializer);
+
+  @protected
+  PluginInode
+      sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          SseDeserializer deserializer);
+
+  @protected
+  RpcConfig
+      sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          SseDeserializer deserializer);
+
+  @protected
+  ValueStoreUpdater
+      sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          SseDeserializer deserializer);
+
+  @protected
+  PluginInode
+      sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          SseDeserializer deserializer);
+
+  @protected
+  RpcConfig
+      sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          SseDeserializer deserializer);
+
+  @protected
+  ValueStoreUpdater
+      sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_I128(SseDeserializer deserializer);
+
+  @protected
+  Map<String, PluginInode>
+      sse_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode_None(
+          SseDeserializer deserializer);
+
+  @protected
+  Map<String, ConfigTypes> sse_decode_Map_String_config_types_None(
+      SseDeserializer deserializer);
+
+  @protected
+  ArcMutexPlugin
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexPlugin(
+          SseDeserializer deserializer);
+
+  @protected
+  PluginInode
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          SseDeserializer deserializer);
+
+  @protected
+  RpcConfig
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          SseDeserializer deserializer);
+
+  @protected
+  Value
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+          SseDeserializer deserializer);
+
+  @protected
+  ValueStoreUpdater
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          SseDeserializer deserializer);
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  BigInt sse_decode_U128(SseDeserializer deserializer);
+
+  @protected
+  AdiPluginMan sse_decode_adi_plugin_man(SseDeserializer deserializer);
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  AdiPluginMan sse_decode_box_autoadd_adi_plugin_man(
+      SseDeserializer deserializer);
+
+  @protected
+  bool sse_decode_box_autoadd_bool(SseDeserializer deserializer);
+
+  @protected
+  ConfigTypes sse_decode_box_autoadd_config_types(SseDeserializer deserializer);
+
+  @protected
+  FadButton sse_decode_box_autoadd_fad_button(SseDeserializer deserializer);
+
+  @protected
+  FadConfig sse_decode_box_autoadd_fad_config(SseDeserializer deserializer);
+
+  @protected
+  SongMetadata sse_decode_box_autoadd_song_metadata(
+      SseDeserializer deserializer);
+
+  @protected
   int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
+  ValueStoreUpdate sse_decode_box_autoadd_value_store_update(
+      SseDeserializer deserializer);
+
+  @protected
+  ConfigTypes sse_decode_config_types(SseDeserializer deserializer);
+
+  @protected
+  CurrentSongUpdate sse_decode_current_song_update(
+      SseDeserializer deserializer);
 
   @protected
   double sse_decode_f_32(SseDeserializer deserializer);
@@ -109,10 +465,37 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double sse_decode_f_64(SseDeserializer deserializer);
 
   @protected
+  FadButton sse_decode_fad_button(SseDeserializer deserializer);
+
+  @protected
+  FadConfig sse_decode_fad_config(SseDeserializer deserializer);
+
+  @protected
+  FadLabel sse_decode_fad_label(SseDeserializer deserializer);
+
+  @protected
+  FadPopup sse_decode_fad_popup(SseDeserializer deserializer);
+
+  @protected
+  FadScreen sse_decode_fad_screen(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<FadButton> sse_decode_list_fad_button(SseDeserializer deserializer);
+
+  @protected
+  List<FadLabel> sse_decode_list_fad_label(SseDeserializer deserializer);
+
+  @protected
+  List<FadPopup> sse_decode_list_fad_popup(SseDeserializer deserializer);
+
+  @protected
+  List<FadScreen> sse_decode_list_fad_screen(SseDeserializer deserializer);
 
   @protected
   Float32List sse_decode_list_prim_f_32_strict(SseDeserializer deserializer);
@@ -127,20 +510,74 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<(String, PluginInode)>
+      sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_plugin_inode(
+          SseDeserializer deserializer);
+
+  @protected
+  List<(String, ConfigTypes)> sse_decode_list_record_string_config_types(
+      SseDeserializer deserializer);
+
+  @protected
   List<SongMetadata> sse_decode_list_song_metadata(
+      SseDeserializer deserializer);
+
+  @protected
+  Map<String, ConfigTypes>? sse_decode_opt_Map_String_config_types_None(
       SseDeserializer deserializer);
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
+  AdiPluginMan? sse_decode_opt_box_autoadd_adi_plugin_man(
+      SseDeserializer deserializer);
+
+  @protected
+  bool? sse_decode_opt_box_autoadd_bool(SseDeserializer deserializer);
+
+  @protected
+  FadConfig? sse_decode_opt_box_autoadd_fad_config(
+      SseDeserializer deserializer);
+
+  @protected
+  SongMetadata? sse_decode_opt_box_autoadd_song_metadata(
+      SseDeserializer deserializer);
+
+  @protected
   int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
+  List<String>? sse_decode_opt_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<FadButton>? sse_decode_opt_list_fad_button(SseDeserializer deserializer);
+
+  @protected
+  List<FadLabel>? sse_decode_opt_list_fad_label(SseDeserializer deserializer);
+
+  @protected
+  List<FadPopup>? sse_decode_opt_list_fad_popup(SseDeserializer deserializer);
+
+  @protected
+  List<FadScreen>? sse_decode_opt_list_fad_screen(SseDeserializer deserializer);
 
   @protected
   Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
   PlayerState sse_decode_player_state(SseDeserializer deserializer);
+
+  @protected
+  (
+    String,
+    PluginInode
+  ) sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_plugin_inode(
+      SseDeserializer deserializer);
+
+  @protected
+  (String, ConfigTypes) sse_decode_record_string_config_types(
+      SseDeserializer deserializer);
 
   @protected
   SongMetadata sse_decode_song_metadata(SseDeserializer deserializer);
@@ -161,17 +598,152 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt sse_decode_usize(SseDeserializer deserializer);
 
   @protected
+  ValueStoreUpdate sse_decode_value_store_update(SseDeserializer deserializer);
+
+  @protected
   void sse_encode_AnyhowException(
       AnyhowException self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexPlugin(
+          ArcMutexPlugin self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          PluginInode self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          RpcConfig self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+          Value self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          ValueStoreUpdater self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          PluginInode self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          RpcConfig self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          ValueStoreUpdater self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          PluginInode self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          RpcConfig self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          ValueStoreUpdater self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_I128(BigInt self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode_None(
+          Map<String, PluginInode> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_Map_String_config_types_None(
+      Map<String, ConfigTypes> self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexPlugin(
+          ArcMutexPlugin self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          PluginInode self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          RpcConfig self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+          Value self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          ValueStoreUpdater self, SseSerializer serializer);
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
+  void sse_encode_U128(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_adi_plugin_man(AdiPluginMan self, SseSerializer serializer);
+
+  @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_adi_plugin_man(
+      AdiPluginMan self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_config_types(
+      ConfigTypes self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_fad_button(
+      FadButton self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_fad_config(
+      FadConfig self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_song_metadata(
+      SongMetadata self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_value_store_update(
+      ValueStoreUpdate self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_config_types(ConfigTypes self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_current_song_update(
+      CurrentSongUpdate self, SseSerializer serializer);
 
   @protected
   void sse_encode_f_32(double self, SseSerializer serializer);
@@ -180,10 +752,39 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_f_64(double self, SseSerializer serializer);
 
   @protected
+  void sse_encode_fad_button(FadButton self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_fad_config(FadConfig self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_fad_label(FadLabel self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_fad_popup(FadPopup self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_fad_screen(FadScreen self, SseSerializer serializer);
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_fad_button(
+      List<FadButton> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_fad_label(List<FadLabel> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_fad_popup(List<FadPopup> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_fad_screen(
+      List<FadScreen> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_prim_f_32_strict(
@@ -201,14 +802,61 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       Uint8List self, SseSerializer serializer);
 
   @protected
+  void
+      sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_plugin_inode(
+          List<(String, PluginInode)> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_record_string_config_types(
+      List<(String, ConfigTypes)> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_song_metadata(
       List<SongMetadata> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_Map_String_config_types_None(
+      Map<String, ConfigTypes>? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_adi_plugin_man(
+      AdiPluginMan? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_bool(bool? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_fad_config(
+      FadConfig? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_song_metadata(
+      SongMetadata? self, SseSerializer serializer);
+
+  @protected
   void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_String(List<String>? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_fad_button(
+      List<FadButton>? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_fad_label(
+      List<FadLabel>? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_fad_popup(
+      List<FadPopup>? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_fad_screen(
+      List<FadScreen>? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_list_prim_u_8_strict(
@@ -216,6 +864,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_player_state(PlayerState self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_plugin_inode(
+          (String, PluginInode) self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_record_string_config_types(
+      (String, ConfigTypes) self, SseSerializer serializer);
 
   @protected
   void sse_encode_song_metadata(SongMetadata self, SseSerializer serializer);
@@ -234,12 +891,76 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_usize(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_value_store_update(
+      ValueStoreUpdate self, SseSerializer serializer);
 }
 
 // Section: wire_class
 
 class RustLibWire implements BaseWire {
   RustLibWire.fromExternalLibrary(ExternalLibrary lib);
+
+  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexPlugin(
+          int ptr) =>
+      wasmModule
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexPlugin(
+              ptr);
+
+  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexPlugin(
+          int ptr) =>
+      wasmModule
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexPlugin(
+              ptr);
+
+  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          int ptr) =>
+      wasmModule
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+              ptr);
+
+  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          int ptr) =>
+      wasmModule
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+              ptr);
+
+  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          int ptr) =>
+      wasmModule
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+              ptr);
+
+  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          int ptr) =>
+      wasmModule
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+              ptr);
+
+  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+          int ptr) =>
+      wasmModule
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+              ptr);
+
+  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+          int ptr) =>
+      wasmModule
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+              ptr);
+
+  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          int ptr) =>
+      wasmModule
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+              ptr);
+
+  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          int ptr) =>
+      wasmModule
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+              ptr);
 }
 
 @JS('wasm_bindgen')
@@ -247,4 +968,44 @@ external RustLibWasmModule get wasmModule;
 
 @JS()
 @anonymous
-extension type RustLibWasmModule._(JSObject _) implements JSObject {}
+extension type RustLibWasmModule._(JSObject _) implements JSObject {
+  external void
+      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexPlugin(
+          int ptr);
+
+  external void
+      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcMutexPlugin(
+          int ptr);
+
+  external void
+      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          int ptr);
+
+  external void
+      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPluginInode(
+          int ptr);
+
+  external void
+      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          int ptr);
+
+  external void
+      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRpcConfig(
+          int ptr);
+
+  external void
+      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+          int ptr);
+
+  external void
+      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+          int ptr);
+
+  external void
+      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          int ptr);
+
+  external void
+      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValueStoreUpdater(
+          int ptr);
+}

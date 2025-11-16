@@ -1,18 +1,20 @@
-use crate::api::utils::fpre;
+use crate::api::{plugin_man::call_func_plugins, utils::fpre, value_store::update_store};
 use atomic_float::AtomicF32;
 use audiotags::Tag;
 use cd_audio::{
-    sget_cd_stream_first_sector, sget_cd_stream_last_sector, sget_devices, sget_track_meta,
-    sopen_cd_stream, sread_cd_stream, sseek_cd_stream, strack_duration, strack_num, sverify_audio,
-    SCDStream,
+    SCDStream, sget_cd_stream_first_sector, sget_cd_stream_last_sector, sget_devices,
+    sget_track_meta, sopen_cd_stream, sread_cd_stream, sseek_cd_stream, strack_duration,
+    strack_num, sverify_audio,
 };
+use extism::convert::Json;
+use extism::{FromBytes, ToBytes};
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use regex::Regex;
 use rodio::{
-    cpal::traits::{DeviceTrait, HostTrait},
     Decoder, OutputStream, OutputStreamBuilder, Sink, Source,
+    cpal::traits::{DeviceTrait, HostTrait},
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -26,9 +28,9 @@ use std::{
     path::{Path, PathBuf},
     process::{Child, Command},
     sync::{
+        Arc, Mutex, RwLock,
         atomic::{AtomicBool, Ordering},
         mpsc::{self, Receiver, Sender},
-        Arc, Mutex, RwLock,
     },
     thread,
     time::{Duration, Instant},
@@ -235,7 +237,8 @@ enum PlayerMessage {
     SwitchToPreloaded,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToBytes, FromBytes)]
+#[encoding(Json)]
 pub struct SongMetadata {
     pub title: String,
     pub artist: String,
@@ -244,6 +247,20 @@ pub struct SongMetadata {
     pub path: String,
     pub album_art: Option<Vec<u8>>,
     pub genre: String,
+}
+
+impl Default for SongMetadata {
+    fn default() -> Self {
+        Self {
+            title: "Unknown Title".to_string(),
+            artist: "Unknown Artist".to_string(),
+            album: "Unknown Album".to_string(),
+            duration: 0,
+            path: "".to_string(),
+            album_art: None,
+            genre: "Unknown Genre".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -467,7 +484,9 @@ impl AudioPlayer {
 
                             // Warn about seek position
                             if position != 0.0 {
-                                println!("Warning: Seeking in CD tracks is not supported (yet). Starting from beginning.");
+                                println!(
+                                    "Warning: Seeking in CD tracks is not supported (yet). Starting from beginning."
+                                );
                             }
 
                             // Create CD source
@@ -911,7 +930,6 @@ impl AudioPlayer {
         }
     }
 
-    // Modified play method to start monitoring
     fn play(&self, path: &str) -> bool {
         self.stop();
         {
@@ -1165,6 +1183,27 @@ pub fn scan_music_directory(dir_path: String, auto_convert: bool) -> Vec<SongMet
     songs
 }
 
+pub fn write_meta(meta: &SongMetadata) -> Result<(), String> {
+    let mut tag = match Tag::new().read_from_path(meta.path.clone()) {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("{e}");
+            return Err(format!("Error reading tag: {e}"));
+        }
+    };
+    tag.set_title(&meta.title);
+    tag.set_artist(&meta.artist);
+    tag.set_genre(&meta.genre);
+    tag.set_album_title(&meta.album);
+    match tag.write_to_path(&meta.path.clone()) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            eprintln!("{e}");
+            Err(format!("Error writing tag to path: {e}"))
+        }
+    }
+}
+
 fn extract_metadata(path: &Path) -> Option<SongMetadata> {
     let tag = Tag::default().read_from_path(path).ok();
 
@@ -1183,7 +1222,8 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
     let artist_str = tag
         .as_ref()
         .and_then(|t| t.artist().map(|s| s.to_string()))
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .replace('\0', " ");
 
     let separators = SEPARATORS.read().unwrap();
     let pattern = separators
@@ -1252,6 +1292,13 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
 }
 
 pub fn play_song(path: String) -> bool {
+    let mut updater = update_store();
+    updater.set_current_song(extract_metadata(&PathBuf::from(path.clone()).as_path()).unwrap());
+    let r = updater.apply();
+    if r.is_err() {
+        println!("Failed to apply changes to the store: {}", r.unwrap_err());
+    }
+    call_func_plugins("play_song".to_string());
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.play(&path)
     } else {
@@ -1260,6 +1307,7 @@ pub fn play_song(path: String) -> bool {
 }
 
 pub fn pause_song() -> bool {
+    call_func_plugins("pause_song".to_string());
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.pause()
     } else {
@@ -1268,6 +1316,7 @@ pub fn pause_song() -> bool {
 }
 
 pub fn resume_song() -> bool {
+    call_func_plugins("resume_song".to_string());
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.resume()
     } else {
@@ -1285,6 +1334,7 @@ pub fn stop_song() -> bool {
 
 pub fn set_volume(volume: f32) -> bool {
     CUR_VOL.store(volume, Ordering::SeqCst);
+    call_func_plugins("set_volume".to_string());
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.set_volume(volume.clamp(0.0, 1.0))
     } else {
@@ -1301,6 +1351,7 @@ pub fn get_playback_position() -> f32 {
 }
 
 pub fn seek_to_position(position: f32) -> bool {
+    call_func_plugins("seek_to_position".to_string());
     if let Some(player) = PLAYER.lock().unwrap().as_ref() {
         player.seek(position)
     } else {
@@ -1525,8 +1576,8 @@ pub fn download_to_temp(query: String, flags: Option<String>) -> Result<String, 
                 "--log-level",
                 "DEBUG",
                 "--no-cache",
-                "--format",
-                "mp3",
+                //"--format",
+                //"mp3",
                 "--output",
                 &output_path,
             ]);
@@ -1780,4 +1831,17 @@ pub fn switch_to_preloaded_now() -> bool {
     } else {
         false
     }
+}
+
+pub fn restart_player() -> bool {
+    stop_song();
+    
+    if let Ok(mut player_guard) = PLAYER.lock() {
+        *player_guard = None;
+    }
+    if let Ok(mut state_guard) = PLAYER_STATE.lock() {
+        state_guard.initialized = false;
+    }
+    
+    initialize_player()
 }

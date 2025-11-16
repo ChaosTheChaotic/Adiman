@@ -6,11 +6,18 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-Future<OsStr?> fpre({required Path fpath}) =>
-    RustLib.instance.api.crateApiUtilsFpre(fpath: fpath);
+// These functions are ignored because they are not marked as `pub`: `download_file`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `check_dir`, `fpre`, `validate_path`
 
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OsStr>>
-abstract class OsStr implements RustOpaqueInterface {}
+Future<bool> checkUnsafeApi() =>
+    RustLib.instance.api.crateApiUtilsCheckUnsafeApi();
 
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Path>>
-abstract class Path implements RustOpaqueInterface {}
+Future<bool> checkPluginsEnabled() =>
+    RustLib.instance.api.crateApiUtilsCheckPluginsEnabled();
+
+Future<String?> getLatestVersion() =>
+    RustLib.instance.api.crateApiUtilsGetLatestVersion();
+
+Future<bool> updateExecutable({required String arch, required String expath}) =>
+    RustLib.instance.api
+        .crateApiUtilsUpdateExecutable(arch: arch, expath: expath);

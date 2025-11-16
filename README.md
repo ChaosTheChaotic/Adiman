@@ -32,12 +32,14 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 
 # Dependencies (These apply even when not building)
 
-- Ffmpeg
-- Spotdl (via python if you want downloading songs to work)
+- FFmpeg
+- SpotDL (via python if you want downloading songs to work)
+- GTK
+- SQLite
 
 # Installing
 
-(There are only linux builds currently) Head over to [releases](https://github.com/ChaosTheChaotic/Adiman/releases/latest) (or download from artifacts if your architecture isnt there yet), download the appimage for your architecture, mark executable (if needed) and run the appimage
+(There are only linux builds currently) Head over to [releases](https://github.com/ChaosTheChaotic/Adiman/releases/latest), download the appimage for your architecture, mark executable (if needed using `chmod +x TheAppImage`) and run the appimage
 
 # Features
 
@@ -47,6 +49,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 - Intuitive UI
 - Non-intrusive UI
 - Smooth animations
+- Plugin Support (to develop or add plugins look through the [documentation](PLUGINS.md))
 - Playlists
 - Downloading songs via spotdl command line tool (requires spotdl installed and this takes a while due to all the rate limits so unfortunately you just have to wait it out)
 - Waveform seekbar
@@ -67,6 +70,9 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 - Auto conversion of non-mp3 songs via ffmpeg (if you have many of these files you might have to wait a bit before reloading the library)
 - Horribly inefficent code
 
+# Plugin development
+You may find plugin development in the [PLUGINS.md](PLUGINS.md#developing-plugins)
+
 # Screenshots
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
@@ -80,25 +86,30 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 
 # Building
 ## Preqrequisites
-- Flutter
+- flutter
 - flutter_rust_bridge_codegen (installed via cargo)
 - cdparanoia (this is required for my cd_audio library to build as it uses cdda_interface.h)
 - libcdio
 - libcdio_cdda
 - git
-- GTK
+- gtk
 - rustup
-- Working rust
+- rust
+- AcoustID API key
 ## Build steps
 1. Git clone the repo and go into the directory
 ```
 git clone "https://github.com/ChaosTheChaotic/Adiman.git" && cd Adiman
 ```
-2. Run the build commands
+2. Add API to .env file
+```
+echo "ACOUSTID_API=YOUR_API" >> rust/.env
+```
+3. Run the build commands
 ```
 flutter_rust_bridge_codegen generate && flutter build linux --release
 ```
-3. The app should be done and you can now run it
+4. The app should be done and you can now run it
 ```
 build/linux/<your_architecture>/release/bundle/adiman
 ```

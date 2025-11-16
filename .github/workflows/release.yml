@@ -21,7 +21,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
-      - name: install system dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -29,7 +29,7 @@ jobs:
             libgtk-3-0 libgtk-3-dev \
             libblkid1 liblzma5 \
             libasound2-dev libpulse-dev \
-            cmake ninja-build clang cdparanoia libcdio-dev libcdio-cdda-dev libcdio-paranoia-dev libcdparanoia-dev 
+            cmake ninja-build clang cdparanoia libcdio-dev libcdio-cdda-dev libcdio-paranoia-dev libcdparanoia-dev sqlite3
           sudo modprobe fuse
 
       - name: Setup Flutter
@@ -54,6 +54,10 @@ jobs:
           wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage 
 
+      - name: Create .env file
+        run: |
+          echo "ACOUSTID_API=${{ secrets.ACOUSTID_API }}" > rust/.env
+
       - name: Build Project
         run: |
           flutter_rust_bridge_codegen generate
@@ -61,9 +65,11 @@ jobs:
 
       - name: Prepare AppDir
         run: |
-          mkdir -p Adiman.AppDir
+          mkdir -p Adiman.AppDir/deps
           cp -r build/linux/x64/release/bundle/* Adiman.AppDir/
           cp appimagestuff/{AppRun,Adiman.desktop,Adiman.png} Adiman.AppDir/
+          cp -L /usr/lib/x86_64-linux-gnu/libcdio.so Adiman.AppDir/deps/libcdio.so
+          cp -L /usr/lib/x86_64-linux-gnu/libcdda_interface.so Adiman.AppDir/deps/libcdda_interface.so
           chmod +x Adiman.AppDir/AppRun
 
       - name: Build AppImage
@@ -125,6 +131,10 @@ jobs:
           wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-aarch64.AppImage
           chmod +x appimagetool-aarch64.AppImage
 
+      - name: Create .env file
+        run: |
+          echo "ACOUSTID_API=${{ secrets.ACOUSTID_API }}" > rust/.env
+
       - name: Build Project
         run: |
           flutter_rust_bridge_codegen generate
@@ -132,9 +142,11 @@ jobs:
 
       - name: Prepare AppDir
         run: |
-          mkdir -p Adiman.AppDir
+          mkdir -p Adiman.AppDir/deps
           cp -r build/linux/arm64/release/bundle/* Adiman.AppDir/
           cp appimagestuff/{AppRun,Adiman.desktop,Adiman.png} Adiman.AppDir/
+          cp -L /usr/lib/aarch64-linux-gnu/libcdio.so Adiman.AppDir/deps/libcdio.so
+          cp -L /usr/lib/aarch64-linux-gnu/libcdda_interface.so Adiman.AppDir/deps/libcdda_interface.so
           chmod +x Adiman.AppDir/AppRun
 
       - name: Build AppImage
