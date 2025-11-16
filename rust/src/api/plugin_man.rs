@@ -602,11 +602,11 @@ impl AdiPluginMan {
         Ok(())
     }
 
-    fn valid_extension(&self, path: &PathBuf) -> bool {
+    fn valid_extension(&self, path: &Path) -> bool {
         path.extension() == Some(OsStr::new("wasm"))
     }
 
-    fn valid_stem(&self, path: &PathBuf) -> bool {
+    fn valid_stem(&self, path: &Path) -> bool {
         let stem = path.file_stem();
         if stem.is_none() {
             false
