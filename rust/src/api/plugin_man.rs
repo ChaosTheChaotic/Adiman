@@ -9,7 +9,7 @@ pub use std::{
     ffi::OsStr,
     fs::{self, metadata},
     io::Read,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 
