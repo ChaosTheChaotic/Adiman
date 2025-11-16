@@ -1120,7 +1120,7 @@ pub fn scan_dir(path: String) -> Option<Vec<String>> {
         .scan_dir(PathBuf::from(path))
         .map(|pb| {
             pb.into_iter()
-                .filter_map(|pbuf| Some(pbuf.to_string_lossy().to_string()))
+                .map(|pbuf| pbuf.to_string_lossy().to_string())
                 .collect()
         })
 }
