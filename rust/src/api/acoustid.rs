@@ -78,12 +78,8 @@ fn calc_fingerprint(path: impl AsRef<Path>) -> anyhow::Result<Vec<u32>> {
 
     let mut sbuf = None;
 
-    loop {
-        let packet = match fmt.next_packet() {
-            Ok(p) => p,
-            Err(_) => break,
-        };
-
+    while let Ok(p) = fmt.next_packet() {
+        let packet = p;
         if packet.track_id() != tid {
             continue;
         }

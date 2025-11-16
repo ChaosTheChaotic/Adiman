@@ -49,7 +49,9 @@ impl std::fmt::Display for PluginManErr {
                 "Metadata for plugin: {path} not found. Ensure it has the same name as the plugin and is json type whilst being in the same (valid) directory as the plugin"
             ),
             PluginManErr::InvalidMeta(path) => format!("Metadata found for: {path} is invalid"),
-            PluginManErr::PluginManNotLoaded => "The plugin manager has not been loaded.".to_string(),
+            PluginManErr::PluginManNotLoaded => {
+                "The plugin manager has not been loaded.".to_string()
+            }
         };
         write!(f, "{err}")
     }
@@ -87,13 +89,14 @@ pub struct FadButton {
 impl FadButton {
     pub fn is_valid(&self) -> bool {
         if let Some(location) = &self.location
-            && !ALLOWED_BUTTON_LOCATIONS.contains(&location.as_str()) {
-                eprintln!(
-                    "Warning: Invalid button location '{location}' for button '{}'",
-                    self.name
-                );
-                return false;
-            }
+            && !ALLOWED_BUTTON_LOCATIONS.contains(&location.as_str())
+        {
+            eprintln!(
+                "Warning: Invalid button location '{location}' for button '{}'",
+                self.name
+            );
+            return false;
+        }
 
         if self.name.trim().is_empty() {
             eprintln!("Warning: Button has empty name");
@@ -526,40 +529,41 @@ impl AdiPluginMan {
 
             for item in rpc_array.iter_mut() {
                 if let Some(Value::String(item_key)) = item.get("key")
-                    && item_key == &key {
-                        // Convert ConfigTypes to Value for serialization
-                        let new_value = match &value {
-                            ConfigTypes::String(s) => Value::String(s.clone()),
-                            ConfigTypes::Bool(b) => Value::Bool(*b),
-                            ConfigTypes::Int(i) => Value::Number(serde_json::Number::from(*i)),
-                            ConfigTypes::UInt(u) => Value::Number(serde_json::Number::from(*u)),
-                            ConfigTypes::BigInt(i) => {
-                                if let Some(num) = serde_json::Number::from_f64(*i as f64) {
-                                    Value::Number(num)
-                                } else {
-                                    Value::String(i.to_string())
-                                }
+                    && item_key == &key
+                {
+                    // Convert ConfigTypes to Value for serialization
+                    let new_value = match &value {
+                        ConfigTypes::String(s) => Value::String(s.clone()),
+                        ConfigTypes::Bool(b) => Value::Bool(*b),
+                        ConfigTypes::Int(i) => Value::Number(serde_json::Number::from(*i)),
+                        ConfigTypes::UInt(u) => Value::Number(serde_json::Number::from(*u)),
+                        ConfigTypes::BigInt(i) => {
+                            if let Some(num) = serde_json::Number::from_f64(*i as f64) {
+                                Value::Number(num)
+                            } else {
+                                Value::String(i.to_string())
                             }
-                            ConfigTypes::BigUInt(u) => {
-                                if let Some(num) = serde_json::Number::from_f64(*u as f64) {
-                                    Value::Number(num)
-                                } else {
-                                    Value::String(u.to_string())
-                                }
+                        }
+                        ConfigTypes::BigUInt(u) => {
+                            if let Some(num) = serde_json::Number::from_f64(*u as f64) {
+                                Value::Number(num)
+                            } else {
+                                Value::String(u.to_string())
                             }
-                            ConfigTypes::Float(f) => {
-                                if let Some(n) = serde_json::Number::from_f64(*f) {
-                                    Value::Number(n)
-                                } else {
-                                    Value::String(f.to_string())
-                                }
+                        }
+                        ConfigTypes::Float(f) => {
+                            if let Some(n) = serde_json::Number::from_f64(*f) {
+                                Value::Number(n)
+                            } else {
+                                Value::String(f.to_string())
                             }
-                        };
+                        }
+                    };
 
-                        item["set_val"] = new_value;
-                        found = true;
-                        break;
-                    }
+                    item["set_val"] = new_value;
+                    found = true;
+                    break;
+                }
             }
 
             if !found {
@@ -641,16 +645,14 @@ impl AdiPluginMan {
                 // Iterate through everything inside it to see if its a valid plugin
                 for w in fs::read_dir(e.path()).ok()? {
                     let w = w.ok()?;
-                    if metadata(w.path()).ok()?.is_file()
-                        && self.plugin_file_validity(w.path()) {
-                            ppaths.push(w.path());
-                        }
+                    if metadata(w.path()).ok()?.is_file() && self.plugin_file_validity(w.path()) {
+                        ppaths.push(w.path());
+                    }
                 }
                 // If its a file check if its a valid plugin
-            } else if metadata(e.path()).ok()?.is_file()
-                && self.plugin_file_validity(e.path()) {
-                    ppaths.push(e.path());
-                }
+            } else if metadata(e.path()).ok()?.is_file() && self.plugin_file_validity(e.path()) {
+                ppaths.push(e.path());
+            }
         }
         Some(ppaths)
     }
@@ -779,11 +781,7 @@ impl AdiPluginMan {
             r
         } else {
             let l = self.load_plugin(path);
-            if l.is_err() {
-                l
-            } else {
-                Ok(())
-            }
+            if l.is_err() { l } else { Ok(()) }
         }
     }
 
@@ -832,9 +830,7 @@ impl AdiPluginMan {
             if plugin_guard.function_exists(func) {
                 let result: Result<&str, extism::Error> = plugin_guard.call(func, ());
                 if let Err(e) = result {
-                    eprintln!(
-                        "Error running function '{func}' on plugin '{path}': {e}"
-                    );
+                    eprintln!("Error running function '{func}' on plugin '{path}': {e}");
                 }
             }
         }
@@ -871,13 +867,14 @@ impl AdiPluginMan {
 
         // Validate the location filter if provided
         if let Some(location) = location_filter
-            && !ALLOWED_BUTTON_LOCATIONS.contains(&location) {
-                eprintln!(
-                    "Warning: Invalid location filter '{}', returning no buttons",
-                    location
-                );
-                return all_buttons;
-            }
+            && !ALLOWED_BUTTON_LOCATIONS.contains(&location)
+        {
+            eprintln!(
+                "Warning: Invalid location filter '{}', returning no buttons",
+                location
+            );
+            return all_buttons;
+        }
 
         for (plugin_path, plugin_inode) in &self.plugin_meta {
             if let Some(fad_config) = &plugin_inode.fad {
@@ -942,11 +939,12 @@ impl AdiPluginMan {
 
         for (plugin_path, plugin_inode) in &self.plugin_meta {
             if let Some(fad_config) = &plugin_inode.fad
-                && let Some(screens) = &fad_config.screens {
-                    for screen in screens {
-                        all_screens.push((plugin_path.clone(), screen.clone()));
-                    }
+                && let Some(screens) = &fad_config.screens
+            {
+                for screen in screens {
+                    all_screens.push((plugin_path.clone(), screen.clone()));
                 }
+            }
         }
 
         all_screens
@@ -958,11 +956,12 @@ impl AdiPluginMan {
 
         for (plugin_path, plugin_inode) in &self.plugin_meta {
             if let Some(fad_config) = &plugin_inode.fad
-                && let Some(popups) = &fad_config.popups {
-                    for popup in popups {
-                        all_popups.push((plugin_path.clone(), popup.clone()));
-                    }
+                && let Some(popups) = &fad_config.popups
+            {
+                for popup in popups {
+                    all_popups.push((plugin_path.clone(), popup.clone()));
                 }
+            }
         }
 
         all_popups
@@ -1063,10 +1062,7 @@ pub fn load_plugin(path: String) -> Result<String, String> {
     match res {
         Ok(()) => Ok(format!(
             "Loaded plugin: {}",
-            PathBuf::from(path)
-                .file_stem()
-                .unwrap()
-                .to_string_lossy()
+            PathBuf::from(path).file_stem().unwrap().to_string_lossy()
         )),
         Err(e) => {
             eprintln!("{e}");
@@ -1086,10 +1082,7 @@ pub fn remove_plugin(path: String) -> Result<String, String> {
     match res {
         Ok(()) => Ok(format!(
             "Removed plugin {}",
-            PathBuf::from(path)
-                .file_stem()
-                .unwrap()
-                .to_string_lossy()
+            PathBuf::from(path).file_stem().unwrap().to_string_lossy()
         )),
         Err(e) => {
             eprintln!("{e}");
@@ -1144,10 +1137,7 @@ pub fn reload_plugin(path: String) -> Result<String, String> {
     match res {
         Ok(()) => Ok(format!(
             "Reloaded plugin: {}",
-            PathBuf::from(path)
-                .file_stem()
-                .unwrap()
-                .to_string_lossy()
+            PathBuf::from(path).file_stem().unwrap().to_string_lossy()
         )),
         Err(e) => {
             eprintln!("{e}");
@@ -1193,10 +1183,7 @@ pub fn set_plugin_config(path: String, key: String, value: ConfigTypes) -> Resul
         Ok(()) => Ok(format!(
             "Updated config key '{}' for plugin: {}",
             key,
-            PathBuf::from(path)
-                .file_stem()
-                .unwrap()
-                .to_string_lossy()
+            PathBuf::from(path).file_stem().unwrap().to_string_lossy()
         )),
         Err(e) => {
             eprintln!("{e}");

@@ -504,16 +504,16 @@ impl AudioPlayer {
 
                                     // Update player state
                                     if let Ok(player_lock) = PLAYER.lock()
-                                        && let Some(player) = player_lock.as_ref() {
-                                            let old_sink = player.sink.lock().unwrap().take();
-                                            AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
-                                            *player.sink.lock().unwrap() =
-                                                Some(Arc::clone(&new_sink));
-                                            *player.current_file.lock().unwrap() = path.clone();
-                                            *player.start_time.lock().unwrap() = Instant::now();
-                                            *player.playing.lock().unwrap() = true;
-                                            *player.is_paused.lock().unwrap() = false;
-                                        }
+                                        && let Some(player) = player_lock.as_ref()
+                                    {
+                                        let old_sink = player.sink.lock().unwrap().take();
+                                        AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
+                                        *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
+                                        *player.current_file.lock().unwrap() = path.clone();
+                                        *player.start_time.lock().unwrap() = Instant::now();
+                                        *player.playing.lock().unwrap() = true;
+                                        *player.is_paused.lock().unwrap() = false;
+                                    }
                                 }
                                 Err(e) => println!("Failed to open CD stream: {}", e),
                             }
@@ -530,8 +530,7 @@ impl AudioPlayer {
                         let mut channels = 2;
                         let mut total_duration = Duration::from_secs(0);
                         let mut initial_data = Vec::new();
-                        if reader.read_to_end(&mut initial_data).is_ok()
-                            && !initial_data.is_empty()
+                        if reader.read_to_end(&mut initial_data).is_ok() && !initial_data.is_empty()
                         {
                             let cursor = Cursor::new(initial_data.clone());
                             if let Ok(dec) = Decoder::try_from(cursor) {
@@ -573,15 +572,16 @@ impl AudioPlayer {
                         new_sink.append(source);
                         new_sink.play();
                         if let Ok(player_lock) = PLAYER.lock()
-                            && let Some(player) = player_lock.as_ref() {
-                                let old_sink = player.sink.lock().unwrap().take();
-                                AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
-                                *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
-                                *player.current_file.lock().unwrap() = path.clone();
-                                *player.start_time.lock().unwrap() = Instant::now();
-                                *player.playing.lock().unwrap() = true;
-                                *player.is_paused.lock().unwrap() = false;
-                            }
+                            && let Some(player) = player_lock.as_ref()
+                        {
+                            let old_sink = player.sink.lock().unwrap().take();
+                            AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
+                            *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
+                            *player.current_file.lock().unwrap() = path.clone();
+                            *player.start_time.lock().unwrap() = Instant::now();
+                            *player.playing.lock().unwrap() = true;
+                            *player.is_paused.lock().unwrap() = false;
+                        }
                         // Spawn thread to buffer the rest of the audio in chunks.
                         let chunks_clone = Arc::clone(&chunks);
                         let file_path = path.clone();
@@ -592,8 +592,7 @@ impl AudioPlayer {
                                 if reader.read_to_end(&mut file_data).is_ok() {
                                     let cursor = Cursor::new(file_data);
                                     if let Ok(decoder) = Decoder::try_from(cursor) {
-                                        let mut samples =
-                                            Vec::with_capacity(sample_rate as usize);
+                                        let mut samples = Vec::with_capacity(sample_rate as usize);
                                         for sample in decoder {
                                             samples.push(sample);
                                             if samples.len()
@@ -608,9 +607,10 @@ impl AudioPlayer {
                                             }
                                         }
                                         if !samples.is_empty()
-                                            && let Ok(mut guard) = chunks_clone.lock() {
-                                                guard.push(AudioChunk { samples });
-                                            }
+                                            && let Ok(mut guard) = chunks_clone.lock()
+                                        {
+                                            guard.push(AudioChunk { samples });
+                                        }
                                     }
                                 }
                             }
@@ -670,10 +670,11 @@ impl AudioPlayer {
                         new_sink.append(source);
                         new_sink.pause();
                         if let Ok(player_lock) = PLAYER.lock()
-                            && let Some(player) = player_lock.as_ref() {
-                                *player.next_sink.lock().unwrap() = Some(Arc::clone(&new_sink));
-                                *player.next_buffer.lock().unwrap() = Some(stbuf_clone);
-                            }
+                            && let Some(player) = player_lock.as_ref()
+                        {
+                            *player.next_sink.lock().unwrap() = Some(Arc::clone(&new_sink));
+                            *player.next_buffer.lock().unwrap() = Some(stbuf_clone);
+                        }
                         // Spawn thread to buffer the rest of the audio in chunks.
                         let chunks_clone = Arc::clone(&chunks);
                         let file_path = path.clone();
@@ -699,9 +700,10 @@ impl AudioPlayer {
                                             }
                                         }
                                         if !samples.is_empty()
-                                            && let Ok(mut guard) = chunks_clone.lock() {
-                                                guard.push(AudioChunk { samples });
-                                            }
+                                            && let Ok(mut guard) = chunks_clone.lock()
+                                        {
+                                            guard.push(AudioChunk { samples });
+                                        }
                                     }
                                 }
                             }
@@ -764,65 +766,69 @@ impl AudioPlayer {
                                 new_sink.pause();
                             }
                             if let Ok(player_lock) = PLAYER.lock()
-                                && let Some(player) = player_lock.as_ref() {
-                                    let old_sink = player.sink.lock().unwrap().take();
-                                    AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
-                                    *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
-                                }
+                                && let Some(player) = player_lock.as_ref()
+                            {
+                                let old_sink = player.sink.lock().unwrap().take();
+                                AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
+                                *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
+                            }
                             if should_play
                                 && let Ok(player_lock) = PLAYER.lock()
-                                    && let Some(player) = player_lock.as_ref() {
-                                        let now = Instant::now();
-                                        let new_start = now
-                                            .checked_sub(Duration::from_secs_f32(position))
-                                            .unwrap_or(now);
-                                        *player.start_time.lock().unwrap() = new_start;
-                                    }
+                                && let Some(player) = player_lock.as_ref()
+                            {
+                                let now = Instant::now();
+                                let new_start = now
+                                    .checked_sub(Duration::from_secs_f32(position))
+                                    .unwrap_or(now);
+                                *player.start_time.lock().unwrap() = new_start;
+                            }
                         } else if current_path.starts_with("cdda://") {
                             // CD seek handling
                             if let Ok(player_lock) = PLAYER.lock()
-                                && let Some(player) = player_lock.as_ref() {
-                                    let current_path = player.current_file.lock().unwrap().clone();
+                                && let Some(player) = player_lock.as_ref()
+                            {
+                                let current_path = player.current_file.lock().unwrap().clone();
 
-                                    // Parse device and track from path
-                                    let (device, track) = Self::parse_cd_path(&current_path)
-                                        .expect("Failed to parse CD path");
+                                // Parse device and track from path
+                                let (device, track) = Self::parse_cd_path(&current_path)
+                                    .expect("Failed to parse CD path");
 
-                                    // Create new source at seek position
-                                    let mut source = CDStreamSource::new(&device, track)
-                                        .expect("Failed to get new source");
-                                    source
-                                        .seek(Duration::from_secs_f32(position))
-                                        .expect("Failed to seek");
+                                // Create new source at seek position
+                                let mut source = CDStreamSource::new(&device, track)
+                                    .expect("Failed to get new source");
+                                source
+                                    .seek(Duration::from_secs_f32(position))
+                                    .expect("Failed to seek");
 
-                                    // Create new sink and play
-                                    let new_sink = Arc::new(Sink::connect_new(&mixer));
-                                    new_sink.append(source);
-                                    new_sink.play();
+                                // Create new sink and play
+                                let new_sink = Arc::new(Sink::connect_new(&mixer));
+                                new_sink.append(source);
+                                new_sink.play();
 
-                                    // Crossfade and update state
-                                    let old_sink = player.sink.lock().unwrap().take();
-                                    AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
-                                    *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
+                                // Crossfade and update state
+                                let old_sink = player.sink.lock().unwrap().take();
+                                AudioPlayer::crossfade(old_sink, Arc::clone(&new_sink));
+                                *player.sink.lock().unwrap() = Some(Arc::clone(&new_sink));
 
-                                    // Update start time to reflect the seek position
-                                    let now = Instant::now();
-                                    *player.start_time.lock().unwrap() = now
-                                        .checked_sub(Duration::from_secs_f32(position))
-                                        .unwrap_or(now);
+                                // Update start time to reflect the seek position
+                                let now = Instant::now();
+                                *player.start_time.lock().unwrap() = now
+                                    .checked_sub(Duration::from_secs_f32(position))
+                                    .unwrap_or(now);
 
-                                    // Reset pause state
-                                    *player.is_paused.lock().unwrap() = false;
-                                    *player.paused_position.lock().unwrap() = 0.0;
-                                }
+                                // Reset pause state
+                                *player.is_paused.lock().unwrap() = false;
+                                *player.paused_position.lock().unwrap() = 0.0;
+                            }
                         }
                     }
                 }
                 PlayerMessage::SwitchToPreloaded => {
                     if let Ok(player_lock) = PLAYER.lock()
-                        && let Some(player) = player_lock.as_ref() {
-                            player.switch_to_preloaded();
-                        }
+                        && let Some(player) = player_lock.as_ref()
+                    {
+                        player.switch_to_preloaded();
+                    }
                 }
                 PlayerMessage::Stop => break,
             }
@@ -884,32 +890,33 @@ impl AudioPlayer {
         loop {
             if monitor_active.load(Ordering::SeqCst)
                 && let Ok(player_lock) = PLAYER.lock()
-                    && let Some(player) = player_lock.as_ref() {
-                        let position = player.get_position();
-                        let has_preloaded = player.next_sink.lock().unwrap().is_some();
+                && let Some(player) = player_lock.as_ref()
+            {
+                let position = player.get_position();
+                let has_preloaded = player.next_sink.lock().unwrap().is_some();
 
-                        if has_preloaded {
-                            // Get current track duration
-                            let duration = {
-                                if let Ok(buffer_guard) = player.buffer.lock() {
-                                    buffer_guard
-                                        .as_ref()
-                                        .map(|buf| buf.total_duration.as_secs_f32())
-                                        .unwrap_or(0.0)
-                                } else {
-                                    0.0
-                                }
-                            };
-
-                            let threshold_secs = threshold.load(Ordering::SeqCst);
-
-                            // Check if we're within threshold of the end
-                            if duration > 0.0 && (duration - position) <= threshold_secs {
-                                let _ = sender.send(PlayerMessage::SwitchToPreloaded);
-                                monitor_active.store(false, Ordering::SeqCst);
-                            }
+                if has_preloaded {
+                    // Get current track duration
+                    let duration = {
+                        if let Ok(buffer_guard) = player.buffer.lock() {
+                            buffer_guard
+                                .as_ref()
+                                .map(|buf| buf.total_duration.as_secs_f32())
+                                .unwrap_or(0.0)
+                        } else {
+                            0.0
                         }
+                    };
+
+                    let threshold_secs = threshold.load(Ordering::SeqCst);
+
+                    // Check if we're within threshold of the end
+                    if duration > 0.0 && (duration - position) <= threshold_secs {
+                        let _ = sender.send(PlayerMessage::SwitchToPreloaded);
+                        monitor_active.store(false, Ordering::SeqCst);
                     }
+                }
+            }
 
             thread::sleep(Duration::from_millis(100)); // Check every 100ms
         }
@@ -944,9 +951,10 @@ impl AudioPlayer {
     fn seek(&self, position: f32) -> bool {
         {
             if let Ok(sink_guard) = self.sink.lock()
-                && let Some(ref old) = *sink_guard {
-                    old.stop();
-                }
+                && let Some(ref old) = *sink_guard
+            {
+                old.stop();
+            }
             // Update paused position if paused, otherwise update start time
             let is_paused = *self.is_paused.lock().unwrap();
             if is_paused {
@@ -995,25 +1003,28 @@ impl Source for StreamingSource {
 
     fn total_duration(&self) -> Option<Duration> {
         if let Ok(buffer_guard) = self.buffer.lock()
-            && let Some(ref buf) = *buffer_guard {
-                return Some(buf.total_duration);
-            }
+            && let Some(ref buf) = *buffer_guard
+        {
+            return Some(buf.total_duration);
+        }
         None
     }
 
     fn channels(&self) -> u16 {
         if let Ok(buffer_guard) = self.buffer.lock()
-            && let Some(ref buf) = *buffer_guard {
-                return buf.channels;
-            }
+            && let Some(ref buf) = *buffer_guard
+        {
+            return buf.channels;
+        }
         2
     }
 
     fn sample_rate(&self) -> u32 {
         if let Ok(buffer_guard) = self.buffer.lock()
-            && let Some(ref buf) = *buffer_guard {
-                return buf.sample_rate;
-            }
+            && let Some(ref buf) = *buffer_guard
+        {
+            return buf.sample_rate;
+        }
         44100
     }
 }
@@ -1062,11 +1073,12 @@ pub fn initialize_player() -> bool {
     if !state.initialized {
         let mut player = PLAYER.lock().unwrap();
         if player.is_none()
-            && let Some(new_player) = AudioPlayer::new() {
-                *player = Some(new_player);
-                state.initialized = true;
-                return true;
-            }
+            && let Some(new_player) = AudioPlayer::new()
+        {
+            *player = Some(new_player);
+            state.initialized = true;
+            return true;
+        }
     }
     false
 }
@@ -1153,10 +1165,11 @@ pub fn scan_music_directory(dir_path: String, auto_convert: bool) -> Vec<SongMet
     // Second pass: add converted WAV/OGG files with original metadata
     for (original, cached) in conversion_paths {
         if cached.exists()
-            && let Some(mut metadata) = extract_metadata(&original) {
-                metadata.path = cached.to_string_lossy().into_owned();
-                songs.push(metadata);
-            }
+            && let Some(mut metadata) = extract_metadata(&original)
+        {
+            metadata.path = cached.to_string_lossy().into_owned();
+            songs.push(metadata);
+        }
     }
 
     songs
@@ -1192,9 +1205,7 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
         .unwrap_or_else(|| {
             format!(
                 "Unknown Title - {}",
-                fpre(path)
-                    .unwrap_or(path.as_os_str())
-                    .to_string_lossy()
+                fpre(path).unwrap_or(path.as_os_str()).to_string_lossy()
             )
         });
     let artist_str = tag
@@ -1238,10 +1249,11 @@ fn extract_metadata(path: &Path) -> Option<SongMetadata> {
     let album_art = tag.as_ref().and_then(|t| t.album_cover()).map(|pic| {
         let art_bytes = pic.data.to_vec();
         if let Ok(player) = PLAYER.lock()
-            && let Some(p) = player.as_ref() {
-                let mut cache = p.album_art_cache.lock().unwrap();
-                cache.insert(path.to_string_lossy().to_string(), art_bytes.clone());
-            }
+            && let Some(p) = player.as_ref()
+        {
+            let mut cache = p.album_art_cache.lock().unwrap();
+            cache.insert(path.to_string_lossy().to_string(), art_bytes.clone());
+        }
         art_bytes
     });
 
@@ -1338,17 +1350,19 @@ pub fn seek_to_position(position: f32) -> bool {
 
 pub fn skip_to_next(songs: Vec<String>, current_index: usize) -> bool {
     if current_index + 1 < songs.len()
-        && let Some(player) = PLAYER.lock().unwrap().as_ref() {
-            return player.play(&songs[current_index + 1]);
-        }
+        && let Some(player) = PLAYER.lock().unwrap().as_ref()
+    {
+        return player.play(&songs[current_index + 1]);
+    }
     false
 }
 
 pub fn skip_to_previous(songs: Vec<String>, current_index: usize) -> bool {
     if current_index > 0
-        && let Some(player) = PLAYER.lock().unwrap().as_ref() {
-            return player.play(&songs[current_index - 1]);
-        }
+        && let Some(player) = PLAYER.lock().unwrap().as_ref()
+    {
+        return player.play(&songs[current_index - 1]);
+    }
     false
 }
 
@@ -1595,9 +1609,10 @@ pub fn download_to_temp(query: String, flags: Option<String>) -> Result<String, 
             for entry in dir {
                 let entry = entry.map_err(|e| format!("Error reading entry: {}", e))?;
                 if let Some(ext) = entry.path().extension()
-                    && ext == "mp3" {
-                        return Ok(entry.path().to_string_lossy().into_owned());
-                    }
+                    && ext == "mp3"
+                {
+                    return Ok(entry.path().to_string_lossy().into_owned());
+                }
             }
 
             Err("No MP3 file found after download".into())
@@ -1808,13 +1823,13 @@ pub fn switch_to_preloaded_now() -> bool {
 
 pub fn restart_player() -> bool {
     stop_song();
-    
+
     if let Ok(mut player_guard) = PLAYER.lock() {
         *player_guard = None;
     }
     if let Ok(mut state_guard) = PLAYER_STATE.lock() {
         state_guard.initialized = false;
     }
-    
+
     initialize_player()
 }
