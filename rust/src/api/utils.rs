@@ -62,12 +62,12 @@ pub fn check_unsafe_api() -> bool {
     match acquire_read_lock() {
         Ok(guard) => {
             if let Some(store) = guard.as_ref() {
-                return store.unsafe_apis;
+                store.unsafe_apis
             } else {
-                return false;
+                false
             }
         }
-        Err(_) => return false,
+        Err(_) => false,
     }
 }
 
@@ -75,12 +75,12 @@ pub fn check_plugins_enabled() -> bool {
     match acquire_read_lock() {
         Ok(guard) => {
             if let Some(store) = guard.as_ref() {
-                return store.plugins_enabled;
+                store.plugins_enabled
             } else {
-                return false;
+                false
             }
         }
-        Err(_) => return false,
+        Err(_) => false,
     }
 }
 

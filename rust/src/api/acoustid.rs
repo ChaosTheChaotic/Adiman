@@ -21,7 +21,7 @@ fn lookup_rs(path: impl AsRef<Path> + ToString) -> Option<SongMetadata> {
         Ok(sm) => sm,
         Err(e) => {
             eprintln!("{e}");
-            return None;
+            None
         }
     }
 }
