@@ -4,7 +4,7 @@ As of update 1.3.0, Adiman now supports plugins.
 > [!CAUTION]
 > Adding plugins is unsafe in itself as you allow random people to run arbitrary code on your machine.
 > I have done my best to ensure a level of security with the safe and unsafe APIs.
-> By choosing to add to plugins you accept all risk that comes with it
+> By choosing to add to plugins you accept all risk that comes with it.
 > By enabling unsafe APIs (which let plugins to essentially anything on your machine), you also accept the greater risk that comes with it
 - In the app in settings, enable plugins and specify a plugin directory (or use the default one)
 - Create a folder inside the plugin directory (optional)
@@ -108,7 +108,7 @@ pub fn play_song() -> FnResult<()> {
 }
 ```
 #### Other notes
-- Every host function returns a Result enum and every plugin returns a Result enum too
+- Every host function returns a Result enum which can be safely unwrapped (only the top Result enum may be unwrapped) and every plugin returns a Result enum too
 - You can handle errors in communication using the `?` operator to return an error from the plugin
 - Plugin functions returns are ignored, the app just checks for errors
 
@@ -143,7 +143,7 @@ Each config takes
 - set_val - The value set by the user and what will be passed in through the key
 
 # Frontend additions
-To add items to the frontend to can add to the plugin metadata.
+To add items to the frontend you can add to the plugin metadata in a new json field
 ```json
 {
     "fad": {
