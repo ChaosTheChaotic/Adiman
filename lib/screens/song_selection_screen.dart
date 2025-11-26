@@ -3492,6 +3492,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                                 ],
                               ),
                               PopupMenuButton<SortOption>(
+				tooltip: '',
                                 icon: Icon(Broken.sort, color: textColor),
                                 color: Colors.black.withValues(alpha: 0.9),
                                 shape: RoundedRectangleBorder(
