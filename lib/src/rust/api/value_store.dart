@@ -49,6 +49,9 @@ abstract class ValueStoreUpdater implements RustOpaqueInterface {
 
   Future<void> clearCurrentSong();
 
+  static Future<ValueStoreUpdater> default_() =>
+      RustLib.instance.api.crateApiValueStoreValueStoreUpdaterDefault();
+
   // HINT: Make it `#[frb(sync)]` to let it become the default constructor of Dart class.
   static Future<ValueStoreUpdater> newInstance() =>
       RustLib.instance.api.crateApiValueStoreValueStoreUpdaterNew();

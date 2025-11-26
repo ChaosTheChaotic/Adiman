@@ -9,7 +9,7 @@ pub use std::{
     ffi::OsStr,
     fs::{self, metadata},
     io::Read,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 
@@ -49,7 +49,9 @@ impl std::fmt::Display for PluginManErr {
                 "Metadata for plugin: {path} not found. Ensure it has the same name as the plugin and is json type whilst being in the same (valid) directory as the plugin"
             ),
             PluginManErr::InvalidMeta(path) => format!("Metadata found for: {path} is invalid"),
-            PluginManErr::PluginManNotLoaded => format!("The plugin manager has not been loaded."),
+            PluginManErr::PluginManNotLoaded => {
+                "The plugin manager has not been loaded.".to_string()
+            }
         };
         write!(f, "{err}")
     }
@@ -86,14 +88,14 @@ pub struct FadButton {
 
 impl FadButton {
     pub fn is_valid(&self) -> bool {
-        if let Some(location) = &self.location {
-            if !ALLOWED_BUTTON_LOCATIONS.contains(&location.as_str()) {
-                eprintln!(
-                    "Warning: Invalid button location '{}' for button '{}'",
-                    location, self.name
-                );
-                return false;
-            }
+        if let Some(location) = &self.location
+            && !ALLOWED_BUTTON_LOCATIONS.contains(&location.as_str())
+        {
+            eprintln!(
+                "Warning: Invalid button location '{location}' for button '{}'",
+                self.name
+            );
+            return false;
         }
 
         if self.name.trim().is_empty() {
@@ -151,6 +153,12 @@ pub type AdimanPlugin = HashMap<String, PluginInode>; // Key value with plugins 
 #[flutter_rust_bridge::frb(ignore)]
 pub struct AdiPluginMan {
     pub plugin_meta: AdimanPlugin,
+}
+
+impl Default for AdiPluginMan {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AdiPluginMan {
@@ -235,7 +243,7 @@ impl AdiPluginMan {
     }
 
     fn read_plugin_metadata(
-        metadata_path: &std::path::Path,
+        metadata_path: &Path,
     ) -> Result<(Option<Vec<RpcConfig>>, Option<FadConfig>), PluginManErr> {
         let metadata_content = std::fs::read_to_string(metadata_path).map_err(|_| {
             PluginManErr::MetadataNotFound(metadata_path.to_string_lossy().to_string())
@@ -270,15 +278,13 @@ impl AdiPluginMan {
                         inner.push(rpc_config);
                     } else {
                         eprintln!(
-                            "Warning: Invalid RPC config at index {} in metadata file: {}",
-                            index,
+                            "Warning: Invalid RPC config at index {index} in metadata file: {}",
                             metadata_path.display()
                         );
                     }
                 } else {
                     eprintln!(
-                        "Warning: Failed to parse RPC config at index {} in metadata file: {}",
-                        index,
+                        "Warning: Failed to parse RPC config at index {index} in metadata file: {}",
                         metadata_path.display()
                     );
                 }
@@ -294,9 +300,8 @@ impl AdiPluginMan {
                 }
                 Err(e) => {
                     eprintln!(
-                        "Warning: Failed to parse FAD config in metadata file: {}, error: {}",
-                        metadata_path.display(),
-                        e
+                        "Warning: Failed to parse FAD config in metadata file: {}, error: {e}",
+                        metadata_path.display()
                     );
                     None
                 }
@@ -349,7 +354,7 @@ impl AdiPluginMan {
             }
             "BigInt" => {
                 // BigInt can be number or string of digits (with optional minus)
-                let d = if let Some(_) = config.default_val.as_i64() {
+                let d = if config.default_val.as_i64().is_some() {
                     true
                 } else if let Some(str_val) = config.default_val.as_str() {
                     // Must be all digits with optional minus at start
@@ -364,7 +369,7 @@ impl AdiPluginMan {
                 } else {
                     false
                 };
-                let s = if let Some(_) = config.set_val.as_i64() {
+                let s = if config.set_val.as_i64().is_some() {
                     true
                 } else if let Some(str_val) = config.set_val.as_str() {
                     // Must be all digits with optional minus at start
@@ -383,7 +388,7 @@ impl AdiPluginMan {
             }
             "BigUInt" => {
                 // BigUInt can be number or string of digits
-                let d = if let Some(_) = config.default_val.as_u64() {
+                let d = if config.default_val.as_u64().is_some() {
                     true
                 } else if let Some(str_val) = config.default_val.as_str() {
                     // Must be all digits
@@ -391,7 +396,7 @@ impl AdiPluginMan {
                 } else {
                     false
                 };
-                let s = if let Some(_) = config.set_val.as_u64() {
+                let s = if config.set_val.as_u64().is_some() {
                     true
                 } else if let Some(str_val) = config.set_val.as_str() {
                     // Must be all digits
@@ -402,16 +407,8 @@ impl AdiPluginMan {
                 d && s
             }
             "Float" => {
-                let d = if let Some(_) = config.default_val.as_f64() {
-                    true
-                } else {
-                    false
-                };
-                let s = if let Some(_) = config.set_val.as_f64() {
-                    true
-                } else {
-                    false
-                };
+                let d = config.default_val.as_f64().is_some();
+                let s = config.set_val.as_f64().is_some();
                 d && s
             }
             _ => {
@@ -482,7 +479,7 @@ impl AdiPluginMan {
                 }
                 "Float" => {
                     if let Some(f) = config.set_val.as_f64() {
-                        ConfigTypes::Float(f as f64)
+                        ConfigTypes::Float(f)
                     } else {
                         continue;
                     }
@@ -502,7 +499,7 @@ impl AdiPluginMan {
         key: String,
         value: ConfigTypes,
     ) -> Result<(), PluginManErr> {
-        let ppath = std::path::PathBuf::from(path.clone());
+        let ppath = PathBuf::from(path.clone());
         let ppar = ppath.parent().ok_or_else(|| {
             PluginManErr::MetadataNotFound("Cannot determine plugin directory".to_string())
         })?;
@@ -531,41 +528,41 @@ impl AdiPluginMan {
             let mut found = false;
 
             for item in rpc_array.iter_mut() {
-                if let Some(Value::String(item_key)) = item.get("key") {
-                    if item_key == &key {
-                        // Convert ConfigTypes to Value for serialization
-                        let new_value = match &value {
-                            ConfigTypes::String(s) => Value::String(s.clone()),
-                            ConfigTypes::Bool(b) => Value::Bool(*b),
-                            ConfigTypes::Int(i) => Value::Number(serde_json::Number::from(*i)),
-                            ConfigTypes::UInt(u) => Value::Number(serde_json::Number::from(*u)),
-                            ConfigTypes::BigInt(i) => {
-                                if let Some(num) = serde_json::Number::from_f64(*i as f64) {
-                                    Value::Number(num)
-                                } else {
-                                    Value::String(i.to_string())
-                                }
+                if let Some(Value::String(item_key)) = item.get("key")
+                    && item_key == &key
+                {
+                    // Convert ConfigTypes to Value for serialization
+                    let new_value = match &value {
+                        ConfigTypes::String(s) => Value::String(s.clone()),
+                        ConfigTypes::Bool(b) => Value::Bool(*b),
+                        ConfigTypes::Int(i) => Value::Number(serde_json::Number::from(*i)),
+                        ConfigTypes::UInt(u) => Value::Number(serde_json::Number::from(*u)),
+                        ConfigTypes::BigInt(i) => {
+                            if let Some(num) = serde_json::Number::from_f64(*i as f64) {
+                                Value::Number(num)
+                            } else {
+                                Value::String(i.to_string())
                             }
-                            ConfigTypes::BigUInt(u) => {
-                                if let Some(num) = serde_json::Number::from_f64(*u as f64) {
-                                    Value::Number(num)
-                                } else {
-                                    Value::String(u.to_string())
-                                }
+                        }
+                        ConfigTypes::BigUInt(u) => {
+                            if let Some(num) = serde_json::Number::from_f64(*u as f64) {
+                                Value::Number(num)
+                            } else {
+                                Value::String(u.to_string())
                             }
-                            ConfigTypes::Float(f) => {
-                                if let Some(n) = serde_json::Number::from_f64(*f as f64) {
-                                    Value::Number(n)
-                                } else {
-                                    Value::String(f.to_string())
-                                }
+                        }
+                        ConfigTypes::Float(f) => {
+                            if let Some(n) = serde_json::Number::from_f64(*f) {
+                                Value::Number(n)
+                            } else {
+                                Value::String(f.to_string())
                             }
-                        };
+                        }
+                    };
 
-                        item["set_val"] = new_value;
-                        found = true;
-                        break;
-                    }
+                    item["set_val"] = new_value;
+                    found = true;
+                    break;
                 }
             }
 
@@ -605,15 +602,11 @@ impl AdiPluginMan {
         Ok(())
     }
 
-    fn valid_extension(&self, path: &PathBuf) -> bool {
-        if path.extension() == Some(OsStr::new("wasm")) {
-            true
-        } else {
-            false
-        }
+    fn valid_extension(&self, path: &Path) -> bool {
+        path.extension() == Some(OsStr::new("wasm"))
     }
 
-    fn valid_stem(&self, path: &PathBuf) -> bool {
+    fn valid_stem(&self, path: &Path) -> bool {
         let stem = path.file_stem();
         if stem.is_none() {
             false
@@ -652,24 +645,20 @@ impl AdiPluginMan {
                 // Iterate through everything inside it to see if its a valid plugin
                 for w in fs::read_dir(e.path()).ok()? {
                     let w = w.ok()?;
-                    if metadata(w.path()).ok()?.is_file() {
-                        if self.plugin_file_validity(w.path()) {
-                            ppaths.push(w.path());
-                        }
+                    if metadata(w.path()).ok()?.is_file() && self.plugin_file_validity(w.path()) {
+                        ppaths.push(w.path());
                     }
                 }
                 // If its a file check if its a valid plugin
-            } else if metadata(e.path()).ok()?.is_file() {
-                if self.plugin_file_validity(e.path()) {
-                    ppaths.push(e.path());
-                }
+            } else if metadata(e.path()).ok()?.is_file() && self.plugin_file_validity(e.path()) {
+                ppaths.push(e.path());
             }
         }
         Some(ppaths)
     }
 
     pub fn load_plugin(&mut self, path: String) -> Result<(), PluginManErr> {
-        let ppath = std::path::PathBuf::from(path.clone());
+        let ppath = PathBuf::from(path.clone());
         if ppath.exists() {
             if self.plugin_meta.contains_key(&path) {
                 eprintln!("Plugin already loaded");
@@ -789,14 +778,10 @@ impl AdiPluginMan {
     pub fn reload_plugin(&mut self, path: String) -> Result<(), PluginManErr> {
         let r = self.remove_plugin(path.clone());
         if r.is_err() {
-            return r;
+            r
         } else {
             let l = self.load_plugin(path);
-            if l.is_err() {
-                return l;
-            } else {
-                Ok(())
-            }
+            if l.is_err() { l } else { Ok(()) }
         }
     }
 
@@ -804,11 +789,11 @@ impl AdiPluginMan {
         self.plugin_meta
             .get(&path)
             .map(|pinode| pinode.config.clone())
-            .ok_or_else(|| PluginManErr::PluginNotLoaded(path))
+            .ok_or(PluginManErr::PluginNotLoaded(path))
     }
 
     pub fn get_plugin_meta(&self, path: String) -> Result<String, String> {
-        let ppath = std::path::PathBuf::from(path.clone());
+        let ppath = PathBuf::from(path.clone());
         let ppar = ppath
             .parent()
             .ok_or_else(|| "Cannot determine plugin directory".to_string())?;
@@ -845,10 +830,7 @@ impl AdiPluginMan {
             if plugin_guard.function_exists(func) {
                 let result: Result<&str, extism::Error> = plugin_guard.call(func, ());
                 if let Err(e) = result {
-                    eprintln!(
-                        "Error running function '{}' on plugin '{}': {}",
-                        func, path, e
-                    );
+                    eprintln!("Error running function '{func}' on plugin '{path}': {e}");
                 }
             }
         }
@@ -870,13 +852,13 @@ impl AdiPluginMan {
                     eprintln!("Failed running function {func} on {plugin} due to: {e}");
                     return false;
                 }
-                return true;
+                true
             } else {
-                return false;
+                false
             }
         } else {
             eprintln!("Failed to find {plugin} within hashmap");
-            return false;
+            false
         }
     }
 
@@ -884,14 +866,14 @@ impl AdiPluginMan {
         let mut all_buttons = Vec::new();
 
         // Validate the location filter if provided
-        if let Some(location) = location_filter {
-            if !ALLOWED_BUTTON_LOCATIONS.contains(&location) {
-                eprintln!(
-                    "Warning: Invalid location filter '{}', returning no buttons",
-                    location
-                );
-                return all_buttons;
-            }
+        if let Some(location) = location_filter
+            && !ALLOWED_BUTTON_LOCATIONS.contains(&location)
+        {
+            eprintln!(
+                "Warning: Invalid location filter '{}', returning no buttons",
+                location
+            );
+            return all_buttons;
         }
 
         for (plugin_path, plugin_inode) in &self.plugin_meta {
@@ -899,11 +881,11 @@ impl AdiPluginMan {
                 // Get top-level buttons
                 if let Some(buttons) = &fad_config.buttons {
                     for button in buttons {
-                        if location_filter.map_or(true, |loc| {
+                        if location_filter.is_none_or(|loc| {
                             button
                                 .location
                                 .as_ref()
-                                .map_or(false, |btn_loc| btn_loc == loc)
+                                .is_some_and(|btn_loc| btn_loc == loc)
                         }) {
                             all_buttons.push((plugin_path.clone(), button.clone()));
                         }
@@ -915,11 +897,11 @@ impl AdiPluginMan {
                     for screen in screens {
                         if let Some(buttons) = &screen.buttons {
                             for button in buttons {
-                                if location_filter.map_or(true, |loc| {
+                                if location_filter.is_none_or(|loc| {
                                     button
                                         .location
                                         .as_ref()
-                                        .map_or(false, |btn_loc| btn_loc == loc)
+                                        .is_some_and(|btn_loc| btn_loc == loc)
                                 }) {
                                     all_buttons.push((plugin_path.clone(), button.clone()));
                                 }
@@ -933,11 +915,11 @@ impl AdiPluginMan {
                     for popup in popups {
                         if let Some(buttons) = &popup.buttons {
                             for button in buttons {
-                                if location_filter.map_or(true, |loc| {
+                                if location_filter.is_none_or(|loc| {
                                     button
                                         .location
                                         .as_ref()
-                                        .map_or(false, |btn_loc| btn_loc == loc)
+                                        .is_some_and(|btn_loc| btn_loc == loc)
                                 }) {
                                     all_buttons.push((plugin_path.clone(), button.clone()));
                                 }
@@ -956,11 +938,11 @@ impl AdiPluginMan {
         let mut all_screens = Vec::new();
 
         for (plugin_path, plugin_inode) in &self.plugin_meta {
-            if let Some(fad_config) = &plugin_inode.fad {
-                if let Some(screens) = &fad_config.screens {
-                    for screen in screens {
-                        all_screens.push((plugin_path.clone(), screen.clone()));
-                    }
+            if let Some(fad_config) = &plugin_inode.fad
+                && let Some(screens) = &fad_config.screens
+            {
+                for screen in screens {
+                    all_screens.push((plugin_path.clone(), screen.clone()));
                 }
             }
         }
@@ -973,11 +955,11 @@ impl AdiPluginMan {
         let mut all_popups = Vec::new();
 
         for (plugin_path, plugin_inode) in &self.plugin_meta {
-            if let Some(fad_config) = &plugin_inode.fad {
-                if let Some(popups) = &fad_config.popups {
-                    for popup in popups {
-                        all_popups.push((plugin_path.clone(), popup.clone()));
-                    }
+            if let Some(fad_config) = &plugin_inode.fad
+                && let Some(popups) = &fad_config.popups
+            {
+                for popup in popups {
+                    all_popups.push((plugin_path.clone(), popup.clone()));
                 }
             }
         }
@@ -1066,13 +1048,13 @@ pub fn init_plugin_man() {
 
 // Checks if the plugin manager is initialized
 pub fn check_plugin_man(pmg: &Option<AdiPluginMan>) -> bool {
-    if pmg.is_some() { true } else { false }
+    pmg.is_some()
 }
 
 // Loads a plugin using the given path
 pub fn load_plugin(path: String) -> Result<String, String> {
     let mut pmg = PLUGIN_MAN.lock().unwrap();
-    if !check_plugin_man(&*pmg) {
+    if !check_plugin_man(&pmg) {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
         return Err(format!("[ERR]: {}", PluginManErr::PluginManNotLoaded));
     }
@@ -1080,14 +1062,10 @@ pub fn load_plugin(path: String) -> Result<String, String> {
     match res {
         Ok(()) => Ok(format!(
             "Loaded plugin: {}",
-            PathBuf::from(path)
-                .file_stem()
-                .unwrap()
-                .to_string_lossy()
-                .to_string()
+            PathBuf::from(path).file_stem().unwrap().to_string_lossy()
         )),
         Err(e) => {
-            eprintln!("{}", format!("{e}"));
+            eprintln!("{e}");
             Err(format!("Failed to load plugin: {e}"))
         }
     }
@@ -1096,7 +1074,7 @@ pub fn load_plugin(path: String) -> Result<String, String> {
 // Removes a plugin (if loaded) at a given path
 pub fn remove_plugin(path: String) -> Result<String, String> {
     let mut pmg = PLUGIN_MAN.lock().unwrap();
-    if !check_plugin_man(&*pmg) {
+    if !check_plugin_man(&pmg) {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
         return Err(format!("[ERR]: {}", PluginManErr::PluginManNotLoaded));
     }
@@ -1104,14 +1082,10 @@ pub fn remove_plugin(path: String) -> Result<String, String> {
     match res {
         Ok(()) => Ok(format!(
             "Removed plugin {}",
-            PathBuf::from(path)
-                .file_stem()
-                .unwrap()
-                .to_string_lossy()
-                .to_string()
+            PathBuf::from(path).file_stem().unwrap().to_string_lossy()
         )),
         Err(e) => {
-            eprintln!("{}", format!("{e}"));
+            eprintln!("{e}");
             Err(format!("Failed to remove plugin: {e}"))
         }
     }
@@ -1125,8 +1099,8 @@ pub fn get_plugin_config(path: String) -> String {
         match plugin_man.get_plugin_meta(path) {
             Ok(metadata_content) => metadata_content,
             Err(e) => {
-                eprintln!("Failed to get plugin config from metadata: {}", e);
-                format!("Failed to get plugin config: {}", e)
+                eprintln!("Failed to get plugin config from metadata: {e}");
+                format!("Failed to get plugin config: {e}")
             }
         }
     } else {
@@ -1137,7 +1111,7 @@ pub fn get_plugin_config(path: String) -> String {
 // Returns None on error or an array of all paths (as strings) that are valid wasm file plugins
 pub fn scan_dir(path: String) -> Option<Vec<String>> {
     let pmg = PLUGIN_MAN.lock().unwrap();
-    if !check_plugin_man(&*pmg) {
+    if !check_plugin_man(&pmg) {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
         return None;
     }
@@ -1146,7 +1120,7 @@ pub fn scan_dir(path: String) -> Option<Vec<String>> {
         .scan_dir(PathBuf::from(path))
         .map(|pb| {
             pb.into_iter()
-                .filter_map(|pbuf| Some(pbuf.to_string_lossy().to_string()))
+                .map(|pbuf| pbuf.to_string_lossy().to_string())
                 .collect()
         })
 }
@@ -1154,7 +1128,7 @@ pub fn scan_dir(path: String) -> Option<Vec<String>> {
 // Reloads the plugin given as a path
 pub fn reload_plugin(path: String) -> Result<String, String> {
     let mut pmg = PLUGIN_MAN.lock().unwrap();
-    if !check_plugin_man(&*pmg) {
+    if !check_plugin_man(&pmg) {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
         return Err("[ERR]: Plugin man not loaded".to_string());
     }
@@ -1163,14 +1137,10 @@ pub fn reload_plugin(path: String) -> Result<String, String> {
     match res {
         Ok(()) => Ok(format!(
             "Reloaded plugin: {}",
-            PathBuf::from(path)
-                .file_stem()
-                .unwrap()
-                .to_string_lossy()
-                .to_string()
+            PathBuf::from(path).file_stem().unwrap().to_string_lossy()
         )),
         Err(e) => {
-            eprintln!("{}", format!("{e}"));
+            eprintln!("{e}");
             Err(format!("Failed to reload plugin: {e}"))
         }
     }
@@ -1179,7 +1149,7 @@ pub fn reload_plugin(path: String) -> Result<String, String> {
 // Checks if the given path is a loaded plugin
 pub fn is_plugin_loaded(path: String) -> bool {
     let pmg = PLUGIN_MAN.lock().unwrap();
-    if !check_plugin_man(&*pmg) {
+    if !check_plugin_man(&pmg) {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
         return false;
     }
@@ -1190,7 +1160,7 @@ pub fn is_plugin_loaded(path: String) -> bool {
 // Returns an array of loaded plugins
 pub fn list_loaded_plugins() -> Vec<String> {
     let pmg = PLUGIN_MAN.lock().unwrap();
-    if !check_plugin_man(&*pmg) {
+    if !check_plugin_man(&pmg) {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
         return Vec::new();
     }
@@ -1200,7 +1170,7 @@ pub fn list_loaded_plugins() -> Vec<String> {
 
 pub fn set_plugin_config(path: String, key: String, value: ConfigTypes) -> Result<String, String> {
     let mut pmg = PLUGIN_MAN.lock().unwrap();
-    if !check_plugin_man(&*pmg) {
+    if !check_plugin_man(&pmg) {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
         return Err(format!("[ERR]: {}", PluginManErr::PluginManNotLoaded));
     }
@@ -1213,14 +1183,10 @@ pub fn set_plugin_config(path: String, key: String, value: ConfigTypes) -> Resul
         Ok(()) => Ok(format!(
             "Updated config key '{}' for plugin: {}",
             key,
-            PathBuf::from(path)
-                .file_stem()
-                .unwrap()
-                .to_string_lossy()
-                .to_string()
+            PathBuf::from(path).file_stem().unwrap().to_string_lossy()
         )),
         Err(e) => {
-            eprintln!("{}", format!("{e}"));
+            eprintln!("{e}");
             Err(format!("Failed to set plugin config: {e}"))
         }
     }
@@ -1249,7 +1215,7 @@ pub fn call_plugin_func(func: String, plugin: String) -> bool {
         plugin_man.call_plugin_func(&func, &plugin)
     } else {
         eprintln!("{}", PluginManErr::PluginManNotLoaded);
-        return false;
+        false
     }
 }
 

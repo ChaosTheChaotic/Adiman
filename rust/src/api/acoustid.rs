@@ -21,7 +21,7 @@ fn lookup_rs(path: impl AsRef<Path> + ToString) -> Option<SongMetadata> {
         Ok(sm) => sm,
         Err(e) => {
             eprintln!("{e}");
-            return None;
+            None
         }
     }
 }
@@ -78,12 +78,8 @@ fn calc_fingerprint(path: impl AsRef<Path>) -> anyhow::Result<Vec<u32>> {
 
     let mut sbuf = None;
 
-    loop {
-        let packet = match fmt.next_packet() {
-            Ok(p) => p,
-            Err(_) => break,
-        };
-
+    while let Ok(p) = fmt.next_packet() {
+        let packet = p;
         if packet.track_id() != tid {
             continue;
         }
@@ -123,7 +119,6 @@ fn get_duration(path: impl AsRef<Path>) -> u64 {
 
 #[derive(Debug, Deserialize, Clone)]
 struct AcoustIdRecording {
-    id: String,
     title: Option<String>,
     artists: Option<Vec<AcoustIdArtist>>,
     duration: Option<f64>,
@@ -132,26 +127,22 @@ struct AcoustIdRecording {
 
 #[derive(Debug, Deserialize, Clone)]
 struct AcoustIdArtist {
-    id: String,
     name: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 struct AcoustIdReleaseGroup {
-    id: String,
     title: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct AcoustIdResult {
-    id: String,
     score: f64,
     recordings: Option<Vec<AcoustIdRecording>>,
 }
 
 #[derive(Debug, Deserialize)]
 struct AcoustIdResponse {
-    status: String,
     results: Vec<AcoustIdResult>,
 }
 

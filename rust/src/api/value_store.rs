@@ -118,6 +118,12 @@ pub struct ValueStoreUpdater {
     pub unsafe_apis: Option<bool>,
 }
 
+impl Default for ValueStoreUpdater {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ValueStoreUpdater {
     pub fn new() -> Self {
         Self {
