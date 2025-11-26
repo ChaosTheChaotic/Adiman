@@ -4,6 +4,7 @@ import 'package:adiman/main.dart';
 import 'package:flutter_glow/flutter_glow.dart';
 import 'package:adiman/widgets/snackbar.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:adiman/widgets/icon_buttons.dart';
 import 'package:adiman/services/playlist_order_service.dart';
 import 'package:adiman/icons/broken_icons.dart';
@@ -144,7 +145,7 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
             title: GlowText(
               song.title,
               glowColor: _dominantColor.withAlpha(40),
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -154,7 +155,7 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
             ),
             subtitle: Text(
               song.artist,
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 color: Colors.white70,
                 fontSize: 14,
               ),
@@ -205,7 +206,7 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
               title: GlowText(
                 'Reorder ${widget.playlistName}',
                 glowColor: _dominantColor.withAlpha(60),
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   fontSize: 24,
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -249,7 +250,7 @@ class _PlaylistReorderScreenState extends State<PlaylistReorderScreen> {
                           GlowText(
                             'No songs in playlist',
                             glowColor: _dominantColor.withAlpha(60),
-                            style: TextStyle(
+                            style: GoogleFonts.inter(
                               color: Colors.white70,
                               fontSize: 18,
                             ),
