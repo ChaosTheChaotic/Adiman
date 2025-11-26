@@ -21,6 +21,7 @@ import 'download_screen.dart';
 import 'package:flutter_glow/flutter_glow.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:adiman/icons/broken_icons.dart';
 import 'package:adiman/services/plugin_service.dart';
 import 'plugins_screen.dart';
@@ -2432,19 +2433,19 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
             backgroundColor: dominantColor.withAlpha(30),
             title: Text(
               multipleItems ? 'Delete Songs?' : 'Delete Song?',
-              style: TextStyle(color: Colors.white),
+              style: GoogleFonts.inter(color: Colors.white),
             ),
             content: Text(
               multipleItems
                   ? 'This will permanently delete ${_selectedSongs.length} songs from your device.'
                   : 'This will permanently delete "${song.title}" from your device.',
-              style: TextStyle(color: Colors.white70),
+              style: GoogleFonts.inter(color: Colors.white70),
             ),
             actions: [
               TextButton(
                 child: Text(
                   'Cancel',
-                  style: TextStyle(color: Colors.white70),
+		  style: GoogleFonts.inter(color: Colors.white70),
                 ),
                 onPressed: () {
                   ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -2454,7 +2455,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
               TextButton(
                 child: Text(
                   'Delete',
-                  style: TextStyle(color: Colors.redAccent),
+                  style: GoogleFonts.inter(color: Colors.redAccent),
                 ),
                 onPressed: () {
                   ScaffoldMessenger.of(context).hideCurrentSnackBar();
