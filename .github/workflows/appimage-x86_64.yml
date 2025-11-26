@@ -65,8 +65,8 @@ jobs:
         mkdir -p Adiman.AppDir/deps
         cp -r build/linux/x64/release/bundle/* Adiman.AppDir/
         cp appimagestuff/{AppRun,Adiman.desktop,Adiman.png} Adiman.AppDir/
-        cp -L /usr/lib/libcdio.so Adiman.AppDir/deps/libcdio.so
-        cp -L /usr/lib/libcdda_interface.so Adiman.AppDir/deps/libcdda_interface.so
+        cp -L /usr/lib/x86_64-linux-gnu/libcdio.so Adiman.AppDir/deps/libcdio.so
+        cp -L /usr/lib/x86_64-linux-gnu/libcdda_interface.so Adiman.AppDir/deps/libcdda_interface.so
         chmod +x Adiman.AppDir/AppRun
 
     - name: Build AppImage
