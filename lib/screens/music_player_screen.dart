@@ -2862,13 +2862,23 @@ class _LyricsOverlayState extends State<LyricsOverlay>
 
   void updateCurrentLyric() {
     int newIndex = -1;
-    for (var i = 0; i < widget.lrc.lyrics.length; i++) {
-      if (widget.lrc.lyrics[i].timestamp <= widget.currentPosition) {
-        newIndex = i;
+    final currentPos = widget.currentPosition;
+    
+    var low = 0;
+    var high = widget.lrc.lyrics.length - 1;
+    
+    while (low <= high) {
+      final mid = (low + high) ~/ 2;
+      final midTimestamp = widget.lrc.lyrics[mid].timestamp;
+      
+      if (midTimestamp <= currentPos) {
+        newIndex = mid;
+        low = mid + 1;
       } else {
-        break;
+        high = mid - 1;
       }
     }
+    
     if (newIndex != _currentLyricNotifier.value) {
       _currentLyricNotifier.value = newIndex;
     }
