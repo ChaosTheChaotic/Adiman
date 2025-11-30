@@ -103,9 +103,12 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   List<Map<String, dynamic>> _songOptionsPluginButtons = [];
 
+  late GlobalKey<_LyricsOverlayState> _lyricsOverlayKey;
+
   @override
   void initState() {
     super.initState();
+    _lyricsOverlayKey = GlobalKey<_LyricsOverlayState>();
     rust_api.getCvol().then((volume) {
       if (mounted) {
         setState(() {
@@ -1231,6 +1234,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     await rust_api.playSong(path: currentSong.path);
     await rust_api.preloadNextSong(
         path: widget.songList[currentIndex + 1].path);
+    if (_showLyrics && _lyricsOverlayKey.currentState != null) {
+      _lyricsOverlayKey.currentState!.scrollToTop();
+    }
   }
 
   void _generateShuffleOrder() {
@@ -1901,7 +1907,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                               Positioned.fill(
                                 child: LyricsOverlay(
                                   isPlaying: isPlaying,
-                                  key: ValueKey(currentSong.path),
+                                  //key: ValueKey(currentSong.path),
+				  key: _lyricsOverlayKey,
                                   lrc: _lrcData!,
                                   currentPosition: Duration(
                                     seconds: (_currentSliderValue *
@@ -2564,6 +2571,15 @@ class _LyricsOverlayState extends State<LyricsOverlay>
     final relativePosition = (itemPosition - scrollPosition) / scrollViewHeight;
 
     return relativePosition * 20.0; // Parallax amount
+  }
+
+  void scrollToTop() {
+    _scrollController.animateTo(
+      0.0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+    _currentLyricNotifier.value = -1; // Reset current lyric highlight
   }
 
   @override
