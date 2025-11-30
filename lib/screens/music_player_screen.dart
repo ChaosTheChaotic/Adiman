@@ -1144,6 +1144,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           currentSong.duration.inSeconds.toDouble(),
         );
         await rust_api.seekToPosition(position: seekPosition);
+	if (_showLyrics && _lyricsOverlayKey.currentState != null) {
+  	  _lyricsOverlayKey.currentState!.updateCurrentLyric();
+  	  _lyricsOverlayKey.currentState!.scrollToCurrentLyric();
+  	}
         //if (!isPlaying && mounted) {
         //  setState(() {
         //    isPlaying = true;
@@ -2493,11 +2497,11 @@ class _LyricsOverlayState extends State<LyricsOverlay>
   void initState() {
     super.initState();
     _initializeAnimations();
-    _currentLyricNotifier.addListener(_scrollToCurrentLyric);
+    _currentLyricNotifier.addListener(scrollToCurrentLyric);
     _scrollController.addListener(_handleParallaxScroll);
-    _updateCurrentLyric();
+    updateCurrentLyric();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToCurrentLyric();
+      scrollToCurrentLyric();
     });
   }
 
@@ -2547,7 +2551,7 @@ class _LyricsOverlayState extends State<LyricsOverlay>
     });
   }
 
-  void _scrollToCurrentLyric() {
+  void scrollToCurrentLyric() {
     final index = _currentLyricNotifier.value;
     if (index >= 0 && _lyricKeys.containsKey(index)) {
       final context = _lyricKeys[index]?.currentContext;
@@ -2559,6 +2563,14 @@ class _LyricsOverlayState extends State<LyricsOverlay>
           alignment: 0.5, // Center the current lyric
         );
       }
+    } else if (index >= 0 && _scrollController.hasClients) {
+      // Scroll to estimated position if key is not available
+      final estimatedPosition = index * 65.0; // Approximate item height
+      _scrollController.animateTo(
+        estimatedPosition,
+        duration: const Duration(milliseconds: 800),
+        curve: Curves.easeOutQuint,
+      );
     }
   }
 
@@ -2817,7 +2829,13 @@ class _LyricsOverlayState extends State<LyricsOverlay>
   @override
   void didUpdateWidget(LyricsOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _updateCurrentLyric();
+    updateCurrentLyric();
+
+    if ((widget.currentPosition - oldWidget.currentPosition).inSeconds.abs() > 5) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        scrollToCurrentLyric();
+      });
+    }
 
     if (widget.isPlaying != oldWidget.isPlaying) {
       if (widget.isPlaying) {
@@ -2842,7 +2860,7 @@ class _LyricsOverlayState extends State<LyricsOverlay>
     }
   }
 
-  void _updateCurrentLyric() {
+  void updateCurrentLyric() {
     int newIndex = -1;
     for (var i = 0; i < widget.lrc.lyrics.length; i++) {
       if (widget.lrc.lyrics[i].timestamp <= widget.currentPosition) {
