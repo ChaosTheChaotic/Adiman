@@ -2566,8 +2566,14 @@ class _LyricsOverlayState extends State<LyricsOverlay>
     } else if (index >= 0 && _scrollController.hasClients) {
       // Scroll to estimated position if key is not available
       final estimatedPosition = index * 85.0; // Approximate item height
+      final viewportHeight = _scrollController.position.viewportDimension;
+      
+      // Always center the lyric in the viewport
+      final targetPos = (estimatedPosition - viewportHeight / 2 + 85.0 / 2)
+          .clamp(0.0, _scrollController.position.maxScrollExtent);
+      
       _scrollController.animateTo(
-        estimatedPosition,
+        targetPos,
         duration: const Duration(milliseconds: 800),
         curve: Curves.easeOutQuint,
       );
