@@ -2565,7 +2565,7 @@ class _LyricsOverlayState extends State<LyricsOverlay>
       }
     } else if (index >= 0 && _scrollController.hasClients) {
       // Scroll to estimated position if key is not available
-      final estimatedPosition = index * 65.0; // Approximate item height
+      final estimatedPosition = index * 85.0; // Approximate item height
       _scrollController.animateTo(
         estimatedPosition,
         duration: const Duration(milliseconds: 800),
