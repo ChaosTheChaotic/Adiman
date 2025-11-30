@@ -1113,6 +1113,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
               await _updateDominantColor();
               widget.service.updatePlaylist(widget.songList, currentIndex);
               widget.service.updateMetadata();
+	      return;
             }
           }
         }
