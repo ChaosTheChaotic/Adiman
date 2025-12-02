@@ -4207,42 +4207,74 @@ class _EnhancedSongListTileState extends State<EnhancedSongListTile>
                                             : null,
                                       ),
                                       const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-					    Hero(
-    					      tag: 'title-${widget.song.path}',
-    					      child: Material(
-    					        color: Colors.transparent,
-    					        child: Text(
-    					          widget.song.title,
-    					          style: TextStyle(
-    					            color: textColor,
-    					            fontSize: 16,
-    					            fontWeight: FontWeight.w500,
-    					          ),
-    					        ),
-    					      ),
-    					    ),
-    					    const SizedBox(height: 4),
-    					    Hero(
-    					      tag: 'artist-${widget.song.path}',
-    					      child: Material(
-    					        color: Colors.transparent,
-    					        child: Text(
-    					          '${widget.song.artists?.join('/') ?? widget.song.artist} • ${widget.song.album} ${widget.song.genre != "Unknown Genre" ? '•  ${widget.song.genre}' : ""}',
-    					          style: TextStyle(
-    					            color: textColor.withValues(alpha: 0.8),
-    					            fontSize: 14,
-    					          ),
-    					        ),
-    					      ),
-    					    ),
-                                          ],
-                                        ),
-                                      ),
+				      Expanded(
+				        child: Column(
+				          crossAxisAlignment: CrossAxisAlignment.start,
+				          children: [
+				            Stack(
+				              children: [
+				                // This text stays visible in the list tile
+				                Text(
+				                  widget.song.title,
+				                  style: TextStyle(
+				                    color: textColor,
+				                    fontSize: 16,
+				                    fontWeight: FontWeight.w500,
+				                  ),
+				                ),
+				                // Invisible Hero that will animate to the destination
+				                Opacity(
+				                  opacity: 0.0,
+				                  child: Hero(
+				                    tag: 'title-${widget.song.path}',
+				                    child: Material(
+				                      color: Colors.transparent,
+				                      child: Text(
+				                        widget.song.title,
+				                        style: TextStyle(
+				                          color: textColor,
+				                          fontSize: 16,
+				                          fontWeight: FontWeight.w500,
+				                        ),
+				                      ),
+				                    ),
+				                  ),
+				                ),
+				              ],
+				            ),
+				            const SizedBox(height: 4),
+				            Stack(
+				              children: [
+				                // This text stays visible in the list tile
+				                Text(
+				                  '${widget.song.artists?.join('/') ?? widget.song.artist} • ${widget.song.album} ${widget.song.genre != "Unknown Genre" ? '•  ${widget.song.genre}' : ""}',
+				                  style: TextStyle(
+				                    color: textColor.withValues(alpha: 0.8),
+				                    fontSize: 14,
+				                  ),
+				                ),
+				                // Invisible Hero that will animate to the destination
+				                Opacity(
+				                  opacity: 0.0,
+				                  child: Hero(
+				                    tag: 'artist-${widget.song.path}',
+				                    child: Material(
+				                      color: Colors.transparent,
+				                      child: Text(
+				                        '${widget.song.artists?.join('/') ?? widget.song.artist} • ${widget.song.album} ${widget.song.genre != "Unknown Genre" ? '•  ${widget.song.genre}' : ""}',
+				                        style: TextStyle(
+				                          color: textColor.withValues(alpha: 0.8),
+				                          fontSize: 14,
+				                        ),
+				                      ),
+				                    ),
+				                  ),
+				                ),
+				              ],
+				            ),
+				          ],
+				        ),
+				      ),
                                     ],
                                   ),
                                 );
