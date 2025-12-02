@@ -1775,31 +1775,88 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                 const EdgeInsets.symmetric(horizontal: 32.0),
                             child: Column(
                               children: [
-                                GlowText(
-                                  currentSong.title,
-                                  style: TextStyle(
-                                    color:
-                                        dominantColor.computeLuminance() > 0.01
-                                            ? dominantColor
-                                            : Theme.of(context)
-                                                .textTheme
-                                                .bodyLarge
-                                                ?.color,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  currentSong.artist,
-                                  style: TextStyle(
-                                    color: textColor.withValues(alpha: 0.8),
-                                    fontSize: 16,
-                                  ),
-                                ),
+				Hero(
+				  tag: 'title-${currentSong.path}',
+				  flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+				    final textWidget = flightDirection == HeroFlightDirection.push
+				        ? toHeroContext.widget
+				        : fromHeroContext.widget;
+				    
+				    return AnimatedBuilder(
+				      animation: animation,
+				      builder: (context, child) {
+				        return Transform.translate(
+				          offset: Offset(0, -20 * (1 - animation.value)),
+				          child: Opacity(
+				            opacity: Tween<double>(begin: 0.0, end: 1.0)
+				                .animate(CurvedAnimation(
+				                  parent: animation,
+				                  curve: Interval(0.5, 1.0),
+				                ))
+				                .value,
+				            child: child,
+				          ),
+				        );
+				      },
+				      child: textWidget,
+				    );
+				  },
+				  child: Material(
+				    color: Colors.transparent,
+				    child: GlowText(
+				      currentSong.title,
+				      style: TextStyle(
+				        color: dominantColor.computeLuminance() > 0.01
+				            ? dominantColor
+				            : Theme.of(context).textTheme.bodyLarge?.color,
+				        fontSize: 28,
+				        fontWeight: FontWeight.w700,
+				      ),
+				      textAlign: TextAlign.center,
+				      maxLines: 1,
+				      overflow: TextOverflow.ellipsis,
+				    ),
+				  ),
+				),
+				const SizedBox(height: 4),
+				Hero(
+				  tag: 'artist-${currentSong.path}',
+				  flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+				    final textWidget = flightDirection == HeroFlightDirection.push
+				        ? toHeroContext.widget
+				        : fromHeroContext.widget;
+				    
+				    return AnimatedBuilder(
+				      animation: animation,
+				      builder: (context, child) {
+				        return Transform.translate(
+				          offset: Offset(0, -20 * (1 - animation.value)),
+				          child: Opacity(
+				            opacity: Tween<double>(begin: 0.0, end: 1.0)
+				                .animate(CurvedAnimation(
+				                  parent: animation,
+				                  curve: Interval(0.6, 1.0),
+				                ))
+				                .value,
+				            child: child,
+				          ),
+				        );
+				      },
+				      child: textWidget,
+				    );
+				  },
+				  child: Material(
+				    color: Colors.transparent,
+				    child: Text(
+				      currentSong.artist,
+				      style: TextStyle(
+				        color: textColor.withValues(alpha: 0.8),
+				        fontSize: 16,
+				      ),
+				      textAlign: TextAlign.center,
+				    ),
+				  ),
+				),
                               ],
                             ),
                           ),

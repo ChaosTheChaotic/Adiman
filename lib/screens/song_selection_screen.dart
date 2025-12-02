@@ -4212,23 +4212,34 @@ class _EnhancedSongListTileState extends State<EnhancedSongListTile>
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            Text(
-                                              widget.song.title,
-                                              style: TextStyle(
-                                                color: textColor,
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${widget.song.artists?.join('/') ?? widget.song.artist} • ${widget.song.album} ${widget.song.genre != "Unknown Genre" ? '•  ${widget.song.genre}' : ""}',
-                                              style: TextStyle(
-                                                color: textColor.withValues(
-                                                    alpha: 0.8),
-                                                fontSize: 14,
-                                              ),
-                                            ),
+					    Hero(
+    					      tag: 'title-${widget.song.path}',
+    					      child: Material(
+    					        color: Colors.transparent,
+    					        child: Text(
+    					          widget.song.title,
+    					          style: TextStyle(
+    					            color: textColor,
+    					            fontSize: 16,
+    					            fontWeight: FontWeight.w500,
+    					          ),
+    					        ),
+    					      ),
+    					    ),
+    					    const SizedBox(height: 4),
+    					    Hero(
+    					      tag: 'artist-${widget.song.path}',
+    					      child: Material(
+    					        color: Colors.transparent,
+    					        child: Text(
+    					          '${widget.song.artists?.join('/') ?? widget.song.artist} • ${widget.song.album} ${widget.song.genre != "Unknown Genre" ? '•  ${widget.song.genre}' : ""}',
+    					          style: TextStyle(
+    					            color: textColor.withValues(alpha: 0.8),
+    					            fontSize: 14,
+    					          ),
+    					        ),
+    					      ),
+    					    ),
                                           ],
                                         ),
                                       ),
