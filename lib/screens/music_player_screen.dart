@@ -818,12 +818,12 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           context: context,
           builder: (context) => AlertDialog(
             backgroundColor: dominantColor.withAlpha(30),
-            title: Text('Delete Song?', style: TextStyle(color: Colors.white)),
+            title: Text('Delete Song?', style: GoogleFonts.inter(color: Colors.white)),
             content: Text('This will permanently delete "${song.title}"',
 	      style: GoogleFonts.inter(color: Colors.white70)),
             actions: [
               TextButton(
-                child: Text('Cancel', style: TextStyle(color: Colors.white70)),
+                child: Text('Cancel', style: GoogleFonts.inter(color: Colors.white70)),
                 onPressed: () {
                   ScaffoldMessenger.of(context).hideCurrentSnackBar();
                   Navigator.pop(context, false);
@@ -831,7 +831,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
               ),
               TextButton(
                 child:
-                    Text('Delete', style: TextStyle(color: Colors.redAccent)),
+                    Text('Delete', style: GoogleFonts.inter(color: Colors.redAccent)),
                 onPressed: () {
                   ScaffoldMessenger.of(context).hideCurrentSnackBar();
                   Navigator.pop(context, true);
