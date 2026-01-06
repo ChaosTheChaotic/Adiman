@@ -459,11 +459,11 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: HEAD
-      resolved-ref: "212a400118e55a1c395acbba8f77c878f9dc6ebf"
+      ref: a3c9358e88fda3bd784fcd375151e43c81ede5ba
+      resolved-ref: a3c9358e88fda3bd784fcd375151e43c81ede5ba
       url: "https://github.com/MSOB7YY/dart_lrc"
     source: git
-    version: "1.6.0"
+    version: "1.6.1"
   matcher:
     dependency: transitive
     description:

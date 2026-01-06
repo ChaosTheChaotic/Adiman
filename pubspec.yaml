@@ -50,6 +50,8 @@ dependencies:
   lrc:
     git:
       url: https://github.com/MSOB7YY/dart_lrc
+      # Newest version needs a new flutter version however new flutter versions have janky shaders on aarch64 linux
+      ref: a3c9358e88fda3bd784fcd375151e43c81ede5ba
   dbus: ^0.7.11
   flutter_colorpicker: ^1.1.0
   sqflite_common_ffi: ^2.3.6
