@@ -103,9 +103,12 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   List<Map<String, dynamic>> _songOptionsPluginButtons = [];
 
+  late GlobalKey<_LyricsOverlayState> _lyricsOverlayKey;
+
   @override
   void initState() {
     super.initState();
+    _lyricsOverlayKey = GlobalKey<_LyricsOverlayState>();
     rust_api.getCvol().then((volume) {
       if (mounted) {
         setState(() {
@@ -815,12 +818,12 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           context: context,
           builder: (context) => AlertDialog(
             backgroundColor: dominantColor.withAlpha(30),
-            title: Text('Delete Song?', style: TextStyle(color: Colors.white)),
+            title: Text('Delete Song?', style: GoogleFonts.inter(color: Colors.white)),
             content: Text('This will permanently delete "${song.title}"',
-                style: TextStyle(color: Colors.white70)),
+	      style: GoogleFonts.inter(color: Colors.white70)),
             actions: [
               TextButton(
-                child: Text('Cancel', style: TextStyle(color: Colors.white70)),
+                child: Text('Cancel', style: GoogleFonts.inter(color: Colors.white70)),
                 onPressed: () {
                   ScaffoldMessenger.of(context).hideCurrentSnackBar();
                   Navigator.pop(context, false);
@@ -828,7 +831,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
               ),
               TextButton(
                 child:
-                    Text('Delete', style: TextStyle(color: Colors.redAccent)),
+                    Text('Delete', style: GoogleFonts.inter(color: Colors.redAccent)),
                 onPressed: () {
                   ScaffoldMessenger.of(context).hideCurrentSnackBar();
                   Navigator.pop(context, true);
@@ -1113,6 +1116,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
               await _updateDominantColor();
               widget.service.updatePlaylist(widget.songList, currentIndex);
               widget.service.updateMetadata();
+	      return;
             }
           }
         }
@@ -1140,6 +1144,10 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
           currentSong.duration.inSeconds.toDouble(),
         );
         await rust_api.seekToPosition(position: seekPosition);
+	if (_showLyrics && _lyricsOverlayKey.currentState != null) {
+  	  _lyricsOverlayKey.currentState!.updateCurrentLyric();
+  	  _lyricsOverlayKey.currentState!.scrollToCurrentLyric();
+  	}
         //if (!isPlaying && mounted) {
         //  setState(() {
         //    isPlaying = true;
@@ -1230,6 +1238,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     await rust_api.playSong(path: currentSong.path);
     await rust_api.preloadNextSong(
         path: widget.songList[currentIndex + 1].path);
+    if (_showLyrics && _lyricsOverlayKey.currentState != null) {
+      _lyricsOverlayKey.currentState!.scrollToTop();
+    }
   }
 
   void _generateShuffleOrder() {
@@ -1764,31 +1775,88 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                 const EdgeInsets.symmetric(horizontal: 32.0),
                             child: Column(
                               children: [
-                                GlowText(
-                                  currentSong.title,
-                                  style: TextStyle(
-                                    color:
-                                        dominantColor.computeLuminance() > 0.01
-                                            ? dominantColor
-                                            : Theme.of(context)
-                                                .textTheme
-                                                .bodyLarge
-                                                ?.color,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  currentSong.artist,
-                                  style: TextStyle(
-                                    color: textColor.withValues(alpha: 0.8),
-                                    fontSize: 16,
-                                  ),
-                                ),
+				Hero(
+				  tag: 'title-${currentSong.path}',
+				  flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+				    final textWidget = flightDirection == HeroFlightDirection.push
+				        ? toHeroContext.widget
+				        : fromHeroContext.widget;
+				    
+				    return AnimatedBuilder(
+				      animation: animation,
+				      builder: (context, child) {
+				        return Transform.translate(
+				          offset: Offset(0, -20 * (1 - animation.value)),
+				          child: Opacity(
+				            opacity: Tween<double>(begin: 0.0, end: 1.0)
+				                .animate(CurvedAnimation(
+				                  parent: animation,
+				                  curve: Interval(0.5, 1.0),
+				                ))
+				                .value,
+				            child: child,
+				          ),
+				        );
+				      },
+				      child: textWidget,
+				    );
+				  },
+				  child: Material(
+				    color: Colors.transparent,
+				    child: GlowText(
+				      currentSong.title,
+				      style: TextStyle(
+				        color: dominantColor.computeLuminance() > 0.01
+				            ? dominantColor
+				            : Theme.of(context).textTheme.bodyLarge?.color,
+				        fontSize: 28,
+				        fontWeight: FontWeight.w700,
+				      ),
+				      textAlign: TextAlign.center,
+				      maxLines: 1,
+				      overflow: TextOverflow.ellipsis,
+				    ),
+				  ),
+				),
+				const SizedBox(height: 4),
+				Hero(
+				  tag: 'artist-${currentSong.path}',
+				  flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+				    final textWidget = flightDirection == HeroFlightDirection.push
+				        ? toHeroContext.widget
+				        : fromHeroContext.widget;
+				    
+				    return AnimatedBuilder(
+				      animation: animation,
+				      builder: (context, child) {
+				        return Transform.translate(
+				          offset: Offset(0, -20 * (1 - animation.value)),
+				          child: Opacity(
+				            opacity: Tween<double>(begin: 0.0, end: 1.0)
+				                .animate(CurvedAnimation(
+				                  parent: animation,
+				                  curve: Interval(0.6, 1.0),
+				                ))
+				                .value,
+				            child: child,
+				          ),
+				        );
+				      },
+				      child: textWidget,
+				    );
+				  },
+				  child: Material(
+				    color: Colors.transparent,
+				    child: Text(
+				      currentSong.artist,
+				      style: TextStyle(
+				        color: textColor.withValues(alpha: 0.8),
+				        fontSize: 16,
+				      ),
+				      textAlign: TextAlign.center,
+				    ),
+				  ),
+				),
                               ],
                             ),
                           ),
@@ -1900,7 +1968,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                               Positioned.fill(
                                 child: LyricsOverlay(
                                   isPlaying: isPlaying,
-                                  key: ValueKey(currentSong.path),
+                                  //key: ValueKey(currentSong.path),
+				  key: _lyricsOverlayKey,
                                   lrc: _lrcData!,
                                   currentPosition: Duration(
                                     seconds: (_currentSliderValue *
@@ -2485,11 +2554,11 @@ class _LyricsOverlayState extends State<LyricsOverlay>
   void initState() {
     super.initState();
     _initializeAnimations();
-    _currentLyricNotifier.addListener(_scrollToCurrentLyric);
+    _currentLyricNotifier.addListener(scrollToCurrentLyric);
     _scrollController.addListener(_handleParallaxScroll);
-    _updateCurrentLyric();
+    updateCurrentLyric();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToCurrentLyric();
+      scrollToCurrentLyric();
     });
   }
 
@@ -2539,7 +2608,7 @@ class _LyricsOverlayState extends State<LyricsOverlay>
     });
   }
 
-  void _scrollToCurrentLyric() {
+  void scrollToCurrentLyric() {
     final index = _currentLyricNotifier.value;
     if (index >= 0 && _lyricKeys.containsKey(index)) {
       final context = _lyricKeys[index]?.currentContext;
@@ -2551,6 +2620,20 @@ class _LyricsOverlayState extends State<LyricsOverlay>
           alignment: 0.5, // Center the current lyric
         );
       }
+    } else if (index >= 0 && _scrollController.hasClients) {
+      // Scroll to estimated position if key is not available
+      final estimatedPosition = index * 85.0; // Approximate item height
+      final viewportHeight = _scrollController.position.viewportDimension;
+      
+      // Always center the lyric in the viewport
+      final targetPos = (estimatedPosition - viewportHeight / 2 + 85.0 / 2)
+          .clamp(0.0, _scrollController.position.maxScrollExtent);
+      
+      _scrollController.animateTo(
+        targetPos,
+        duration: const Duration(milliseconds: 800),
+        curve: Curves.easeOutQuint,
+      );
     }
   }
 
@@ -2563,6 +2646,15 @@ class _LyricsOverlayState extends State<LyricsOverlay>
     final relativePosition = (itemPosition - scrollPosition) / scrollViewHeight;
 
     return relativePosition * 20.0; // Parallax amount
+  }
+
+  void scrollToTop() {
+    _scrollController.animateTo(
+      0.0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+    _currentLyricNotifier.value = -1; // Reset current lyric highlight
   }
 
   @override
@@ -2800,7 +2892,13 @@ class _LyricsOverlayState extends State<LyricsOverlay>
   @override
   void didUpdateWidget(LyricsOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _updateCurrentLyric();
+    updateCurrentLyric();
+
+    if ((widget.currentPosition - oldWidget.currentPosition).inSeconds.abs() > 5) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        scrollToCurrentLyric();
+      });
+    }
 
     if (widget.isPlaying != oldWidget.isPlaying) {
       if (widget.isPlaying) {
@@ -2825,15 +2923,25 @@ class _LyricsOverlayState extends State<LyricsOverlay>
     }
   }
 
-  void _updateCurrentLyric() {
+  void updateCurrentLyric() {
     int newIndex = -1;
-    for (var i = 0; i < widget.lrc.lyrics.length; i++) {
-      if (widget.lrc.lyrics[i].timestamp <= widget.currentPosition) {
-        newIndex = i;
+    final currentPos = widget.currentPosition;
+    
+    var low = 0;
+    var high = widget.lrc.lyrics.length - 1;
+    
+    while (low <= high) {
+      final mid = (low + high) ~/ 2;
+      final midTimestamp = widget.lrc.lyrics[mid].timestamp;
+      
+      if (midTimestamp <= currentPos) {
+        newIndex = mid;
+        low = mid + 1;
       } else {
-        break;
+        high = mid - 1;
       }
     }
+    
     if (newIndex != _currentLyricNotifier.value) {
       _currentLyricNotifier.value = newIndex;
     }

@@ -15,6 +15,7 @@ As of update 1.3.0, Adiman now supports plugins.
 ## Troubleshooting
 - Make sure that the plugin is enabled (this happens more than you think)
 - Make sure that settings are done right (this also happens more than you think)
+- Ensure that plugins in the folder have a valid wasm file or a non-broken link to the wasm file
 - Run the app through in a terminal (by simply running the path to the apps executable) and see if any errors get printed out
 - Fix the plugin yourself
 - Contact the plugin developer for help

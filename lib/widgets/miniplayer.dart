@@ -354,27 +354,103 @@ class MiniPlayerState extends State<MiniPlayer>
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      GlowText(
-                        widget.song.title,
-                        glowColor: effectiveColor.withValues(alpha: 0.2),
-                        style: TextStyle(
-                          color: textColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.song.artist,
-                        style: TextStyle(
-                          color: textColor!.withValues(alpha: 0.8),
-                          fontSize: 12,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+		      Hero(
+      		        tag: 'title-${widget.song.path}',
+      		        flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+      		          return AnimatedBuilder(
+      		            animation: animation,
+      		            builder: (context, child) {
+      		              return Transform.translate(
+      		                offset: Offset(0, -20 * (1 - animation.value)),
+      		                child: Opacity(
+      		                  opacity: Tween<double>(begin: 0.0, end: 1.0)
+      		                      .animate(CurvedAnimation(
+      		                        parent: animation,
+      		                        curve: Interval(0.5, 1.0),
+      		                      ))
+      		                      .value,
+      		                  child: child,
+      		                ),
+      		              );
+      		            },
+      		            child: Material(
+      		              color: Colors.transparent,
+      		              child: GlowText(
+      		                widget.song.title,
+      		                glowColor: effectiveColor.withValues(alpha: 0.2),
+      		                style: TextStyle(
+      		                  color: textColor,
+      		                  fontWeight: FontWeight.w600,
+      		                  fontSize: 14,
+      		                ),
+      		                maxLines: 1,
+      		                overflow: TextOverflow.ellipsis,
+      		              ),
+      		            ),
+      		          );
+      		        },
+      		        child: Material(
+      		          color: Colors.transparent,
+      		          child: GlowText(
+      		            widget.song.title,
+      		            glowColor: effectiveColor.withValues(alpha: 0.2),
+      		            style: TextStyle(
+      		              color: textColor,
+      		              fontWeight: FontWeight.w600,
+      		              fontSize: 14,
+      		            ),
+      		            maxLines: 1,
+      		            overflow: TextOverflow.ellipsis,
+      		          ),
+      		        ),
+      		      ),
+      		      const SizedBox(height: 4),
+      		      Hero(
+      		        tag: 'artist-${widget.song.path}',
+      		        flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+      		          return AnimatedBuilder(
+      		            animation: animation,
+      		            builder: (context, child) {
+      		              return Transform.translate(
+      		                offset: Offset(0, -20 * (1 - animation.value)),
+      		                child: Opacity(
+      		                  opacity: Tween<double>(begin: 0.0, end: 1.0)
+      		                      .animate(CurvedAnimation(
+      		                        parent: animation,
+      		                        curve: Interval(0.6, 1.0),
+      		                      ))
+      		                      .value,
+      		                  child: child,
+      		                ),
+      		              );
+      		            },
+      		            child: Material(
+      		              color: Colors.transparent,
+      		              child: Text(
+      		                widget.song.artist,
+      		                style: TextStyle(
+      		                  color: textColor.withValues(alpha: 0.8),
+      		                  fontSize: 12,
+      		                ),
+      		                maxLines: 1,
+      		                overflow: TextOverflow.ellipsis,
+      		              ),
+      		            ),
+      		          );
+      		        },
+      		        child: Material(
+      		          color: Colors.transparent,
+      		          child: Text(
+      		            widget.song.artist,
+      		            style: TextStyle(
+      		              color: textColor!.withValues(alpha: 0.8),
+      		              fontSize: 12,
+      		            ),
+      		            maxLines: 1,
+      		            overflow: TextOverflow.ellipsis,
+      		          ),
+      		        ),
+      		      ),
                     ],
                   ),
                 ),
