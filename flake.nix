@@ -32,6 +32,9 @@
           xorg.libXrandr
           udev
           alsa-lib
+	  pipewire
+	  alsa-plugins
+	  libpulseaudio
           libxkbcommon
 
           zlib
@@ -78,6 +81,30 @@
           protoc-gen-prost
           just
         ] ++ buildInputs ++ nativeBuildInputs ++ graphics;
+
+	alsaConfig = pkgs.writeText "alsa-nix.conf" ''
+    <${pkgs.alsa-lib}/share/alsa/alsa.conf>
+
+    pcm_type.pipewire {
+      lib ${pkgs.pipewire}/lib/alsa-lib/libasound_module_pcm_pipewire.so
+    }
+    ctl_type.pipewire {
+      lib ${pkgs.pipewire}/lib/alsa-lib/libasound_module_ctl_pipewire.so
+    }
+    pcm_type.pulse {
+      lib ${pkgs.alsa-plugins}/lib/alsa-lib/libasound_module_pcm_pulse.so
+    }
+    ctl_type.pulse {
+      lib ${pkgs.alsa-plugins}/lib/alsa-lib/libasound_module_ctl_pulse.so
+    }
+
+    pcm.!default {
+      type pipewire
+    }
+    ctl.!default {
+      type pipewire
+    }
+	'';
       in
       rec {
         devShell = pkgs.mkShell {
@@ -97,11 +124,18 @@
           LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath all_deps}";
           
           HF_HUB_ENABLE_HF_TRANSFER = 1;
-          
-          shellHook = ''
-            export CARGO_MANIFEST_DIR=$(pwd) # This is declared here because it seems the project root is not accessible in the flake
-            export LD_LIBRARY_PATH="$(pwd)/build/linux/x64/debug/bundle/lib:$(pwd)/build/linux/x64/release/bundle/lib:$(pwd)/build/linux/arm64/debug/bundle/lib:$(pwd)/build/linux/arm64/release/bundle/lib:$LD_LIBRARY_PATH"
-          ''; # That last line is so that dart can find the rust libs
+
+	  STORE_LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath all_deps;
+
+	  ALSA_PLUGIN_DIRS = "${pkgs.alsa-plugins}/lib/alsa-lib:${pkgs.pipewire}/lib/alsa-lib";
+
+	  ALSA_CONFIG_PATH = alsaConfig;
+
+	  shellHook = ''
+    	    export CARGO_MANIFEST_DIR=$(pwd)
+            BUNDLE_PATH="$(pwd)/build/linux/x64/debug/bundle/lib:$(pwd)/build/linux/x64/release/bundle/lib:$(pwd)/build/linux/arm64/debug/bundle/lib:$(pwd)/build/linux/arm64/release/bundle/lib"
+    	    export LD_LIBRARY_PATH="$STORE_LD_LIBRARY_PATH:$BUNDLE_PATH:$LD_LIBRARY_PATH"
+    	  '';
         };
       }
     );
