@@ -3710,6 +3710,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "shlex",
  "symphonia",
  "tokio",
  "walkdir",
