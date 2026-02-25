@@ -87,7 +87,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     ..color = Colors.white;
   late VoidCallback _useDominantColorsListener;
 
-  RepeatMode _repeatMode = RepeatMode.normal;
+  AdiRepeatMode _repeatMode = AdiRepeatMode.normal;
   bool _hasRepeated = false;
   double _volume = 1.0;
   bool _isHoveringVol = false;
@@ -1278,14 +1278,14 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
     // Original handling for when Rust hasn't advanced
     await rust_api.stopSong();
-    if (_repeatMode == RepeatMode.repeatOnce) {
+    if (_repeatMode == AdiRepeatMode.repeatOnce) {
       if (!_hasRepeated) {
         await _replaySong();
         _hasRepeated = true;
       } else {
         await _handleSkipNext();
       }
-    } else if (_repeatMode == RepeatMode.repeatAll || _isTempFile) {
+    } else if (_repeatMode == AdiRepeatMode.repeatAll || _isTempFile) {
       await _replaySong();
     } else {
       await _handleSkipNext();
@@ -1407,14 +1407,14 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   }
 
   // Cycle through the repeat modes: Normal -> RepeatOnce -> RepeatAll -> Normal.
-  void _toggleRepeatMode() {
+  void _toggleAdiRepeatMode() {
     setState(() {
-      if (_repeatMode == RepeatMode.normal) {
-        _repeatMode = RepeatMode.repeatOnce;
-      } else if (_repeatMode == RepeatMode.repeatOnce) {
-        _repeatMode = RepeatMode.repeatAll;
+      if (_repeatMode == AdiRepeatMode.normal) {
+        _repeatMode = AdiRepeatMode.repeatOnce;
+      } else if (_repeatMode == AdiRepeatMode.repeatOnce) {
+        _repeatMode = AdiRepeatMode.repeatAll;
       } else {
-        _repeatMode = RepeatMode.normal;
+        _repeatMode = AdiRepeatMode.normal;
       }
     });
   }
@@ -2208,13 +2208,13 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                                       const SizedBox(width: 16),
                                       DynamicIconButton(
                                         icon:
-                                            _repeatMode == RepeatMode.repeatOnce
+                                            _repeatMode == AdiRepeatMode.repeatOnce
                                                 ? Broken.repeate_one
                                                 : _repeatMode ==
-                                                        RepeatMode.repeatAll
+                                                        AdiRepeatMode.repeatAll
                                                     ? Broken.repeat
                                                     : Broken.arrow_2,
-                                        onPressed: _toggleRepeatMode,
+                                        onPressed: _toggleAdiRepeatMode,
                                         backgroundColor: dominantColor,
                                       ),
                                     ],

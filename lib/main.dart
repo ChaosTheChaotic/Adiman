@@ -109,7 +109,7 @@ enum SortOption {
   genreReversed,
 }
 
-enum RepeatMode { normal, repeatOnce, repeatAll }
+enum AdiRepeatMode { normal, repeatOnce, repeatAll }
 
 enum SeekbarType { waveform, alt, dyn }
 
