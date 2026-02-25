@@ -1572,7 +1572,7 @@ pub fn download_to_temp(query: String, flags: Option<String>) -> Result<String, 
 
             // Add flags if they exist, split them into separate arguments
             if let Some(flags_str) = flags {
-                for flag in flags_str.split_whitespace() {
+                for flag in shlex::Shlex::new(&flags_str) {
                     cmd.arg(flag);
                 }
             }

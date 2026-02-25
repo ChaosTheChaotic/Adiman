@@ -17,10 +17,9 @@ pub fn get_dominant_color(data: Vec<u8>) -> Option<u32> {
     let img = image::load_from_memory(&data).ok()?;
 
     // Resize for faster processing while maintaining enough detail
-    let small_img = img.resize_exact(
+    let small_img = img.thumbnail(
         RESIZE_TARGET,
         RESIZE_TARGET,
-        image::imageops::FilterType::Triangle,
     );
 
     let mut color_scores = HashMap::new();
