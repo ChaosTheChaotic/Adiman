@@ -113,8 +113,6 @@ enum AdiRepeatMode { normal, repeatOnce, repeatAll }
 
 enum SeekbarType { waveform, alt, dyn }
 
-enum SeekbarType { waveform, alt, dyn }
-
 late final AdimanService globalService;
 Future<void> main() async {
   await RustLib.init();
