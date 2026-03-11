@@ -1555,7 +1555,24 @@ pub fn download_to_temp(query: String, flags: Option<String>) -> Result<String, 
                 .ok_or("Failed to get temp directory")?
                 .to_string();
 
-            // Set the output template to yt-dlp's format
+            let mut audio_format = "m4a".to_string();
+            let mut parsed_flags = Vec::new();
+
+            if let Some(flags_str) = flags {
+                let mut iter = shlex::Shlex::new(&flags_str);
+                while let Some(arg) = iter.next() {
+                    if arg == "--audio-format" {
+                        if let Some(fmt) = iter.next() {
+                            audio_format = fmt;
+                        }
+                    } else if arg.starts_with("--audio-format=") {
+                        audio_format = arg.trim_start_matches("--audio-format=").to_string();
+                    } else {
+                        parsed_flags.push(arg);
+                    }
+                }
+            }
+
             let output_path = format!("{}/%(title)s.%(ext)s", temp_path);
             let search_query = format!("ytsearch1:{}", query);
 
@@ -1565,7 +1582,7 @@ pub fn download_to_temp(query: String, flags: Option<String>) -> Result<String, 
                 "-f", "bestaudio",
                 "--extract-audio",
                 "--audio-quality", "0",
-                "--audio-format", "m4a",
+                "--audio-format", &audio_format,
                 "--embed-thumbnail",
                 "--convert-thumbnails", "jpg",
                 "--ppa", "ThumbnailsConvertor:-vf scale=640:640:force_original_aspect_ratio=increase,crop=640:640 -q:v 1",
@@ -1581,11 +1598,9 @@ pub fn download_to_temp(query: String, flags: Option<String>) -> Result<String, 
                 &search_query,
             ]);
 
-            // Add flags if they exist, split them into separate arguments
-            if let Some(flags_str) = flags {
-                for flag in shlex::Shlex::new(&flags_str) {
-                    cmd.arg(flag);
-                }
+            // Add the remaining parsed flags
+            for flag in parsed_flags {
+                cmd.arg(flag);
             }
             
             let mut child: Child = cmd
@@ -1617,16 +1632,17 @@ pub fn download_to_temp(query: String, flags: Option<String>) -> Result<String, 
 
             let dir = read_dir(&temp_path).map_err(|e| format!("Error reading temp dir: {}", e))?;
 
+            // Look for the file with the matching audio format extension
             for entry in dir {
                 let entry = entry.map_err(|e| format!("Error reading entry: {}", e))?;
                 if let Some(ext) = entry.path().extension()
-                    && ext == "m4a" // Checking for m4a instead of mp3
+                    && ext == std::ffi::OsStr::new(&audio_format)
                 {
                     return Ok(entry.path().to_string_lossy().into_owned());
                 }
             }
 
-            Err("No M4A file found after download".into())
+            Err(format!("No {} file found after download", audio_format.to_uppercase()).into())
         })();
         tx.send(result).unwrap();
     });
