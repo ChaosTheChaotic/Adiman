@@ -79,7 +79,7 @@ class _DownloadScreenState extends State<DownloadScreen>
     try {
       final downloadedPath = await rust_api.downloadToTemp(
           query: query,
-          flags: SharedPreferencesService.instance.getString('spotdlFlags'));
+          flags: SharedPreferencesService.instance.getString('ytdlpFlags'));
 
       final metadata = await rust_api.scanMusicDirectory(
         dirPath: path.dirname(downloadedPath),

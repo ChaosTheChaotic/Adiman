@@ -1555,27 +1555,54 @@ pub fn download_to_temp(query: String, flags: Option<String>) -> Result<String, 
                 .ok_or("Failed to get temp directory")?
                 .to_string();
 
-            let output_path = format!("{}/{{artist}} - {{title}}.mp3", temp_path);
+            let mut audio_format = "m4a".to_string();
+            let mut parsed_flags = Vec::new();
 
-            let mut cmd = Command::new("spotdl");
-            cmd.args([
-                "download",
-                &query,
-                "--log-level",
-                "DEBUG",
-                "--no-cache",
-                //"--format",
-                //"mp3",
-                "--output",
-                &output_path,
-            ]);
-
-            // Add flags if they exist, split them into separate arguments
             if let Some(flags_str) = flags {
-                for flag in shlex::Shlex::new(&flags_str) {
-                    cmd.arg(flag);
+                let mut iter = shlex::Shlex::new(&flags_str);
+                while let Some(arg) = iter.next() {
+                    if arg == "--audio-format" {
+                        if let Some(fmt) = iter.next() {
+                            audio_format = fmt;
+                        }
+                    } else if arg.starts_with("--audio-format=") {
+                        audio_format = arg.trim_start_matches("--audio-format=").to_string();
+                    } else {
+                        parsed_flags.push(arg);
+                    }
                 }
             }
+
+            let output_path = format!("{}/%(title)s.%(ext)s", temp_path);
+            let search_query = format!("ytsearch1:{}", query);
+
+            let mut cmd = Command::new("yt-dlp");
+            
+            cmd.args([
+                "-f", "bestaudio",
+                "--extract-audio",
+                "--audio-quality", "0",
+                "--audio-format", &audio_format,
+                "--embed-thumbnail",
+                "--convert-thumbnails", "jpg",
+                "--ppa", "ThumbnailsConvertor:-vf scale=640:640:force_original_aspect_ratio=increase,crop=640:640 -q:v 1",
+                "--add-metadata",
+                "--embed-metadata",
+                "--parse-metadata", "title:%(artist)s - %(track)s",
+                "--replace-in-metadata", "title,track", r"(?i)\s*(?:[\[\(【{<].*?(?:official|video|audio|lyric|visualizer).*?[\]\)】}>]|\s*[-|]\s*(?:official\s*video|music\s*video|official\s*audio|lyric\s*video|official\s*visualizer).*)", "",
+                "--no-post-overwrites",
+                "--no-playlist",
+                "--playlist-items", "1",
+                "--output", &output_path,
+                "--verbose",
+                &search_query,
+            ]);
+
+            // Add the remaining parsed flags
+            for flag in parsed_flags {
+                cmd.arg(flag);
+            }
+            
             let mut child: Child = cmd
                 .spawn()
                 .map_err(|e| format!("Failed to start download: {}", e))?;
@@ -1597,7 +1624,6 @@ pub fn download_to_temp(query: String, flags: Option<String>) -> Result<String, 
                     }
                     Ok(None) => {
                         // Process still running, sleep briefly before polling again.
-                        // Best I could think of on 4 hours of sleep
                         thread::sleep(Duration::from_millis(100));
                     }
                     Err(e) => return Err(format!("Error waiting for download process: {}", e)),
@@ -1606,16 +1632,17 @@ pub fn download_to_temp(query: String, flags: Option<String>) -> Result<String, 
 
             let dir = read_dir(&temp_path).map_err(|e| format!("Error reading temp dir: {}", e))?;
 
+            // Look for the file with the matching audio format extension
             for entry in dir {
                 let entry = entry.map_err(|e| format!("Error reading entry: {}", e))?;
                 if let Some(ext) = entry.path().extension()
-                    && ext == "mp3"
+                    && ext == std::ffi::OsStr::new(&audio_format)
                 {
                     return Ok(entry.path().to_string_lossy().into_owned());
                 }
             }
 
-            Err("No MP3 file found after download".into())
+            Err(format!("No {} file found after download", audio_format.to_uppercase()).into())
         })();
         tx.send(result).unwrap();
     });
