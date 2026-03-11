@@ -1555,19 +1555,30 @@ pub fn download_to_temp(query: String, flags: Option<String>) -> Result<String, 
                 .ok_or("Failed to get temp directory")?
                 .to_string();
 
-            let output_path = format!("{}/{{artist}} - {{title}}.mp3", temp_path);
+            // Set the output template to yt-dlp's format
+            let output_path = format!("{}/%(title)s.%(ext)s", temp_path);
+            let search_query = format!("ytsearch1:{}", query);
 
-            let mut cmd = Command::new("spotdl");
+            let mut cmd = Command::new("yt-dlp");
+            
             cmd.args([
-                "download",
-                &query,
-                "--log-level",
-                "DEBUG",
-                "--no-cache",
-                //"--format",
-                //"mp3",
-                "--output",
-                &output_path,
+                "-f", "bestaudio",
+                "--extract-audio",
+                "--audio-quality", "0",
+                "--audio-format", "m4a",
+                "--embed-thumbnail",
+                "--convert-thumbnails", "jpg",
+                "--ppa", "ThumbnailsConvertor:-vf scale=640:640:force_original_aspect_ratio=increase,crop=640:640 -q:v 1",
+                "--add-metadata",
+                "--embed-metadata",
+                "--parse-metadata", "title:%(artist)s - %(track)s",
+                "--replace-in-metadata", "title,track", r"(?i)\s*(?:[\[\(【{<].*?(?:official|video|audio|lyric|visualizer).*?[\]\)】}>]|\s*[-|]\s*(?:official\s*video|music\s*video|official\s*audio|lyric\s*video|official\s*visualizer).*)", "",
+                "--no-post-overwrites",
+                "--no-playlist",
+                "--playlist-items", "1",
+                "--output", &output_path,
+                "--verbose",
+                &search_query,
             ]);
 
             // Add flags if they exist, split them into separate arguments
@@ -1576,6 +1587,7 @@ pub fn download_to_temp(query: String, flags: Option<String>) -> Result<String, 
                     cmd.arg(flag);
                 }
             }
+            
             let mut child: Child = cmd
                 .spawn()
                 .map_err(|e| format!("Failed to start download: {}", e))?;
@@ -1597,7 +1609,6 @@ pub fn download_to_temp(query: String, flags: Option<String>) -> Result<String, 
                     }
                     Ok(None) => {
                         // Process still running, sleep briefly before polling again.
-                        // Best I could think of on 4 hours of sleep
                         thread::sleep(Duration::from_millis(100));
                     }
                     Err(e) => return Err(format!("Error waiting for download process: {}", e)),
@@ -1609,13 +1620,13 @@ pub fn download_to_temp(query: String, flags: Option<String>) -> Result<String, 
             for entry in dir {
                 let entry = entry.map_err(|e| format!("Error reading entry: {}", e))?;
                 if let Some(ext) = entry.path().extension()
-                    && ext == "mp3"
+                    && ext == "m4a" // Checking for m4a instead of mp3
                 {
                     return Ok(entry.path().to_string_lossy().into_owned());
                 }
             }
 
-            Err("No MP3 file found after download".into())
+            Err("No M4A file found after download".into())
         })();
         tx.send(result).unwrap();
     });

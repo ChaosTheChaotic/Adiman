@@ -72,7 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _enableAutoUpdater = false;
   bool _clearMp3Cache = false;
   bool _vimKeybindings = false;
-  String _spotdlFlags = '';
+  String _ytdlpFlags = '';
   String _pluginDir = '';
   String _pluginRwDir = '';
   bool _fadeIn = false;
@@ -221,8 +221,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _spinningAlbumArt =
           SharedPreferencesService.instance.getBool('spinningAlbumArt') ??
               false;
-      _spotdlFlags =
-          SharedPreferencesService.instance.getString('spotdlFlags') ?? '';
+      _ytdlpFlags =
+          SharedPreferencesService.instance.getString('ytdlpFlags') ?? '';
       _pluginDir = SharedPreferencesService.instance.getString('pluginDir') ??
           '~/AdiPlugins';
       _pluginRwDir =
@@ -388,9 +388,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _spinningAlbumArt = value);
   }
 
-  Future<void> _saveSpotdlFlags(String flags) async {
-    await SharedPreferencesService.instance.setString('spotdlFlags', flags);
-    setState(() => _spotdlFlags = flags);
+  Future<void> _saveYtdlpFlags(String flags) async {
+    await SharedPreferencesService.instance.setString('ytdlpFlags', flags);
+    setState(() => _ytdlpFlags = flags);
   }
 
   Future<void> _saveEdgeBreathe(bool value) async {
@@ -1869,10 +1869,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           icon: Broken.document_download,
                           children: [
                             SettingsTextField(
-                              title: 'spotdl Custom Flags',
-                              initialValue: _spotdlFlags,
-                              hintText: 'Enter custom flags for spotdl...',
-                              onChanged: _saveSpotdlFlags,
+                              title: 'yt-dlp Custom Flags',
+                              initialValue: _ytdlpFlags,
+                              hintText: 'Enter custom flags for yt-dlp...',
+                              onChanged: _saveYtdlpFlags,
                               icon: Broken.setting_4,
                               dominantColor: _currentColor,
                             ),

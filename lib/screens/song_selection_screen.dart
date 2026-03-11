@@ -3265,7 +3265,7 @@ class _SongSelectionScreenState extends State<SongSelectionScreen>
                               ),
                               _buildMenuTile(
                                 icon: Broken.document_download,
-                                title: 'Download Songs (spotdl required)',
+                                title: 'Download Songs (yt-dlp required)',
                                 onTap: () {
                                   _pauseSong();
                                   ScaffoldMessenger.of(context)

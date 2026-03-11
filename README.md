@@ -33,7 +33,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 # Dependencies (These apply even when not building)
 
 - FFmpeg
-- SpotDL (via python if you want downloading songs to work)
+- yt-dlp (via python if you want downloading songs to work)
 - GTK
 - SQLite
 
@@ -51,7 +51,7 @@ A flutter music player app I made for linux using [flutter_rust_bridge](https://
 - Smooth animations
 - Plugin Support (to develop or add plugins look through the [documentation](PLUGINS.md))
 - Playlists
-- Downloading songs via spotdl command line tool (requires spotdl installed and this takes a while due to all the rate limits so unfortunately you just have to wait it out)
+- Downloading songs via yt-dlp command line tool (requires yt-dlp installed)
 - Waveform seekbar
 - Lyrics from online source ([lrclib](https://lrclib.net/))
 - Shuffle option (mostly untested due to me not using it that often)
