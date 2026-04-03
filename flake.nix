@@ -35,9 +35,9 @@
         ];
 
         buildInputs = with pkgs; [
-          xorg.libXcursor
-          xorg.libXi
-          xorg.libXrandr
+	  libxcursor
+	  libxi
+	  libxrandr
           udev
           alsa-lib
           pipewire
