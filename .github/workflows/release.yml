@@ -109,7 +109,7 @@ jobs:
         run: |
           git clone "https://github.com/flutter/flutter.git";
           cd flutter;
-          git checkout tags/3.29.3;
+          git checkout stable;
           echo "$PWD/bin" >> $GITHUB_PATH;
           ./bin/flutter --version;
 

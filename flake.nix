@@ -35,9 +35,9 @@
         ];
 
         buildInputs = with pkgs; [
-          xorg.libXcursor
-          xorg.libXi
-          xorg.libXrandr
+	  libxcursor
+	  libxi
+	  libxrandr
           udev
           alsa-lib
           pipewire
@@ -48,7 +48,7 @@
           zlib
 
           gdb
-          flutter329
+          flutter
           flutter_rust_bridge_codegen
           libayatana-appindicator # For flutter notifications plugin
           gtk3
@@ -127,7 +127,7 @@
           VULKAN_LIB_DIR = "${pkgs.shaderc.dev}/lib";
           VULKAN_SDK = "${pkgs.vulkan-validation-layers}/share/vulkan/explicit_layer.d";
 
-          FLUTTER_ROOT = "${pkgs.flutter329}";
+          FLUTTER_ROOT = "${pkgs.flutter}";
 
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = "${pkgs.llvmPackages.clangUseLLVM}/bin/clang";
 
