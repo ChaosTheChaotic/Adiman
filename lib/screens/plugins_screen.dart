@@ -1156,7 +1156,7 @@ class _PluginSettingsDialogState extends State<PluginSettingsDialog> {
                 : (newValue) {
                     _updateConfigValue(key, newValue, "Bool");
                   },
-            activeColor: widget.dominantColor,
+            activeThumbColor: widget.dominantColor,
             activeTrackColor: widget.dominantColor.withAlpha(100),
           ),
         ),
