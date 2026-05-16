@@ -35,9 +35,9 @@
         ];
 
         buildInputs = with pkgs; [
-	  libxcursor
-	  libxi
-	  libxrandr
+          libxcursor
+          libxi
+          libxrandr
           udev
           alsa-lib
           pipewire
@@ -62,6 +62,15 @@
           cdparanoia
 
           sqlite
+
+          libepoxy
+          libGLX
+          atk
+          cairo
+          gdk-pixbuf
+          glib
+          harfbuzz
+          pango
         ];
 
         nativeBuildInputs = with pkgs; [
@@ -81,6 +90,7 @@
           mold
           rustup
           cargo-expand
+					openjdk
         ];
 
         all_deps =
@@ -119,7 +129,7 @@
               }
           	'';
       in
-      rec {
+      {
         devShell = pkgs.mkShell {
 
           nativeBuildInputs = all_deps;
@@ -145,10 +155,11 @@
           ALSA_CONFIG_PATH = alsaConfig;
 
           shellHook = ''
-            	    export CARGO_MANIFEST_DIR=$(pwd)
-                    BUNDLE_PATH="$(pwd)/build/linux/x64/debug/bundle/lib:$(pwd)/build/linux/x64/release/bundle/lib:$(pwd)/build/linux/arm64/debug/bundle/lib:$(pwd)/build/linux/arm64/release/bundle/lib"
-            	    export LD_LIBRARY_PATH="$STORE_LD_LIBRARY_PATH:$BUNDLE_PATH:$LD_LIBRARY_PATH"
-            	  '';
+            						export CARGO_MANIFEST_DIR=$(pwd)
+            						BUNDLE_PATH="$(pwd)/build/linux/x64/debug/bundle/lib:$(pwd)/build/linux/x64/release/bundle/lib:$(pwd)/build/linux/arm64/debug/bundle/lib:$(pwd)/build/linux/arm64/release/bundle/lib"
+                        HOST_DRIVER_PATH="/run/opengl-driver/lib:/run/opengl-driver-32/lib"
+            						export LD_LIBRARY_PATH="$STORE_LD_LIBRARY_PATH:$BUNDLE_PATH:$HOST_DRIVER_PATH:$LD_LIBRARY_PATH"
+          '';
         };
       }
     );
