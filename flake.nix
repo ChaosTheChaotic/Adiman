@@ -34,6 +34,10 @@
           shaderc.lib
         ];
 
+				noAaptFlutter = (pkgs.flutter.override {
+					aapt = null;
+				});
+
         buildInputs = with pkgs; [
           libxcursor
           libxi
@@ -48,7 +52,7 @@
           zlib
 
           gdb
-          flutter
+          noAaptFlutter
           flutter_rust_bridge_codegen
           libayatana-appindicator # For flutter notifications plugin
           gtk3
@@ -137,7 +141,7 @@
           VULKAN_LIB_DIR = "${pkgs.shaderc.dev}/lib";
           VULKAN_SDK = "${pkgs.vulkan-validation-layers}/share/vulkan/explicit_layer.d";
 
-          FLUTTER_ROOT = "${pkgs.flutter}";
+          FLUTTER_ROOT = "${noAaptFlutter}";
 
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = "${pkgs.llvmPackages.clangUseLLVM}/bin/clang";
 
