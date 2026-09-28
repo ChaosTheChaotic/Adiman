@@ -14,7 +14,7 @@ on:
 jobs:
   build_x86_64:
     name: Build x86_64 AppImage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: checkout code
         uses: actions/checkout@v4
@@ -84,7 +84,7 @@ jobs:
 
   build_aarch64:
     name: Build ARM64 AppImage
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-22.04-arm
     steps:
       - name: checkout code
         uses: actions/checkout@v4
