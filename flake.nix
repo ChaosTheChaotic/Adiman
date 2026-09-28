@@ -17,7 +17,14 @@
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        overlays = [ (import rust-overlay) ];
+        overlays = [
+          (import rust-overlay)
+
+          (final: prev: {
+            aapt = if system == "aarch64-linux" then prev.hello else prev.aapt;
+          })
+        ];
+
         pkgs = (import nixpkgs) {
           inherit system overlays;
         };
@@ -34,10 +41,6 @@
           shaderc.lib
         ];
 
-				noAaptFlutter = (pkgs.flutter.override {
-					aapt = null;
-				});
-
         buildInputs = with pkgs; [
           libxcursor
           libxi
@@ -52,7 +55,7 @@
           zlib
 
           gdb
-          noAaptFlutter
+          flutter
           flutter_rust_bridge_codegen
           libayatana-appindicator # For flutter notifications plugin
           gtk3
@@ -94,7 +97,7 @@
           mold
           rustup
           cargo-expand
-					openjdk
+          openjdk
         ];
 
         all_deps =
@@ -141,7 +144,7 @@
           VULKAN_LIB_DIR = "${pkgs.shaderc.dev}/lib";
           VULKAN_SDK = "${pkgs.vulkan-validation-layers}/share/vulkan/explicit_layer.d";
 
-          FLUTTER_ROOT = "${noAaptFlutter}";
+          FLUTTER_ROOT = "${pkgs.flutter}";
 
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = "${pkgs.llvmPackages.clangUseLLVM}/bin/clang";
 
